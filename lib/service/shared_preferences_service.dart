@@ -8,11 +8,37 @@ import '../data/model/say_bread_history.dart';
 import '../data/model/store_data.dart';
 
 class SharedPreferencesService {
+  static SharedPreferences? _prefs;
+
+  static Future init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  SharedPreferences get prefs => _prefs!;
   static const pcKey = 'point_coffee_history';
   static const sbKey = 'say_bread_history';
   static const pcStoreKey = 'pc_store_data';
   static const sbStoreKey = 'sb_store_data';
   static const barcodeKey = 'barcode_list';
+  static const keyLogin = "login";
+
+  bool get isLogin => prefs.getBool(keyLogin) ?? false;
+
+  Future<void> login() async {
+    try {
+      await _prefs?.setBool(keyLogin, true);
+    } catch (e) {
+      throw Exception("Shared preferences cannot save the value.");
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _prefs?.setBool(keyLogin, false);
+    } catch (e) {
+      throw Exception("Shared preferences cannot save the value.");
+    }
+  }
 
   static const dbVersionKey = 'db_version';
   static const currentDbVersion = 1;

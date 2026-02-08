@@ -160,7 +160,7 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                     _buildInfoSection(
                       "Kode",
                       b.code,
-                      icon: b.type == 'qrcode' ? Icons.qr_code : Icons.reorder,
+                      icon: b.type == 'qrcode' ? Icons.qr_code : Icons.onetwothree,
                     ),
                     const SizedBox(height: 24),
 

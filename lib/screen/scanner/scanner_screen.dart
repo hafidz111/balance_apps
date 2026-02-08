@@ -66,7 +66,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     if (!mounted) return;
 
     if (found != null) {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
       );
