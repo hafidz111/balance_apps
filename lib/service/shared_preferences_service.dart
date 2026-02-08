@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/model/barcode_data.dart';
 import '../data/model/point_coffe_history.dart';
 import '../data/model/say_bread_history.dart';
 import '../data/model/store_data.dart';
@@ -11,6 +12,37 @@ class SharedPreferencesService {
   static const sbKey = 'say_bread_history';
   static const pcStoreKey = 'pc_store_data';
   static const sbStoreKey = 'sb_store_data';
+  static const barcodeKey = 'barcode_list';
+
+  static const dbVersionKey = 'db_version';
+  static const currentDbVersion = 1;
+
+  Future<void> initDb() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final version = prefs.getInt(dbVersionKey) ?? 1;
+
+    if (version < currentDbVersion) {
+      await _migrate(prefs, version);
+      await prefs.setInt(dbVersionKey, currentDbVersion);
+    }
+  }
+
+  Future<void> _migrate(SharedPreferences prefs, int oldVersion) async {
+    if (oldVersion == 1) {
+      final list = await getBarcodes();
+
+      final fixed = list.map((e) {
+        return BarcodeData(
+          type: e.type,
+          code: e.code,
+          description: e.description,
+        );
+      }).toList();
+
+      await saveBarcodes(fixed);
+    }
+  }
 
   Future<void> savePointCoffeeStore(StoreData data) async {
     final prefs = await SharedPreferences.getInstance();
@@ -233,5 +265,68 @@ class SharedPreferencesService {
       final m = (e.tgl % 10000) ~/ 100;
       return y == year && m == month;
     }).toList();
+  }
+
+  Future<void> saveBarcode(BarcodeData data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(barcodeKey) ?? [];
+
+    final barcodes = list
+        .map((e) => BarcodeData.fromJson(jsonDecode(e)))
+        .toList();
+
+    barcodes.removeWhere((e) => e.code == data.code);
+
+    barcodes.add(data);
+
+    await prefs.setStringList(
+      barcodeKey,
+      barcodes.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<List<BarcodeData>> getBarcodes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(barcodeKey) ?? [];
+
+    return list.map((e) => BarcodeData.fromJson(jsonDecode(e))).toList();
+  }
+
+  Future<void> saveBarcodes(List<BarcodeData> list) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList(
+      barcodeKey,
+      list.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<void> updateBarcode(BarcodeData oldData, BarcodeData newData) async {
+    final list = await getBarcodes();
+
+    final index = list.indexWhere(
+      (e) => e.code == oldData.code && e.type == oldData.type,
+    );
+
+    if (index != -1) {
+      list[index] = newData;
+      await saveBarcodes(list);
+    }
+  }
+
+  Future<void> deleteBarcode(BarcodeData data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(barcodeKey) ?? [];
+
+    final barcodes = list
+        .map((e) => BarcodeData.fromJson(jsonDecode(e)))
+        .toList();
+
+    barcodes.removeWhere((e) => e.code == data.code && e.type == data.type);
+
+    await prefs.setStringList(
+      barcodeKey,
+      barcodes.map((e) => jsonEncode(e.toJson())).toList(),
+    );
   }
 }

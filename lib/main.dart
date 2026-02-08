@@ -1,7 +1,12 @@
 import 'package:balance/screen/main/main_screen.dart';
+import 'package:balance/service/shared_preferences_service.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SharedPreferencesService().initDb();
+
   runApp(const MyApp());
 }
 
