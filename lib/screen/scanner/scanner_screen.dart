@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../data/model/barcode_data.dart';
+import '../../service/shared_preferences_service.dart';
+import '../barcode/barcode_detail_screen.dart';
+import '../widgets/barcode_form.dart';
+
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
 
@@ -46,6 +51,35 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
+  Future<void> _handleScanResult(String code) async {
+    final list = await SharedPreferencesService().getBarcodes();
+
+    BarcodeData? found;
+
+    for (final b in list) {
+      if (b.code == code) {
+        found = b;
+        break;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (found != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BarcodeForm(type: 'code128', initialCode: code),
+        ),
+      );
+    }
+  }
+
   void _showPermissionDialog() {
     showDialog(
       context: context,
@@ -72,6 +106,12 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isScanned = false;
+  }
+
+  @override
   void dispose() {
     _animationController.dispose();
     cameraController.dispose();
@@ -90,12 +130,15 @@ class _ScannerScreenState extends State<ScannerScreen>
               children: [
                 MobileScanner(
                   controller: cameraController,
-                  onDetect: (capture) {
+                  onDetect: (capture) async {
                     final List<Barcode> barcodes = capture.barcodes;
+
                     if (barcodes.isNotEmpty && !isScanned) {
                       isScanned = true;
-                      final String code = barcodes.first.rawValue ?? "Unknown";
-                      _showResultDialog(code);
+
+                      final String code = barcodes.first.rawValue ?? "";
+
+                      await _handleScanResult(code);
                     }
                   },
                 ),
@@ -213,23 +256,6 @@ class _ScannerScreenState extends State<ScannerScreen>
       ],
     );
   }
-
-  void _showResultDialog(String code) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Hasil Scan"),
-        content: Text(code),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    ).then((_) => isScanned = false);
-  }
 }
 
 class LEDCornerWrapper extends StatelessWidget {
@@ -256,7 +282,6 @@ class LEDCornerWrapper extends StatelessWidget {
           ),
           child: Container(
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.3),
               shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
               borderRadius: isCircle ? null : BorderRadius.circular(20),

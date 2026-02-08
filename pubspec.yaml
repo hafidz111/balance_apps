@@ -9,6 +9,7 @@ environment:
   sdk: ^3.10.7
 
 dependencies:
+  barcode_widget: ^2.0.4
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
