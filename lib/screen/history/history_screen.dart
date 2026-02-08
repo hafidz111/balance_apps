@@ -41,13 +41,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
       pcHistory = pc.where((e) {
         final year = e.tgl ~/ 10000;
         final month = (e.tgl % 10000) ~/ 100;
-        return year == thisYear && month == thisMonth;
+
+        bool monthMatch = (thisMonth == 0) ? true : (month == thisMonth);
+
+        return year == thisYear && monthMatch;
       }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
 
       sbHistory = sb.where((e) {
         final year = e.tgl ~/ 10000;
         final month = (e.tgl % 10000) ~/ 100;
-        return year == thisYear && month == thisMonth;
+
+        bool monthMatch = (thisMonth == 0) ? true : (month == thisMonth);
+
+        return year == thisYear && monthMatch;
       }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
     });
   }
@@ -149,41 +155,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final picked = await pickMonthYear(
-                        context,
-                        initialDate: selectedMonthYear,
-                      );
-                      if (picked != null) {
-                        setState(() {
-                          selectedMonthYear = picked;
-                        });
-                        _loadHistory();
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_month),
-                    label: Text(
-                      "Bulan: ${["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][selectedMonthYear.month - 1]} ${selectedMonthYear.year}",
-                    ),
+                    onPressed: () => _showManualInputDialog(),
+                    icon: const Icon(Icons.add),
+                    label: const Text("Tambah Data Manual"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF009688),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
                 ),
+
                 const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () => _showManualInputDialog(),
-                  icon: const Icon(Icons.add),
-                  label: const Text("Tambah Data Manual"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF009688),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: IconButton(
+                    onPressed: () async {
+                      final picked = await showMonthYearPicker(
+                        context,
+                        selectedMonthYear,
+                      );
+                      if (picked != null) {
+                        setState(() => selectedMonthYear = picked);
+                        _loadHistory();
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.calendar_month,
+                      color: Color(0xFF009688),
                     ),
                   ),
                 ),
@@ -235,87 +241,255 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Future<DateTime?> pickMonthYear(
-    BuildContext context, {
-    DateTime? initialDate,
-  }) async {
-    initialDate ??= DateTime.now();
-
-    int selectedYear = initialDate.year;
-    int selectedMonth = initialDate.month;
-
+  Future<DateTime?> showMonthYearPicker(
+    BuildContext context,
+    DateTime initialDate,
+  ) {
     return showDialog<DateTime>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Pilih Bulan & Tahun"),
-          content: SizedBox(
-            height: 150,
-            child: Column(
-              children: [
-                DropdownButton<int>(
-                  value: selectedYear,
-                  onChanged: (val) {
-                    if (val != null) selectedYear = val;
-                    (context as Element).markNeedsBuild();
-                  },
-                  items: List.generate(10, (i) => DateTime.now().year - 5 + i)
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e.toString()),
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 16),
+        int selectedYear = initialDate.year;
+        int selectedMonth = initialDate.month;
 
-                DropdownButton<int>(
-                  value: selectedMonth,
-                  onChanged: (val) {
-                    if (val != null) selectedMonth = val;
-                    (context as Element).markNeedsBuild();
-                  },
-                  items: List.generate(12, (i) => i + 1)
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(
-                            [
-                              "Januari",
-                              "Februari",
-                              "Maret",
-                              "April",
-                              "Mei",
-                              "Juni",
-                              "Juli",
-                              "Agustus",
-                              "September",
-                              "Oktober",
-                              "November",
-                              "Desember",
-                            ][e - 1],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final months = [
+              "Semua",
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "Mei",
+              "Jun",
+              "Jul",
+              "Agu",
+              "Sep",
+              "Okt",
+              "Nov",
+              "Des",
+            ];
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              color: Color(0xFF009688),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Filter Periode",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Pilih Tahun",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildNavButton(
+                          icon: Icons.chevron_left,
+                          onTap: () => setDialogState(() => selectedYear--),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onHorizontalDragEnd: (details) {
+                              if (details.primaryVelocity! > 0) {
+                                setDialogState(() => selectedYear--);
+                              } else if (details.primaryVelocity! < 0) {
+                                setDialogState(() => selectedYear++);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                "$selectedYear",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                      .toList(),
+                        const SizedBox(width: 8),
+                        _buildNavButton(
+                          icon: Icons.chevron_right,
+                          onTap: () => setDialogState(() => selectedYear++),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Pilih Bulan",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 2.2,
+                          ),
+                      itemCount: 13,
+                      itemBuilder: (context, index) {
+                        bool isSelected = selectedMonth == index;
+                        return InkWell(
+                          onTap: () =>
+                              setDialogState(() => selectedMonth = index),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFF009688)
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              months[index],
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F2F1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            "Filter aktif:",
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          Text(
+                            selectedMonth == 0
+                                ? "Tahun $selectedYear (Semua Bulan)"
+                                : "${["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][selectedMonth]} $selectedYear",
+                            style: const TextStyle(
+                              color: Color(0xFF00695C),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(
+                            context,
+                            DateTime(selectedYear, selectedMonth),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          "Terapkan Filter",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(context, DateTime(selectedYear, selectedMonth)),
-              child: const Text("Pilih"),
-            ),
-          ],
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildNavButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 24, color: const Color(0xFF009688)),
+      ),
     );
   }
 

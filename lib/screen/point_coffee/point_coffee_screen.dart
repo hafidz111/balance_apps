@@ -68,11 +68,18 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     return (value / 1000000).toStringAsFixed(1);
   }
 
+  String _rupiah(int value) {
+    return value.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
+  }
+
   String _number(int value) => value.toString();
 
   String _apc(int sales, int std) {
     if (std == 0) return "0";
-    return (sales / std).toStringAsFixed(0);
+    return (sales / std / 1000).toStringAsFixed(0);
   }
 
   void _updateAll() {
@@ -95,7 +102,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     return (sales / std).toStringAsFixed(3);
   }
 
-  double get apc => totalStd == 0 ? 0 : totalSales / totalStd;
+  double get apc => totalStd == 0 ? 0 : totalSales / totalStd / 1000;
 
   Future<String> _buildMonthlyHistory() async {
     final service = SharedPreferencesService();
@@ -166,21 +173,21 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 ```Tanggal $tgl```
 
 *Shift 1* ```
-Sales.   : ${_rupiahShort(_toInt(s1Sales))}
+Sales.   : ${_rupiah(_toInt(s1Sales))}
 Std.     : ${_number(_toInt(s1Std))}
 Apc      : ${_apc(_toInt(s1Sales), _toInt(s1Std))}
 Cup.     : ${_number(_toInt(s1Cup))}
 Add      : ${_number(_toInt(s1Add))} ```
 
 *Shift 2* ```
-Sales.   : ${_rupiahShort(_toInt(s2Sales))}
+Sales.   : ${_rupiah(_toInt(s2Sales))}
 Std      : ${_number(_toInt(s2Std))}
 Apc      : ${_apc(_toInt(s2Sales), _toInt(s2Std))}
 Cup      : ${_number(_toInt(s2Cup))}
 Add      : ${_number(_toInt(s2Add))} ```
 
 *TOTAL* ```
-Sales    : ${_rupiahShort(totalSales)}
+Sales    : ${_rupiah(totalSales)}
 Std.     : $totalStd
 Apc      : ${_apc(totalSales, totalStd)}
 Cup.     : $totalCup
