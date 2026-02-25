@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../service/shared_preferences_service.dart';
+import '../grid_photo/grid_photo_screen.dart';
 import '../say_bread/say_bread_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _MainScreenState extends State<MainScreen> {
     SayBreadScreen(),
     HistoryScreen(),
     BarcodeScreen(),
+    GridPhotoScreen(),
     SettingsScreen(),
   ];
 
@@ -37,6 +39,7 @@ class _MainScreenState extends State<MainScreen> {
     "Say Bread",
     "History",
     "Barcode",
+    "Hit & Run",
     'Settings',
   ];
 
@@ -46,6 +49,7 @@ class _MainScreenState extends State<MainScreen> {
     Icons.bakery_dining,
     Icons.history,
     Icons.qr_code,
+    Icons.run_circle_outlined,
     Icons.settings,
   ];
 
@@ -174,7 +178,7 @@ class _MainScreenState extends State<MainScreen> {
                               Text(
                                 isLogin ? "Admin" : "Klik untuk akses akun",
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13,
                                 ),
                               ),
