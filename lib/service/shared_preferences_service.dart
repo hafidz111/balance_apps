@@ -70,6 +70,59 @@ class SharedPreferencesService {
     }
   }
 
+  Future<Map<String, dynamic>> getAllLocalData() async {
+    final barcodes = await getBarcodes();
+    final pointCoffee = await getPointCoffee();
+    final sayBread = await getSayBread();
+    final pcStore = await getPointCoffeeStore();
+    final sbStore = await getSayBreadStore();
+
+    return {
+      "barcodes": barcodes.map((e) => e.toJson()).toList(),
+      "pointCoffee": pointCoffee.map((e) => e.toJson()).toList(),
+      "sayBread": sayBread.map((e) => e.toJson()).toList(),
+      "store": {
+        "point_coffee": pcStore?.toJson(),
+        "say_bread": sbStore?.toJson(),
+      },
+    };
+  }
+
+  Future<void> saveFromServer(Map<String, dynamic> data) async {
+    final barcodeList = (data['barcodes'] as List? ?? [])
+        .map((e) => BarcodeData.fromJson(e))
+        .toList();
+    await saveBarcodes(barcodeList);
+
+    final pcList = (data['pointCoffee'] as List? ?? [])
+        .map((e) => PointCoffeeHistory.fromJson(e))
+        .toList();
+
+    for (final item in pcList) {
+      await savePointCoffee(item);
+    }
+
+    final sbList = (data['sayBread'] as List? ?? [])
+        .map((e) => SayBreadHistory.fromJson(e))
+        .toList();
+
+    for (final item in sbList) {
+      await saveSayBread(item);
+    }
+
+    if (data['store'] != null) {
+      if (data['store']['point_coffee'] != null) {
+        await savePointCoffeeStore(
+          StoreData.fromJson(data['store']['point_coffee']),
+        );
+      }
+
+      if (data['store']['say_bread'] != null) {
+        await saveSayBreadStore(StoreData.fromJson(data['store']['say_bread']));
+      }
+    }
+  }
+
   Future<void> savePointCoffeeStore(StoreData data) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(pcStoreKey, jsonEncode(data.toJson()));

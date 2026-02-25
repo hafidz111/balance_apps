@@ -47,7 +47,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: appTitle,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      ),
       home: MainScreen(),
       routes: {},
     );
