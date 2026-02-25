@@ -21,16 +21,55 @@ class GridBackgroundPhotoScreen extends StatefulWidget {
       _GridBackgroundPhotoScreenState();
 }
 
+class TextItem {
+  String text;
+  Offset offset;
+  double fontSize;
+  bool isBold;
+  Color color;
+
+  TextItem({
+    required this.text,
+    required this.offset,
+    required this.fontSize,
+    required this.isBold,
+    required this.color,
+  });
+}
+
 class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   Offset imageOffset = Offset.zero;
   double imageScale = 1.0;
   double baseScale = 1.0;
 
-  double canvasRatio = 1.0; // default 1:1
+  double canvasRatio = 1.0;
 
   File? backgroundImage;
   final ScreenshotController screenshotController = ScreenshotController();
   final ImagePicker _picker = ImagePicker();
+
+  double fontSize = 28;
+  bool isBold = false;
+
+  Offset initialFocalPoint = Offset.zero;
+  Offset initialTextOffset = Offset.zero;
+
+  List<TextItem> texts = [];
+  int? selectedTextIndex;
+
+  bool showTextEditor = false;
+  final TextEditingController textController = TextEditingController();
+  final TextEditingController colorController = TextEditingController(
+    text: "#038343",
+  );
+
+  Color hexToColor(String hex) {
+    hex = hex.replaceAll("#", "");
+    if (hex.length == 6) {
+      hex = "FF$hex";
+    }
+    return Color(int.parse(hex, radix: 16));
+  }
 
   Future<void> _pickBackground() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
@@ -41,7 +80,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
       setState(() {
         backgroundImage = file;
-        canvasRatio = ratio; // tambahkan state double canvasRatio
+        canvasRatio = ratio;
       });
     }
   }
@@ -56,18 +95,15 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
   Future<void> _saveToGallery() async {
     try {
-      /// 1️⃣ Capture Screenshot
       final Uint8List? image = await screenshotController.capture(
         pixelRatio: 3.0,
       );
 
       if (image == null) return;
 
-      /// 2️⃣ Request Permission (Android 13+ aman)
       await Permission.photos.request();
       await Permission.storage.request();
 
-      /// 3️⃣ Get Directory
       Directory? directory;
 
       if (Platform.isAndroid) {
@@ -76,14 +112,12 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         directory = await getApplicationDocumentsDirectory();
       }
 
-      /// 4️⃣ Create Folder If Not Exist
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
 
-      /// 5️⃣ Save File
       final filePath =
-          "${directory.path}/grid_${DateTime.now().millisecondsSinceEpoch}.png";
+          "${directory.path}/balance_${DateTime.now().millisecondsSinceEpoch}.png";
 
       File file = File(filePath);
       await file.writeAsBytes(image);
@@ -103,13 +137,181 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     }
   }
 
+  Widget _colorCircle(Color color) {
+    return GestureDetector(
+      onTap: () {
+        if (selectedTextIndex != null) {
+          setState(() {
+            texts[selectedTextIndex!].color = color;
+            colorController.text =
+                "#${color.value.toRadixString(16).substring(2).toUpperCase()}";
+          });
+        }
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  void _openTextEditor() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// TEXT INPUT
+                TextField(
+                  controller: textController,
+                  decoration: const InputDecoration(
+                    hintText: "Edit teks...",
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    if (selectedTextIndex != null) {
+                      setState(() {
+                        texts[selectedTextIndex!].text = value;
+                      });
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                /// FONT SIZE
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Ukuran Font"),
+                ),
+
+                Slider(
+                  min: 12,
+                  max: 80,
+                  value: selectedTextIndex != null
+                      ? texts[selectedTextIndex!].fontSize
+                      : 28,
+                  onChanged: (value) {
+                    if (selectedTextIndex != null) {
+                      setState(() {
+                        texts[selectedTextIndex!].fontSize = value;
+                      });
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                /// COLOR PICKER
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Pilih Warna"),
+                ),
+
+                const SizedBox(height: 8),
+
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _colorCircle(const Color(0xFF038343)),
+                    _colorCircle(Colors.black),
+                    _colorCircle(Colors.white),
+                    _colorCircle(Colors.red),
+                    _colorCircle(Colors.blue),
+                    _colorCircle(Colors.orange),
+                    _colorCircle(Colors.purple),
+                    _colorCircle(Colors.teal),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                /// HEX INPUT
+                TextField(
+                  controller: colorController,
+                  decoration: const InputDecoration(
+                    hintText: "#038343",
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    if (selectedTextIndex != null) {
+                      try {
+                        final color = hexToColor(value);
+                        setState(() {
+                          texts[selectedTextIndex!].color = color;
+                        });
+                      } catch (_) {}
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                /// BOLD + DELETE
+                Row(
+                  children: [
+                    const Text("Bold"),
+                    Switch(
+                      value: selectedTextIndex != null
+                          ? texts[selectedTextIndex!].isBold
+                          : false,
+                      onChanged: (value) {
+                        if (selectedTextIndex != null) {
+                          setState(() {
+                            texts[selectedTextIndex!].isBold = value;
+                          });
+                        }
+                      },
+                    ),
+                    const Spacer(),
+                    if (selectedTextIndex != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            texts.removeAt(selectedTextIndex!);
+                          });
+                          Navigator.pop(context);
+                        },
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            /// CANVAS AREA
             Expanded(
               child: Center(
                 child: AspectRatio(
@@ -140,6 +342,49 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
+                            ...texts.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+
+                              return Positioned(
+                                left: item.offset.dx,
+                                top: item.offset.dy,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        selectedTextIndex = index;
+                                        textController.text = item.text;
+                                        _openTextEditor();
+                                      },
+                                      onPanUpdate: (details) {
+                                        setState(() {
+                                          item.offset += details.delta;
+                                        });
+                                      },
+                                      child: Text(
+                                        item.text,
+                                        style: TextStyle(
+                                          fontSize: item.fontSize,
+                                          fontWeight: item.isBold
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: item.color,
+                                          shadows: const [
+                                            Shadow(
+                                              blurRadius: 6,
+                                              color: Colors.black54,
+                                              offset: Offset(2, 2),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
 
                             GestureDetector(
                               onScaleStart: (details) {
@@ -171,12 +416,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
               ),
             ),
 
-            /// BUTTON AREA
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Column(
                 children: [
-                  /// TAMBAH BACKGROUND
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -201,7 +444,6 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
                   const SizedBox(height: 12),
 
-                  /// HAPUS BACKGROUND
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -231,6 +473,44 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final newText = TextItem(
+                          text: "Teks Baru",
+                          offset: const Offset(100, 100),
+                          fontSize: 28,
+                          isBold: false,
+                          color: const Color(0xFF038343),
+                        );
+
+                        setState(() {
+                          texts.add(newText);
+                          selectedTextIndex = texts.length - 1;
+                          textController.text = newText.text;
+                          showTextEditor = true;
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Tambah Teks",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
 
                   /// SAVE

@@ -6,12 +6,18 @@ class GridItem extends StatefulWidget {
   final File? image;
   final VoidCallback? onPick;
   final VoidCallback? onDelete;
+  final VoidCallback? onDeleteToggle;
+  final bool isLocked;
+  final bool showDelete;
 
   const GridItem({
     super.key,
     required this.image,
     required this.onPick,
     required this.onDelete,
+    required this.onDeleteToggle,
+    required this.isLocked,
+    required this.showDelete,
   });
 
   @override
@@ -19,20 +25,18 @@ class GridItem extends StatefulWidget {
 }
 
 class GridItemState extends State<GridItem> {
-  bool showDelete = false;
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        if (widget.image == null && widget.onPick != null) {
-          widget.onPick!();
-        } else if (widget.image != null && widget.onDelete != null) {
-          setState(() {
-            showDelete = !showDelete;
-          });
-        }
-      },
+      onTap: widget.isLocked
+          ? null
+          : () {
+              if (widget.image == null && widget.onPick != null) {
+                widget.onPick!();
+              } else if (widget.image != null && widget.onDelete != null) {
+                widget.onDeleteToggle!();
+              }
+            },
       child: Stack(
         children: [
           Container(
@@ -70,7 +74,7 @@ class GridItemState extends State<GridItem> {
             ),
           ),
 
-          if (widget.image != null && showDelete)
+          if (!widget.isLocked && widget.image != null && widget.showDelete)
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(

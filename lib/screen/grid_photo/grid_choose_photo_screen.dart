@@ -29,10 +29,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   late List<File?> images;
   bool isSaved = false;
   File? backgroundImage;
-
-  Offset gridOffset = Offset.zero;
-  double gridScale = 1.0;
-  double baseScale = 1.0;
+  int? activeDeleteIndex;
 
   @override
   void initState() {
@@ -46,6 +43,56 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       images[index] = File(picked.path);
       setState(() {});
     }
+  }
+
+  Future<void> _pickMultipleImages() async {
+    final pickedFiles = await _picker.pickMultiImage();
+
+    if (pickedFiles.isEmpty) return;
+
+    final files = pickedFiles.map((e) => File(e.path)).toList();
+
+    setState(() {
+      List<int> emptyIndexes = [];
+
+      for (int i = 0; i < images.length; i++) {
+        if (images[i] == null) {
+          emptyIndexes.add(i);
+        }
+      }
+
+      if (emptyIndexes.isNotEmpty) {
+        int fileIndex = 0;
+
+        for (int index in emptyIndexes) {
+          if (fileIndex >= files.length) break;
+
+          images[index] = files[fileIndex];
+          fileIndex++;
+        }
+
+        if (files.length > emptyIndexes.length) {
+          CustomSnackBar.show(
+            context,
+            message:
+            "Slot kosong terisi. Sisa gambar diabaikan.",
+            type: SnackType.warning,
+          );
+        }
+      }
+
+      else {
+        for (int i = 0; i < images.length && i < files.length; i++) {
+          images[i] = files[i];
+        }
+
+        CustomSnackBar.show(
+          context,
+          message: "Grid penuh, gambar diganti semua",
+          type: SnackType.warning,
+        );
+      }
+    });
   }
 
   void _deleteImage(int index) {
@@ -69,8 +116,24 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         itemBuilder: (context, index) {
           return GridItem(
             image: images[index],
-            onPick: isSaved ? null : () => _pickImage(index),
-            onDelete: isSaved ? null : () => _deleteImage(index),
+            isLocked: isSaved,
+            showDelete: activeDeleteIndex == index,
+            onPick: isSaved
+                ? null
+                : () => _pickImage(index),
+            onDelete: isSaved
+                ? null
+                : () => _deleteImage(index),
+            onDeleteToggle: isSaved
+                ? null
+                : () {
+              setState(() {
+                activeDeleteIndex =
+                activeDeleteIndex == index
+                    ? null
+                    : index;
+              });
+            },
           );
         },
       ),
@@ -87,12 +150,17 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       return;
     }
 
-    final Uint8List? image = await screenshotController.capture(
-      pixelRatio: 3.0,
-    );
+    setState(() {
+      isSaved = true;
+    });
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    final Uint8List? image =
+    await screenshotController.capture(pixelRatio: 3.0);
 
     if (image == null) return;
     if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -110,39 +178,15 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  /// Background (tidak ikut ke capture)
                   if (backgroundImage != null)
                     Positioned.fill(
                       child: Image.file(backgroundImage!, fit: BoxFit.cover),
                     ),
 
-                  /// Screenshot hanya untuk GRID
                   Center(
                     child: Screenshot(
                       controller: screenshotController,
-                      child: GestureDetector(
-                        onScaleStart: (details) {
-                          baseScale = gridScale;
-                        },
-                        onScaleUpdate: isSaved
-                            ? (details) {
-                                setState(() {
-                                  gridScale = (baseScale * details.scale).clamp(
-                                    0.5,
-                                    3.0,
-                                  );
-                                  gridOffset += details.focalPointDelta;
-                                });
-                              }
-                            : null,
-                        child: Transform.translate(
-                          offset: gridOffset,
-                          child: Transform.scale(
-                            scale: gridScale,
-                            child: _buildGrid(),
-                          ),
-                        ),
-                      ),
+                      child: _buildGrid(),
                     ),
                   ),
                 ],
@@ -153,7 +197,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 children: [
-                  /// SIMPAN
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -161,7 +204,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
                       onPressed: _handleSave,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF009688),
-                        // pastikan sudah ada
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -169,6 +211,29 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
                       ),
                       child: const Text(
                         "Lanjutkan",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _pickMultipleImages,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueGrey,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Pilih Banyak Gambar",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
