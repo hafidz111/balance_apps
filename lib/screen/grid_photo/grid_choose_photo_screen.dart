@@ -6,6 +6,7 @@ import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
 
 class GridChoosePhotoScreen extends StatefulWidget {
@@ -38,6 +39,17 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickImage(int index) async {
+    final hasPermission = await _requestGalleryPermission();
+    if (!hasPermission) {
+      if (!mounted) return;
+      CustomSnackBar.show(
+        context,
+        message: "Izin galeri diperlukan",
+        type: SnackType.error,
+      );
+      return;
+    }
+
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
       images[index] = File(picked.path);
@@ -46,6 +58,17 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickMultipleImages() async {
+    final hasPermission = await _requestGalleryPermission();
+    if (!hasPermission) {
+      if (!mounted) return;
+      CustomSnackBar.show(
+        context,
+        message: "Izin galeri diperlukan",
+        type: SnackType.error,
+      );
+      return;
+    }
+
     final pickedFiles = await _picker.pickMultiImage();
 
     if (pickedFiles.isEmpty) return;
@@ -74,14 +97,11 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         if (files.length > emptyIndexes.length) {
           CustomSnackBar.show(
             context,
-            message:
-            "Slot kosong terisi. Sisa gambar diabaikan.",
+            message: "Slot kosong terisi. Sisa gambar diabaikan.",
             type: SnackType.warning,
           );
         }
-      }
-
-      else {
+      } else {
         for (int i = 0; i < images.length && i < files.length; i++) {
           images[i] = files[i];
         }
@@ -98,6 +118,34 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   void _deleteImage(int index) {
     images[index] = null;
     setState(() {});
+  }
+
+  Future<bool> _requestGalleryPermission() async {
+    if (Platform.isAndroid) {
+      final storage = await Permission.storage.request();
+      final photos = await Permission.photos.request();
+
+      if (storage.isGranted || photos.isGranted) {
+        return true;
+      }
+
+      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    } else {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted || photos.isLimited) {
+        return true;
+      }
+
+      if (photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    }
   }
 
   Widget _buildGrid() {
@@ -118,22 +166,17 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
             image: images[index],
             isLocked: isSaved,
             showDelete: activeDeleteIndex == index,
-            onPick: isSaved
-                ? null
-                : () => _pickImage(index),
-            onDelete: isSaved
-                ? null
-                : () => _deleteImage(index),
+            onPick: isSaved ? null : () => _pickImage(index),
+            onDelete: isSaved ? null : () => _deleteImage(index),
             onDeleteToggle: isSaved
                 ? null
                 : () {
-              setState(() {
-                activeDeleteIndex =
-                activeDeleteIndex == index
-                    ? null
-                    : index;
-              });
-            },
+                    setState(() {
+                      activeDeleteIndex = activeDeleteIndex == index
+                          ? null
+                          : index;
+                    });
+                  },
           );
         },
       ),
@@ -155,8 +198,9 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
     });
     await Future.delayed(const Duration(milliseconds: 50));
 
-    final Uint8List? image =
-    await screenshotController.capture(pixelRatio: 3.0);
+    final Uint8List? image = await screenshotController.capture(
+      pixelRatio: 3.0,
+    );
 
     if (image == null) return;
     if (!mounted) return;
@@ -201,29 +245,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _handleSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF009688),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Lanjutkan",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
                       onPressed: _pickMultipleImages,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueGrey,
@@ -234,6 +255,30 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
                       ),
                       child: const Text(
                         "Pilih Banyak Gambar",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _handleSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF009688),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Lanjutkan",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

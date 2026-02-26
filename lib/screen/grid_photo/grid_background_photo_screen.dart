@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
 
@@ -47,6 +46,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   File? backgroundImage;
   final ScreenshotController screenshotController = ScreenshotController();
   final ImagePicker _picker = ImagePicker();
+
+  static const platform = MethodChannel('gallery_saver');
 
   double fontSize = 28;
   bool isBold = false;
@@ -93,24 +94,54 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     return image.width / image.height;
   }
 
+  Future<bool> _requestGalleryPermission() async {
+    if (Platform.isAndroid) {
+      final storage = await Permission.storage.request();
+      final photos = await Permission.photos.request();
+
+      if (storage.isGranted || photos.isGranted) {
+        return true;
+      }
+
+      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    } else {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted || photos.isLimited) {
+        return true;
+      }
+
+      if (photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    }
+  }
+
   Future<void> _saveToGallery() async {
     try {
+      final hasPermission = await _requestGalleryPermission();
+      if (!hasPermission) {
+        if(!mounted) return;
+        CustomSnackBar.show(
+          context,
+          message: "Izin storage diperlukan untuk menyimpan",
+          type: SnackType.error,
+        );
+        return;
+      }
+
       final Uint8List? image = await screenshotController.capture(
         pixelRatio: 3.0,
       );
 
       if (image == null) return;
 
-      await Permission.photos.request();
-      await Permission.storage.request();
-
-      Directory? directory;
-
-      if (Platform.isAndroid) {
-        directory = Directory("/storage/emulated/0/Pictures/Balance");
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
+      Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
 
       if (!await directory.exists()) {
         await directory.create(recursive: true);
@@ -121,6 +152,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
       File file = File(filePath);
       await file.writeAsBytes(image);
+      await _scanFile(file.path);
+
       if (!mounted) return;
       CustomSnackBar.show(
         context,
@@ -137,6 +170,16 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     }
   }
 
+  Future<void> _scanFile(String path) async {
+    if (Platform.isAndroid) {
+      try {
+        await platform.invokeMethod('scanFile', {"path": path});
+      } catch (e) {
+        debugPrint("Scan error: $e");
+      }
+    }
+  }
+
   Widget _colorCircle(Color color) {
     return GestureDetector(
       onTap: () {
@@ -144,7 +187,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
           setState(() {
             texts[selectedTextIndex!].color = color;
             colorController.text =
-                "#${color.value.toRadixString(16).substring(2).toUpperCase()}";
+                "#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}";
           });
         }
       },
@@ -169,138 +212,144 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                /// TEXT INPUT
-                TextField(
-                  controller: textController,
-                  decoration: const InputDecoration(
-                    hintText: "Edit teks...",
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (value) {
-                    if (selectedTextIndex != null) {
-                      setState(() {
-                        texts[selectedTextIndex!].text = value;
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                /// FONT SIZE
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Ukuran Font"),
-                ),
-
-                Slider(
-                  min: 12,
-                  max: 80,
-                  value: selectedTextIndex != null
-                      ? texts[selectedTextIndex!].fontSize
-                      : 28,
-                  onChanged: (value) {
-                    if (selectedTextIndex != null) {
-                      setState(() {
-                        texts[selectedTextIndex!].fontSize = value;
-                      });
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                /// COLOR PICKER
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Pilih Warna"),
-                ),
-
-                const SizedBox(height: 8),
-
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _colorCircle(const Color(0xFF038343)),
-                    _colorCircle(Colors.black),
-                    _colorCircle(Colors.white),
-                    _colorCircle(Colors.red),
-                    _colorCircle(Colors.blue),
-                    _colorCircle(Colors.orange),
-                    _colorCircle(Colors.purple),
-                    _colorCircle(Colors.teal),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                /// HEX INPUT
-                TextField(
-                  controller: colorController,
-                  decoration: const InputDecoration(
-                    hintText: "#038343",
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (value) {
-                    if (selectedTextIndex != null) {
-                      try {
-                        final color = hexToColor(value);
-                        setState(() {
-                          texts[selectedTextIndex!].color = color;
-                        });
-                      } catch (_) {}
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                /// BOLD + DELETE
-                Row(
-                  children: [
-                    const Text("Bold"),
-                    Switch(
-                      value: selectedTextIndex != null
-                          ? texts[selectedTextIndex!].isBold
-                          : false,
+                    TextField(
+                      controller: textController,
+                      decoration: const InputDecoration(
+                        hintText: "Edit teks...",
+                        border: OutlineInputBorder(),
+                      ),
                       onChanged: (value) {
                         if (selectedTextIndex != null) {
                           setState(() {
-                            texts[selectedTextIndex!].isBold = value;
+                            texts[selectedTextIndex!].text = value;
                           });
                         }
                       },
                     ),
-                    const Spacer(),
-                    if (selectedTextIndex != null)
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
+
+                    const SizedBox(height: 16),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Ukuran Font"),
+                    ),
+
+                    Slider(
+                      min: 12,
+                      max: 80,
+                      value: selectedTextIndex != null
+                          ? texts[selectedTextIndex!].fontSize
+                          : 28,
+                      onChanged: (value) {
+                        if (selectedTextIndex != null) {
                           setState(() {
-                            texts.removeAt(selectedTextIndex!);
+                            texts[selectedTextIndex!].fontSize = value;
                           });
-                          Navigator.pop(context);
-                        },
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Pilih Warna"),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _colorCircle(const Color(0xFF038343)),
+                        _colorCircle(Colors.black),
+                        _colorCircle(Colors.white),
+                        _colorCircle(Colors.red),
+                        _colorCircle(Colors.blue),
+                        _colorCircle(Colors.orange),
+                        _colorCircle(Colors.purple),
+                        _colorCircle(Colors.teal),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: colorController,
+                      decoration: const InputDecoration(
+                        hintText: "#038343",
+                        border: OutlineInputBorder(),
                       ),
+                      onChanged: (value) {
+                        if (selectedTextIndex != null) {
+                          try {
+                            final color = hexToColor(value);
+                            setState(() {
+                              texts[selectedTextIndex!].color = color;
+                            });
+                          } catch (_) {}
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        const Text("Bold"),
+                        Switch(
+                          inactiveTrackColor: Colors.white,
+                          inactiveThumbColor: Colors.black,
+                          activeThumbColor: const Color(0xFF038343),
+                          value: selectedTextIndex != null
+                              ? texts[selectedTextIndex!].isBold
+                              : false,
+                          onChanged: (value) {
+                            if (selectedTextIndex != null) {
+                              // update canvas
+                              setState(() {
+                                texts[selectedTextIndex!].isBold = value;
+                              });
+
+                              // update bottomsheet
+                              setModalState(() {});
+                            }
+                          },
+                        ),
+                        const Spacer(),
+                        if (selectedTextIndex != null)
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                texts.removeAt(selectedTextIndex!);
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -342,6 +391,29 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
+
+                            GestureDetector(
+                              onScaleStart: (details) {
+                                baseScale = imageScale;
+                              },
+                              onScaleUpdate: (details) {
+                                setState(() {
+                                  imageScale = (baseScale * details.scale)
+                                      .clamp(0.5, 3.0);
+                                  imageOffset += details.focalPointDelta;
+                                });
+                              },
+                              child: Transform.translate(
+                                offset: imageOffset,
+                                child: Transform.scale(
+                                  scale: imageScale,
+                                  child: Center(
+                                    child: Image.memory(widget.capturedImage),
+                                  ),
+                                ),
+                              ),
+                            ),
+
                             ...texts.asMap().entries.map((entry) {
                               final index = entry.key;
                               final item = entry.value;
@@ -385,28 +457,6 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                                 ),
                               );
                             }),
-
-                            GestureDetector(
-                              onScaleStart: (details) {
-                                baseScale = imageScale;
-                              },
-                              onScaleUpdate: (details) {
-                                setState(() {
-                                  imageScale = (baseScale * details.scale)
-                                      .clamp(0.5, 3.0);
-                                  imageOffset += details.focalPointDelta;
-                                });
-                              },
-                              child: Transform.translate(
-                                offset: imageOffset,
-                                child: Transform.scale(
-                                  scale: imageScale,
-                                  child: Center(
-                                    child: Image.memory(widget.capturedImage),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),

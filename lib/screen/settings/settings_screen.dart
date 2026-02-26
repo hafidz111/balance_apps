@@ -155,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : "Sinkronkan Sekarang",
                     icon: _isSyncing ? Icons.hourglass_top : Icons.sync,
                     color: Colors.blue[700]!,
-                    onPressed: () {},
+                    onPressed: null,
                     // isLoggedIn && !_isSyncing
                     //     ? ()  {}
                     // async {
@@ -207,7 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? Icons.hourglass_top
                         : Icons.cloud_upload_outlined,
                     color: Colors.purple[700]!,
-                    onPressed: () {},
+                    onPressed: null,
                     // isLoggedIn && !_isBackingUp
                     //     ? () async {
                     //   setState(() => _isBackingUp = true);
@@ -228,15 +228,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: _buildButton(
-                label: isLoggedIn ? "Logout" : "Login",
-                icon: isLoggedIn ? Icons.login_outlined : Icons.person,
-                color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
-                onPressed: _tapToSignOutOrLogin,
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.all(8.0),
+            //   child: _buildButton(
+            //     label: isLoggedIn ? "Logout" : "Login",
+            //     icon: isLoggedIn ? Icons.login_outlined : Icons.person,
+            //     color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
+            //     onPressed: _tapToSignOutOrLogin,
+            //   ),
+            // ),
           ],
         ),
       ),

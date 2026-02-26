@@ -61,7 +61,7 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
         );
 
         Future.delayed(const Duration(milliseconds: 300), () {
-          if(!mounted) return;
+          if (!mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -103,26 +103,6 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
-                Icon(Icons.grid_on, color: Colors.teal, size: 28),
-                SizedBox(width: 10),
-                Text(
-                  "Grid Photo",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              "Pilih layout grid untuk foto Anda",
-              style: TextStyle(color: Colors.grey),
-            ),
-
-            const SizedBox(height: 20),
-
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
