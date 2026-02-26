@@ -1,3 +1,4 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/store_data.dart';
@@ -194,8 +195,6 @@ class _StoreScreenState extends State<StoreScreen> {
       );
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Data $category berhasil disimpan")));
+    CustomSnackBar.show(context, message: "Data $category berhasil disimpan", type: SnackType.success);
   }
 }
