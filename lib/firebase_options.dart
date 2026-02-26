@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAtPJfBKxprSPyKKAtWya27t-aaLcQYzr4',
-    appId: '1:1075780654877:android:c706f9d28c985d60c7b3f4',
+    appId: '1:1075780654877:android:00bd362ef314940ec7b3f4',
     messagingSenderId: '1075780654877',
     projectId: 'balance-apps-991c6',
     storageBucket: 'balance-apps-991c6.firebasestorage.app',
@@ -59,10 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBlMDbOdCPMIV97MJ9hfLcvUt1bhVR93Fw',
-    appId: '1:1075780654877:ios:4e0f3078956ade84c7b3f4',
+    appId: '1:1075780654877:ios:bc802a76880326dcc7b3f4',
     messagingSenderId: '1075780654877',
     projectId: 'balance-apps-991c6',
     storageBucket: 'balance-apps-991c6.firebasestorage.app',
-    iosBundleId: 'com.example.balance',
+    iosBundleId: 'com.titiksenyapstudio.balance',
   );
+
 }
