@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:balance/providers/firebase_auth_provider.dart';
 import 'package:balance/providers/shared_preference_provider.dart';
 import 'package:balance/screen/main/main_screen.dart';
@@ -6,12 +8,14 @@ import 'package:balance/service/shared_preferences_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(MobileAds.instance.initialize());
   await SharedPreferencesService.init();
   await SharedPreferencesService().initDb();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
