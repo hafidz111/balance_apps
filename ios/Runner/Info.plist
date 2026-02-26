@@ -4,6 +4,8 @@
 <dict>
     <key>NSCameraUsageDescription</key>
     <string>Aplikasi membutuhkan akses kamera untuk memindai barcode.</string>
+	<key>GADApplicationIdentifier</key>
+    <string>ca-app-pub-4122766238215136~6152289737</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

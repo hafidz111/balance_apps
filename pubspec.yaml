@@ -16,6 +16,7 @@ dependencies:
   firebase_core: ^4.4.0
   flutter:
     sdk: flutter
+  google_mobile_ads: ^7.0.0
   image_picker: ^1.2.1
   mobile_scanner: ^7.1.4
   path_provider: ^2.1.5

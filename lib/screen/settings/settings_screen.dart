@@ -1,10 +1,12 @@
 import 'package:balance/screen/login/login_screen.dart';
 import 'package:balance/screen/main/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
+import '../../utils/ads_helper.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,6 +18,63 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSyncing = false;
   bool _isBackingUp = false;
+
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isAdLoaded) {
+      _isAdLoaded = true;
+      _loadAd();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAd();
+  }
+
+  Future<void> _loadAd() async {
+    final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+      MediaQuery.sizeOf(context).width.truncate(),
+    );
+
+    if (size == null) {
+      debugPrint("Unable to get adaptive size");
+      return;
+    }
+
+    final banner = BannerAd(
+      adUnitId: AdsHelper.bannerAdUnitId,
+      request: const AdRequest(),
+      size: size,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+
+          setState(() {
+            _bannerAd = ad as BannerAd;
+          });
+        },
+        onAdFailedToLoad: (ad, err) {
+          debugPrint("Ad failed to load: $err");
+          ad.dispose();
+        },
+        onAdOpened: (ad) => debugPrint("Ad opened"),
+        onAdClosed: (ad) => debugPrint("Ad closed"),
+        onAdImpression: (ad) => debugPrint("Ad impression"),
+        onAdClicked: (ad) => debugPrint("Ad clicked"),
+      ),
+    );
+
+    banner.load();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +127,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_bannerAd != null && user == null)
+                    Align(
+                      alignment: Alignment.center,
+                      child: SafeArea(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: SizedBox(
+                            width: _bannerAd!.size.width.toDouble(),
+                            height: _bannerAd!.size.height.toDouble(),
+                            child: AdWidget(ad: _bannerAd!),
+                          ),
+                        ),
+                      ),
+                    ),
                   const Row(
                     children: [
                       Icon(Icons.person_outline, color: primaryTeal, size: 20),
@@ -280,5 +353,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 }
