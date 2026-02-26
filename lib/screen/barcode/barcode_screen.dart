@@ -21,6 +21,8 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   List<BarcodeData> barcodes = [];
+  final TextEditingController _searchController = TextEditingController();
+  List<BarcodeData> filteredBarcodes = [];
 
   @override
   void initState() {
@@ -30,117 +32,184 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
   void load() async {
     barcodes = await SharedPreferencesService().getBarcodes();
+    filteredBarcodes = barcodes;
     if (mounted) setState(() {});
+  }
+
+  void _filterBarcodes(String query) {
+    final lowerQuery = query.toLowerCase();
+
+    setState(() {
+      filteredBarcodes = barcodes.where((b) {
+        final codeMatch = b.code.toLowerCase().contains(lowerQuery);
+        final descMatch = b.description.toLowerCase().contains(lowerQuery);
+        return codeMatch || descMatch;
+      }).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: barcodes.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.qr_code_scanner_rounded,
-                    size: 100,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Belum ada barcode tersimpan",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _filterBarcodes,
+              decoration: InputDecoration(
+                hintText: "Cari nama atau kode barcode...",
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filterBarcodes("");
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: barcodes.length,
-
-              itemBuilder: (context, i) {
-                final b = barcodes[i];
-
-                return GestureDetector(
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BarcodeDetailScreen(barcode: b),
-                      ),
-                    );
-                    if (result == true) load();
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+            ),
+          ),
+          Expanded(
+            child: barcodes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.qr_code_scanner_rounded,
+                          size: 100,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Belum ada barcode tersimpan",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: b.type == 'qrcode'
-                                ? Colors.teal[50]
-                                : Colors.blue[50],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            b.type == 'qrcode'
-                                ? Icons.qr_code_2
-                                : Icons.onetwothree,
-                            size: 28,
-                            color: b.type == 'qrcode'
-                                ? Colors.teal[700]
-                                : Colors.blue[700],
-                          ),
-                        ),
-                        const SizedBox(width: 20),
+                  )
+                : filteredBarcodes.isEmpty
+                ? const Center(
+                    child: Text(
+                      "Tidak ada hasil ditemukan",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: barcodes.length,
 
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    itemBuilder: (context, i) {
+                      final b = barcodes[i];
+
+                      return GestureDetector(
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BarcodeDetailScreen(barcode: b),
+                            ),
+                          );
+                          if (result == true) load();
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.grey.withOpacity(0.2),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
                             children: [
-                              Text(
-                                b.code,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: b.type == 'qrcode'
+                                      ? Colors.teal[50]
+                                      : Colors.blue[50],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  b.type == 'qrcode'
+                                      ? Icons.qr_code_2
+                                      : Icons.onetwothree,
+                                  size: 28,
+                                  color: b.type == 'qrcode'
+                                      ? Colors.teal[700]
+                                      : Colors.blue[700],
                                 ),
                               ),
-                              (b.description.trim().isEmpty)
-                                  ? const SizedBox.shrink()
-                                  : Text(
-                                      b.description,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                              const SizedBox(width: 20),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      b.code,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
                                       ),
                                     ),
+                                    (b.description.trim().isEmpty)
+                                        ? const SizedBox.shrink()
+                                        : Text(
+                                            b.description,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                  ],
+                                ),
+                              ),
+
+                              Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey[400],
+                              ),
                             ],
                           ),
                         ),
-
-                        Icon(Icons.chevron_right, color: Colors.grey[400]),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
       floatingActionButton: _buildExpandableFabMenu(),
     );
   }
