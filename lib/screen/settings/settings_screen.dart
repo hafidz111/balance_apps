@@ -228,15 +228,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // Padding(
-            //   padding: const EdgeInsets.all(8.0),
-            //   child: _buildButton(
-            //     label: isLoggedIn ? "Logout" : "Login",
-            //     icon: isLoggedIn ? Icons.login_outlined : Icons.person,
-            //     color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
-            //     onPressed: _tapToSignOutOrLogin,
-            //   ),
-            // ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: _buildButton(
+                label: isLoggedIn ? "Logout" : "Login",
+                icon: isLoggedIn ? Icons.login_outlined : Icons.person,
+                color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
+                onPressed: _tapToSignOutOrLogin,
+              ),
+            ),
           ],
         ),
       ),

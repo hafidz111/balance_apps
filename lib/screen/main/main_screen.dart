@@ -1,5 +1,6 @@
 import 'package:balance/screen/barcode/barcode_screen.dart';
 import 'package:balance/screen/history/history_screen.dart';
+import 'package:balance/screen/login/login_screen.dart';
 import 'package:balance/screen/point_coffee/point_coffee_screen.dart';
 import 'package:balance/screen/settings/settings_screen.dart';
 import 'package:balance/screen/store/store_screen.dart';
@@ -132,61 +133,61 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // InkWell(
-                  //   onTap: () {
-                  //     Navigator.pop(context);
-                  //
-                  //     if (isLogin) {
-                  //       _onItemTapped(5);
-                  //     } else {
-                  //       Navigator.push(
-                  //         context,
-                  //         MaterialPageRoute(
-                  //           builder: (_) => const LoginScreen(),
-                  //         ),
-                  //       );
-                  //     }
-                  //   },
-                  //   child: Row(
-                  //     children: [
-                  //       CircleAvatar(
-                  //         radius: 30,
-                  //         backgroundImage: user?.photoUrl != null
-                  //             ? NetworkImage(user!.photoUrl!)
-                  //             : null,
-                  //         child: user?.photoUrl == null
-                  //             ? const Icon(Icons.person, size: 40)
-                  //             : null,
-                  //       ),
-                  //       const SizedBox(width: 16),
-                  //       Expanded(
-                  //         child: Column(
-                  //           mainAxisAlignment: MainAxisAlignment.center,
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             Text(
-                  //               isLogin
-                  //                   ? (authProvider.profile?.name ?? "User")
-                  //                   : "Masuk / Login",
-                  //               style: TextStyle(
-                  //                 color: Colors.white,
-                  //                 fontSize: 18,
-                  //                 fontWeight: FontWeight.bold,
-                  //               ),
-                  //             ),
-                  //             Text(
-                  //               isLogin ? "Admin" : "Klik untuk akses akun",
-                  //               style: TextStyle(
-                  //                 color: Colors.white.withValues(alpha: 0.8),
-                  //                 fontSize: 13,
-                  //               ),
-                  //             ),
-                  //           ],
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+
+                      if (isLogin) {
+                        _onItemTapped(5);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundImage: user?.photoUrl != null
+                              ? NetworkImage(user!.photoUrl!)
+                              : null,
+                          child: user?.photoUrl == null
+                              ? const Icon(Icons.person, size: 40)
+                              : null,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isLogin
+                                    ? (authProvider.profile?.name ?? "User")
+                                    : "Masuk / Login",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                isLogin ? "Admin" : "Klik untuk akses akun",
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
