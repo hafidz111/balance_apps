@@ -1,4 +1,4 @@
-import 'package:balance/screen/widgets/banner_ads.dart';
+import 'package:balance/screen/widgets/ads/banner_ads.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 
@@ -118,7 +118,9 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          b.type == 'qrcode' ? Icons.qr_code_2 : Icons.onetwothree,
+                          b.type == 'qrcode'
+                              ? Icons.qr_code_2
+                              : Icons.onetwothree,
                           color: primaryTeal,
                         ),
                         const SizedBox(width: 8),
@@ -163,7 +165,9 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                         _buildInfoSection(
                           "Kode",
                           b.code,
-                          icon: b.type == 'qrcode' ? Icons.qr_code : Icons.onetwothree,
+                          icon: b.type == 'qrcode'
+                              ? Icons.qr_code
+                              : Icons.onetwothree,
                         ),
                         const SizedBox(height: 24),
 
@@ -178,7 +182,7 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
               ),
             ),
 
-            const SizedBox(height: 16,),
+            const SizedBox(height: 16),
             const Padding(
               padding: EdgeInsets.only(bottom: 16),
               child: BannerAds(),

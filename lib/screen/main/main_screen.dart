@@ -1,16 +1,25 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:balance/screen/barcode/barcode_screen.dart';
 import 'package:balance/screen/history/history_screen.dart';
 import 'package:balance/screen/point_coffee/point_coffee_screen.dart';
 import 'package:balance/screen/settings/settings_screen.dart';
 import 'package:balance/screen/store/store_screen.dart';
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../service/shared_preferences_service.dart';
+import '../../utils/ads_helper.dart';
 import '../grid_photo/grid_photo_screen.dart';
+import '../login/login_screen.dart';
 import '../say_bread/say_bread_screen.dart';
+import '../widgets/ads/rewarded_ads.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,15 +30,16 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
+  int _barcodeRefreshKey = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    StoreScreen(),
-    PointCoffeeScreen(),
-    SayBreadScreen(),
-    HistoryScreen(),
-    BarcodeScreen(),
-    GridPhotoScreen(),
-    SettingsScreen(),
+  List<Widget> get _widgetOptions => [
+    const StoreScreen(),
+    const PointCoffeeScreen(),
+    const SayBreadScreen(),
+    const HistoryScreen(),
+    BarcodeScreen(key: ValueKey(_barcodeRefreshKey)),
+    const GridPhotoScreen(),
+    const SettingsScreen(),
   ];
 
   static const List<String> _titles = [
@@ -92,6 +102,73 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  Future<void> _exportBarcodes() async {
+    try {
+      final list = await SharedPreferencesService().getBarcodes();
+
+      if (list.isEmpty) {
+        CustomSnackBar.show(
+          context,
+          message: "Tidak ada data barcode untuk diexport",
+          type: SnackType.error,
+        );
+        return;
+      }
+
+      final jsonString = await SharedPreferencesService()
+          .exportBarcodesToJson();
+
+      Uint8List bytes = Uint8List.fromList(utf8.encode(jsonString));
+
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Backup Barcode',
+        fileName:
+            'balance_barcode_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+        bytes: bytes,
+      );
+
+      if (path == null) return;
+
+      CustomSnackBar.show(
+        context,
+        message: "Backup berhasil disimpan",
+        type: SnackType.success,
+      );
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        message: "Export gagal: $e",
+        type: SnackType.error,
+      );
+    }
+  }
+
+  Future<void> _importBarcodes() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      withData: true,
+    );
+
+    if (result == null) return;
+
+    final file = File(result.files.single.path!);
+    final content = await file.readAsString();
+
+    await SharedPreferencesService().importBarcodesFromJson(content);
+
+    if (!mounted) return;
+    setState(() {
+      _barcodeRefreshKey++;
+      _selectedIndex = 4;
+    });
+    CustomSnackBar.show(
+      context,
+      message: "Import berhasil",
+      type: SnackType.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<FirebaseAuthProvider>();
@@ -111,6 +188,22 @@ class _MainScreenState extends State<MainScreen> {
             color: Colors.white,
           ),
         ),
+        actions: _selectedIndex == 4
+            ? [
+                RewardedAds(
+                  adUnitId: AdsHelper.rewardedExportAdUnitId,
+                  onRewarded: _exportBarcodes,
+                  icon: Icons.upload_file,
+                  color: Colors.white,
+                ),
+                RewardedAds(
+                  adUnitId: AdsHelper.rewardedImportAdUnitId,
+                  onRewarded: _importBarcodes,
+                  icon: Icons.download,
+                  color: Colors.white,
+                ),
+              ]
+            : [],
       ),
       body: _widgetOptions[_selectedIndex],
       drawer: Drawer(
@@ -132,61 +225,61 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // InkWell(
-                  //   onTap: () {
-                  //     Navigator.pop(context);
-                  //
-                  //     if (isLogin) {
-                  //       _onItemTapped(5);
-                  //     } else {
-                  //       Navigator.push(
-                  //         context,
-                  //         MaterialPageRoute(
-                  //           builder: (_) => const LoginScreen(),
-                  //         ),
-                  //       );
-                  //     }
-                  //   },
-                  //   child: Row(
-                  //     children: [
-                  //       CircleAvatar(
-                  //         radius: 30,
-                  //         backgroundImage: user?.photoUrl != null
-                  //             ? NetworkImage(user!.photoUrl!)
-                  //             : null,
-                  //         child: user?.photoUrl == null
-                  //             ? const Icon(Icons.person, size: 40)
-                  //             : null,
-                  //       ),
-                  //       const SizedBox(width: 16),
-                  //       Expanded(
-                  //         child: Column(
-                  //           mainAxisAlignment: MainAxisAlignment.center,
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             Text(
-                  //               isLogin
-                  //                   ? (authProvider.profile?.name ?? "User")
-                  //                   : "Masuk / Login",
-                  //               style: TextStyle(
-                  //                 color: Colors.white,
-                  //                 fontSize: 18,
-                  //                 fontWeight: FontWeight.bold,
-                  //               ),
-                  //             ),
-                  //             Text(
-                  //               isLogin ? "Admin" : "Klik untuk akses akun",
-                  //               style: TextStyle(
-                  //                 color: Colors.white.withValues(alpha: 0.8),
-                  //                 fontSize: 13,
-                  //               ),
-                  //             ),
-                  //           ],
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+
+                      if (isLogin) {
+                        _onItemTapped(6);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundImage: user?.photoUrl != null
+                              ? NetworkImage(user!.photoUrl!)
+                              : null,
+                          child: user?.photoUrl == null
+                              ? const Icon(Icons.person, size: 40)
+                              : null,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isLogin
+                                    ? (authProvider.profile?.name ?? "User")
+                                    : "Masuk / Login",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                isLogin ? "Admin" : "Klik untuk akses akun",
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

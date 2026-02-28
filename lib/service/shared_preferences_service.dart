@@ -411,6 +411,19 @@ class SharedPreferencesService {
     );
   }
 
+  Future<String> exportBarcodesToJson() async {
+    final list = await getBarcodes();
+    final jsonList = list.map((e) => e.toJson()).toList();
+    return jsonEncode(jsonList);
+  }
+
+  Future<void> importBarcodesFromJson(String jsonString) async {
+    final decoded = jsonDecode(jsonString) as List;
+    final imported = decoded.map((e) => BarcodeData.fromJson(e)).toList();
+
+    await saveBarcodes(imported);
+  }
+
   Future<void> savePhoneNumber(String phone) async {
     await prefs.setString(phoneKey, phone);
   }

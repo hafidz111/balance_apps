@@ -12,6 +12,7 @@ dependencies:
   barcode_widget: ^2.0.4
   cupertino_icons: ^1.0.8
   dio: ^5.9.1
+  file_picker: ^10.3.10
   firebase_auth: ^6.1.4
   firebase_core: ^4.4.0
   flutter:
@@ -28,10 +29,10 @@ dependencies:
   url_launcher: ^6.3.2
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   android: true

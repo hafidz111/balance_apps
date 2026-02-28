@@ -1,12 +1,14 @@
 import 'package:balance/screen/login/login_screen.dart';
 import 'package:balance/screen/main/main_screen.dart';
+import 'package:balance/screen/widgets/ads/rewarded_ads.dart';
 import 'package:balance/screen/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
-import '../widgets/banner_ads.dart';
+import '../../utils/ads_helper.dart';
+import '../widgets/ads/banner_ads.dart';
 import '../widgets/custom_snack_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -25,6 +27,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _selectedShift = 2;
   bool _isEditing = false;
   String? _originalPhone;
+  bool _isLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_isLoaded) return;
+
+    final pref = context.read<SharedPreferenceProvider>();
+
+    _phoneController.text = pref.phoneNumber ?? "";
+    _selectedShift = pref.shiftCount ?? 2;
+    _originalPhone = pref.phoneNumber ?? "";
+
+    _isLoaded = true;
+  }
 
   Future<void> _saveSettings() async {
     if (!_isEditing) {
@@ -297,27 +315,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 20),
 
                     const SizedBox(height: 12),
-                    _buildButton(
-                      label: _isSyncing
-                          ? "Sedang Sync..."
-                          : "Sinkronkan Sekarang",
-                      icon: _isSyncing ? Icons.hourglass_top : Icons.sync,
+                    RewardedAds(
+                      adUnitId: AdsHelper.rewardedSyncAdUnitId,
+                      label: "Sinkronkan Sekarang",
+                      loadingLabel: "Sedang Sync...",
+                      icon: Icons.sync,
                       color: Colors.blue[700]!,
-                      onPressed: null,
-                      // isLoggedIn && !_isSyncing
-                      //     ? ()  {}
-                      // async {
-                      //   setState(() => _isSyncing = true);
-                      //   try {
-                      //     final backupProvider =
-                      //     context.read<BackupProvider>();
-                      //     await backupProvider.sync(user.uid!);
-                      //   CustomSnackBar.show(context, message: "Sync berhasil", type: SnackType.success);
-                      //   } finally {
-                      //     setState(() => _isSyncing = false);
-                      //   }
-                      // }
-                      //     : null,
+                      enabled: isLoggedIn && !_isSyncing,
+                      onRewarded: () async {
+                        setState(() => _isSyncing = true);
+
+                        // try {
+                        //   final backupProvider =
+                        //   context.read<BackupProvider>();
+                        //   await backupProvider.sync(user.uid!);
+                        // CustomSnackBar.show(context, message: "Sync berhasil", type: SnackType.success);
+                        // } finally {
+                        //   setState(() => _isSyncing = false);
+                        // }
+                      },
                     ),
                   ],
                 ),
@@ -345,42 +361,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 20),
 
                     const SizedBox(height: 12),
-                    _buildButton(
-                      label: _isBackingUp
-                          ? "Sedang Backup..."
-                          : "Backup Sekarang",
-                      icon: _isBackingUp
-                          ? Icons.hourglass_top
-                          : Icons.cloud_upload_outlined,
+                    RewardedAds(
+                      adUnitId: AdsHelper.rewardedBackupAdUnitId,
+                      label: "Backup Sekarang",
+                      loadingLabel: "Sedang Backup...",
+                      icon: Icons.cloud_upload_outlined,
                       color: Colors.purple[700]!,
-                      onPressed: null,
-                      // isLoggedIn && !_isBackingUp
-                      //     ? () async {
-                      //   setState(() => _isBackingUp = true);
-                      //   try {
-                      //     final backupProvider =
-                      //     context.read<BackupProvider>();
-                      //     await backupProvider.backup(user.uid!);
-                      //   CustomSnackBar.show(context, message: "Backup berhasil", type: SnackType.success);
-                      //   } finally {
-                      //     setState(() => _isBackingUp = false);
-                      //   }
-                      // }
-                      //     : null,
+                      enabled: isLoggedIn && !_isBackingUp,
+                      onRewarded: () async {
+                        setState(() => _isBackingUp = true);
+
+                        // try {
+                        //   final backupProvider =
+                        //   context.read<BackupProvider>();
+                        //
+                        //   await backupProvider.backup(user!.uid!);
+                        //
+                        //   CustomSnackBar.show(
+                        //     context,
+                        //     message: "Backup berhasil",
+                        //     type: SnackType.success,
+                        //   );
+                        // } finally {
+                        //   setState(() => _isBackingUp = false);
+                        // }
+                      },
                     ),
                   ],
                 ),
               ),
 
-              // Padding(
-              //   padding: const EdgeInsets.all(8.0),
-              //   child: _buildButton(
-              //     label: isLoggedIn ? "Logout" : "Login",
-              //     icon: isLoggedIn ? Icons.login_outlined : Icons.person,
-              //     color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
-              //     onPressed: _tapToSignOutOrLogin,
-              //   ),
-              // ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: _buildButton(
+                  label: isLoggedIn ? "Logout" : "Login",
+                  icon: isLoggedIn ? Icons.login_outlined : Icons.person,
+                  color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
+                  onPressed: _tapToSignOutOrLogin,
+                ),
+              ),
             ],
           ),
         ),
