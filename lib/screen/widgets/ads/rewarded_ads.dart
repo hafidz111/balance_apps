@@ -49,6 +49,26 @@ class _RewardedAdsState extends State<RewardedAds> {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           _rewardedAd = ad;
+          ad.onPaidEvent =
+              (
+                Ad ad,
+                double valueMicros,
+                PrecisionType precision,
+                String currencyCode,
+              ) {
+                final revenue = valueMicros / 1000000;
+
+                _analytics.logEvent(
+                  name: "ad_revenue",
+                  parameters: {
+                    "ad_type": "rewarded",
+                    "feature": widget.featureName,
+                    "value": revenue,
+                    "currency": currencyCode,
+                    "precision": precision.name,
+                  },
+                );
+              };
           _analytics.logEvent(
             name: "rewarded_ad_loaded",
             parameters: {"feature": widget.featureName},

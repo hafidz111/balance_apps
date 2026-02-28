@@ -58,6 +58,25 @@ class _BannerAdsState extends State<BannerAds> {
           debugPrint("Ad failed: $error");
           ad.dispose();
         },
+        onPaidEvent:
+            (
+              Ad ad,
+              double valueMicros,
+              PrecisionType precision,
+              String currencyCode,
+            ) {
+              final revenue = valueMicros / 1000000;
+
+              _analytics.logEvent(
+                name: "ad_revenue",
+                parameters: {
+                  "ad_type": "banner",
+                  "value": revenue,
+                  "currency": currencyCode,
+                  "precision": precision.name,
+                },
+              );
+            },
       ),
     );
 
