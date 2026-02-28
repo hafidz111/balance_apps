@@ -148,7 +148,101 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
     }
   }
 
-  Widget _buildGrid() {
+  Widget _gridBox(int index) {
+    return GridItem(
+      image: images.length > index ? images[index] : null,
+      isLocked: isSaved,
+      showDelete: activeDeleteIndex == index,
+      onPick: isSaved ? null : () => _pickImage(index),
+      onDelete: isSaved ? null : () => _deleteImage(index),
+      onDeleteToggle: isSaved
+          ? null
+          : () {
+              setState(() {
+                activeDeleteIndex = activeDeleteIndex == index ? null : index;
+              });
+            },
+    );
+  }
+
+  Widget _buildInitial() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+
+        final double fullHeight = width / 2;
+        final double height3 = width / 3;
+        final double height2 = width / 2;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(width: width, height: fullHeight, child: _gridBox(0)),
+
+            Row(
+              children: List.generate(3, (i) {
+                return SizedBox(
+                  width: width / 3,
+                  height: height3,
+                  child: _gridBox(i + 1),
+                );
+              }),
+            ),
+
+            Row(
+              children: List.generate(2, (i) {
+                return SizedBox(
+                  width: width / 2,
+                  height: height2,
+                  child: _gridBox(i + 4),
+                );
+              }),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildKalibrasi() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+
+        final double fullHeight = width / 2;
+        final double height2 = width / 2;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(width: width, height: fullHeight, child: _gridBox(0)),
+
+            Row(
+              children: List.generate(2, (i) {
+                return SizedBox(
+                  width: width / 2,
+                  height: height2,
+                  child: _gridBox(i + 1),
+                );
+              }),
+            ),
+
+            Row(
+              children: List.generate(2, (i) {
+                return SizedBox(
+                  width: width / 2,
+                  height: height2,
+                  child: _gridBox(i + 3),
+                );
+              }),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDefaultGrid() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: GridView.builder(
@@ -181,6 +275,16 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         },
       ),
     );
+  }
+
+  Widget _buildGrid() {
+    if (widget.rows == 3 && widget.cols == 3) {
+      return _buildKalibrasi();
+    } else if (widget.rows == 4 && widget.cols == 4) {
+      return _buildInitial();
+    } else {
+      return _buildDefaultGrid();
+    }
   }
 
   void _handleSave() async {

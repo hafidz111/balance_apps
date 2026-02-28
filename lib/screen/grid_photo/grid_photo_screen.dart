@@ -28,9 +28,28 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
   double baseScale = 1.0;
 
   final List<Map<String, dynamic>> _gridOptions = [
-    {"title": "2x2 Grid", "subtitle": "2×2 (4 foto)", "rows": 2, "cols": 2},
-    {"title": "3x3 Grid", "subtitle": "3×3 (9 foto)", "rows": 3, "cols": 3},
-    {"title": "4x4 Grid", "subtitle": "4×4 (16 foto)", "rows": 4, "cols": 4},
+    {"title": "Hit & Run", "icon": Icons.run_circle, "rows": 2, "cols": 2},
+    {
+      "title": "Kalibrasi",
+      "icon": Icons.compass_calibration,
+      "rows": 3,
+      "cols": 3,
+    },
+    {
+      "title": "Initial",
+      "icon": Icons.dashboard_customize,
+      "rows": 4,
+      "cols": 4,
+    },
+  ];
+
+  final List<Map<String, Color>> _menuColors = [
+    {"bg": const Color(0xFFE3F2FD), "icon": const Color(0xFF1976D2)},
+    {"bg": const Color(0xFFFFF3E0), "icon": const Color(0xFFF57C00)},
+    {"bg": const Color(0xFFE8F5E9), "icon": const Color(0xFF388E3C)},
+    {"bg": const Color(0xFFF3E5F5), "icon": const Color(0xFF7B1FA2)},
+    {"bg": const Color(0xFFFFEBEE), "icon": const Color(0xFFD32F2F)},
+    {"bg": const Color(0xFFE0F7FA), "icon": const Color(0xFF00838F)},
   ];
 
   @override
@@ -46,13 +65,17 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
     return 3;
   }
 
-  Widget _buildGridCard({
+  Widget _buildMenuItem({
+    required int index,
     required String title,
-    required String subtitle,
+    required IconData icon,
     required int rows,
     required int cols,
   }) {
-    return GestureDetector(
+    final colorSet = _menuColors[index % _menuColors.length];
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
       onTap: () {
         CustomSnackBar.show(
           context,
@@ -60,7 +83,7 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
           type: SnackType.info,
         );
 
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(const Duration(milliseconds: 200), () {
           if (!mounted) return;
           Navigator.push(
             context,
@@ -70,27 +93,27 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
           );
         });
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: colorSet["bg"],
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          ],
-        ),
+            child: Center(child: Icon(icon, size: 40, color: colorSet["icon"])),
+          ),
+
+          const SizedBox(height: 12),
+
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
       ),
     );
   }
@@ -104,18 +127,30 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: _gridOptions.map((grid) {
-                  return _buildGridCard(
-                    title: grid['title'],
-                    subtitle: grid['subtitle'],
-                    rows: grid['rows'],
-                    cols: grid['cols'],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return GridView.builder(
+                    itemCount: _gridOptions.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _gridOptions.length >= 4
+                          ? 4
+                          : _gridOptions.length,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.65,
+                    ),
+                    itemBuilder: (context, index) {
+                      final grid = _gridOptions[index];
+                      return _buildMenuItem(
+                        index: index,
+                        title: grid['title'],
+                        icon: grid['icon'],
+                        rows: grid['rows'],
+                        cols: grid['cols'],
+                      );
+                    },
                   );
-                }).toList(),
+                },
               ),
             ),
           ],

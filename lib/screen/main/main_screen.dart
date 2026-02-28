@@ -38,7 +38,7 @@ class _MainScreenState extends State<MainScreen> {
     "Say Bread",
     "History",
     "Barcode",
-    "Hit & Run",
+    "Space",
     'Settings',
   ];
 
@@ -48,7 +48,7 @@ class _MainScreenState extends State<MainScreen> {
     Icons.bakery_dining,
     Icons.history,
     Icons.qr_code,
-    Icons.run_circle_outlined,
+    Icons.space_dashboard,
     Icons.settings,
   ];
 
