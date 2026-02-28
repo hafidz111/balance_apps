@@ -129,9 +129,10 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   // String _number(int value) => value.toString();
 
   String _apc(int sales, int std) {
-    if (std == 0) return "0,000";
+    if (std == 0) return "0";
 
-    final result = (sales / std);
+    final result = (sales / std) / 1000;
+
     return result.toStringAsFixed(3).replaceAll('.', ',');
   }
 
@@ -140,9 +141,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
       final sales = _toInt(salesControllers[i]);
       final std = _toInt(stdControllers[i]);
 
-      apcControllers[i].text = std == 0
-          ? "0.000"
-          : (sales / std).toStringAsFixed(3);
+      apcControllers[i].text = _apc(sales, std);
     }
 
     setState(() {});
@@ -260,6 +259,32 @@ $historyText```
 """;
   }
 
+  Future<void> _saveData() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final service = SharedPreferencesService();
+    final history = await service.getPointCoffee();
+
+    final akmCup = history.fold(0, (sum, e) => sum + e.cup) + totalCup;
+
+    final data = PointCoffeeHistory(
+      tgl: tgl,
+      spd: totalSales,
+      cup: totalCup,
+      akmCup: akmCup,
+      cpd: akmCup / now.day,
+    );
+
+    await service.savePointCoffee(data);
+
+    CustomSnackBar.show(
+      context,
+      message: "Data Point Coffee tersimpan",
+      type: SnackType.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -338,10 +363,7 @@ $historyText```
                 rows: [
                   SummaryRow(label: "Sales:", value: totalSales.toString()),
                   SummaryRow(label: "Std:", value: totalStd.toString()),
-                  SummaryRow(
-                    label: "Apc:",
-                    value: apc.toStringAsFixed(3).replaceAll('.', ','),
-                  ),
+                  SummaryRow(label: "Apc:", value: _apc(totalSales, totalStd)),
                   SummaryRow(label: "Cup:", value: totalCup.toString()),
                   SummaryRow(label: "Add:", value: totalAdd.toString()),
                 ],
@@ -350,34 +372,9 @@ $historyText```
               const SizedBox(height: 16),
 
               ActionButtons(
-                onSave: () async {
-                  final now = DateTime.now();
-                  final tgl = now.year * 10000 + now.month * 100 + now.day;
-
-                  final service = SharedPreferencesService();
-                  final history = await service.getPointCoffee();
-
-                  final akmCup =
-                      history.fold(0, (sum, e) => sum + e.cup) + totalCup;
-
-                  final data = PointCoffeeHistory(
-                    tgl: tgl,
-                    spd: totalSales,
-                    cup: totalCup,
-                    akmCup: akmCup,
-                    cpd: akmCup / now.day,
-                  );
-
-                  await service.savePointCoffee(data);
-
-                  // ignore: use_build_context_synchronously
-                  CustomSnackBar.show(
-                    context,
-                    message: "Data Point Coffee tersimpan",
-                    type: SnackType.success,
-                  );
-                },
                 onWhatsApp: () async {
+                  await _saveData();
+
                   final text = await _buildWhatsAppMessage();
                   final service = SharedPreferencesService();
                   final phone = service.getPhoneNumber();

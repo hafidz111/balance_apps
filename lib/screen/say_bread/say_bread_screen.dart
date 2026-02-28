@@ -184,6 +184,36 @@ $historyText```
     super.dispose();
   }
 
+  Future<void> _saveData() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final service = SharedPreferencesService();
+    final history = await service.getSayBread();
+
+    final akmQty = history.fold(0, (sum, e) => sum + e.qty) + totalQty;
+
+    final akmSales = history.fold(0, (sum, e) => sum + e.sales) + totalSales;
+
+    final data = SayBreadHistory(
+      tgl: tgl,
+      sales: totalSales,
+      qty: totalQty,
+      akmQty: akmQty,
+      akmSales: akmSales,
+      average: akmQty / now.day,
+    );
+
+    await service.saveSayBread(data);
+
+    // ignore: use_build_context_synchronously
+    CustomSnackBar.show(
+      context,
+      message: "Data Say Bread tersimpan",
+      type: SnackType.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -249,38 +279,9 @@ $historyText```
               const SizedBox(height: 16),
 
               ActionButtons(
-                onSave: () async {
-                  final now = DateTime.now();
-                  final tgl = now.year * 10000 + now.month * 100 + now.day;
-
-                  final service = SharedPreferencesService();
-                  final history = await service.getSayBread();
-
-                  final akmQty =
-                      history.fold(0, (sum, e) => sum + e.qty) + totalQty;
-
-                  final akmSales =
-                      history.fold(0, (sum, e) => sum + e.sales) + totalSales;
-
-                  final data = SayBreadHistory(
-                    tgl: tgl,
-                    sales: totalSales,
-                    qty: totalQty,
-                    akmQty: akmQty,
-                    akmSales: akmSales,
-                    average: akmQty / now.day,
-                  );
-
-                  await service.saveSayBread(data);
-
-                  // ignore: use_build_context_synchronously
-                  CustomSnackBar.show(
-                    context,
-                    message: "Data Say Bread tersimpan",
-                    type: SnackType.success,
-                  );
-                },
                 onWhatsApp: () async {
+                  await _saveData();
+
                   final text = await _buildWhatsAppMessage();
                   final service = SharedPreferencesService();
                   final phone = service.getPhoneNumber();
