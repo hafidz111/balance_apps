@@ -86,4 +86,19 @@ class FirebaseAuthProvider extends ChangeNotifier {
     );
     notifyListeners();
   }
+
+  Future<void> updateUserName(String name) async {
+    try {
+      await _service.updateDisplayName(name);
+
+      await updateProfile();
+
+      _message = "Nama berhasil diperbarui!";
+    } catch (e) {
+      _message = e.toString();
+      _authStatus = FirebaseAuthStatus.error;
+    }
+
+    notifyListeners();
+  }
 }

@@ -9,7 +9,7 @@ class RewardedAds extends StatefulWidget {
   final String? loadingLabel;
   final IconData icon;
   final Color color;
-  final bool enabled; // 🔥 tambahkan ini
+  final bool enabled;
 
   const RewardedAds({
     super.key,
@@ -19,7 +19,7 @@ class RewardedAds extends StatefulWidget {
     required this.color,
     this.label,
     this.loadingLabel,
-    this.enabled = true, // default true
+    this.enabled = true,
   });
 
   @override
@@ -64,6 +64,7 @@ class _RewardedAdsState extends State<RewardedAds> {
     await Future.delayed(const Duration(milliseconds: 300));
 
     if (_rewardedAd == null || !_isReady) {
+      if(!mounted) return;
       CustomSnackBar.show(
         context,
         message: "Iklan sedang tidak tersedia. Coba lagi nanti.",
@@ -106,7 +107,7 @@ class _RewardedAdsState extends State<RewardedAds> {
 
   @override
   Widget build(BuildContext context) {
-    final bool canPress = widget.enabled && _isReady && !_isProcessing;
+    final bool canPress = widget.enabled && !_isProcessing;
 
     final bool hasLabel = widget.label != null;
 

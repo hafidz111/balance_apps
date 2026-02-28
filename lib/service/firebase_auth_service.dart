@@ -57,5 +57,22 @@ class FirebaseAuthService {
     }
   }
 
+  Future<void> updateDisplayName(String name) async {
+    try {
+      final user = _auth.currentUser;
+
+      if (user == null) {
+        throw Exception("User tidak ditemukan");
+      }
+
+      await user.updateDisplayName(name);
+      await user.reload();
+    } on FirebaseAuthException catch (e) {
+      throw Exception("Gagal update nama: ${e.message}");
+    } catch (e) {
+      throw Exception("Terjadi kesalahan saat update nama");
+    }
+  }
+
   Future<User?> userChanges() => _auth.userChanges().first;
 }

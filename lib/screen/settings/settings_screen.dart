@@ -27,14 +27,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isBackingUp = false;
 
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  String? _originalName;
 
   int _selectedShift = 2;
-  bool _isEditing = false;
-  String? _originalPhone;
+  bool _isEditingProfile = false;
+  bool _isEditingSettings = false;
   bool _isLoaded = false;
   DateTime? _syncCooldownUntil;
   DateTime? _lastBackupTime;
   DateTime? _lastSyncTime;
+
+  bool get _isNameChanged {
+    return _nameController.text.trim() != (_originalName ?? "");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _nameController.addListener(() {
+      if (_isEditingProfile) {
+        setState(() {});
+      }
+    });
+  }
 
   Future<void> _loadLastBackupTime() async {
     final user = context.read<FirebaseAuthProvider>().profile;
@@ -117,11 +134,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (_isLoaded) return;
 
+    final auth = context.read<FirebaseAuthProvider>();
     final pref = context.read<SharedPreferenceProvider>();
 
     _phoneController.text = pref.phoneNumber ?? "";
     _selectedShift = pref.shiftCount ?? 2;
-    _originalPhone = pref.phoneNumber ?? "";
+    _nameController.text = auth.profile?.name ?? "";
+    _originalName = auth.profile?.name ?? "";
 
     _isLoaded = true;
     _loadLastBackupTime();
@@ -129,9 +148,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveSettings() async {
-    if (!_isEditing) {
+    if (!_isEditingSettings) {
       setState(() {
-        _isEditing = true;
+        _isEditingSettings = true;
       });
       return;
     }
@@ -179,8 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await pref.saveShiftCount(_selectedShift);
 
     setState(() {
-      _isEditing = false;
-      _originalPhone = phone;
+      _isEditingSettings = false;
     });
 
     CustomSnackBar.show(
@@ -276,36 +294,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : null,
                         ),
                         const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user?.name ?? "Guest",
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            isLoggedIn
-                                ? Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.email_outlined,
-                                        size: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        user.email ?? 'Guest',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _isEditingProfile
+                                  ? SizedBox(
+                                      width: double.infinity,
+                                      child: TextField(
+                                        controller: _nameController,
+                                        autofocus: true,
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          hintText: "Masukkan nama",
+                                          border: UnderlineInputBorder(),
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                    ],
-                                  )
-                                : const SizedBox(),
-                          ],
+                                    )
+                                  : Text(
+                                      user?.name ?? "Guest",
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                              isLoggedIn
+                                  ? Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.email_outlined,
+                                          size: 14,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          user.email ?? 'Guest',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const SizedBox(),
+                            ],
+                          ),
                         ),
+                        if (isLoggedIn)
+                          IconButton(
+                            icon: Icon(
+                              !_isEditingProfile
+                                  ? Icons.edit
+                                  : _isNameChanged
+                                  ? Icons.check
+                                  : Icons.close,
+                              color: primaryTeal,
+                              size: 20,
+                            ),
+                            onPressed: () async {
+                              if (!_isEditingProfile) {
+                                setState(() {
+                                  _isEditingProfile = true;
+                                });
+                                return;
+                              }
+
+                              if (!_isNameChanged) {
+                                setState(() {
+                                  _isEditingProfile = false;
+                                  _nameController.text = _originalName ?? "";
+                                  FocusScope.of(context).unfocus();
+                                });
+                                return;
+                              }
+
+                              final newName = _nameController.text.trim();
+
+                              if (newName.isEmpty) {
+                                CustomSnackBar.show(
+                                  context,
+                                  message: "Nama tidak boleh kosong",
+                                  type: SnackType.error,
+                                );
+                                return;
+                              }
+
+                              await context
+                                  .read<FirebaseAuthProvider>()
+                                  .updateUserName(newName);
+
+                              setState(() {
+                                _isEditingProfile = false;
+                                _originalName = newName;
+                              });
+
+                              CustomSnackBar.show(
+                                context,
+                                message: "Nama berhasil diperbarui",
+                                type: SnackType.success,
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ],
@@ -331,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CustomInputField(
                       label: "Nomor HP",
                       controller: _phoneController,
-                      enabled: _isEditing,
+                      enabled: _isEditingSettings,
                       keyboardType: TextInputType.phone,
                       hintText: "Masukkan nomor HP",
                     ),
@@ -350,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           )
                           .toList(),
-                      onChanged: _isEditing
+                      onChanged: _isEditingSettings
                           ? (value) {
                               setState(() {
                                 _selectedShift = value!;
@@ -361,16 +453,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        filled: !_isEditing,
-                        fillColor: !_isEditing ? Colors.grey.shade100 : null,
+                        filled: !_isEditingSettings,
+                        fillColor: !_isEditingSettings
+                            ? Colors.grey.shade100
+                            : null,
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
                     _buildButton(
-                      label: _isEditing ? "Simpan" : "Edit",
-                      icon: _isEditing ? Icons.save : Icons.edit,
+                      label: _isEditingSettings ? "Simpan" : "Edit",
+                      icon: _isEditingSettings ? Icons.save : Icons.edit,
                       color: Colors.teal,
                       onPressed: _saveSettings,
                     ),
@@ -612,9 +706,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    if (_isEditing && _originalPhone != null) {
-      _phoneController.text = _originalPhone!;
-    }
+    _phoneController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 }
