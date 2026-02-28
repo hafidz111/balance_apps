@@ -1,3 +1,4 @@
+import 'package:balance/screen/widgets/banner_ads.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 
@@ -95,84 +96,94 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: primaryTeal.withOpacity(0.05),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: primaryTeal.withValues(alpha: 0.05),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          b.type == 'qrcode' ? Icons.qr_code_2 : Icons.onetwothree,
+                          color: primaryTeal,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          displayType,
+                          style: TextStyle(
+                            color: primaryTeal,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      b.type == 'qrcode' ? Icons.qr_code_2 : Icons.onetwothree,
-                      color: primaryTeal,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      displayType,
-                      style: TextStyle(
-                        color: primaryTeal,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[200]!),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey[200]!),
+                            ),
+                            child: BarcodeWidget(
+                              barcode: b.type == 'code128'
+                                  ? Barcode.code128()
+                                  : Barcode.qrCode(),
+                              data: b.code,
+                              width: double.infinity,
+                              height: 100,
+                              drawText: false,
+                            ),
+                          ),
                         ),
-                        child: BarcodeWidget(
-                          barcode: b.type == 'code128'
-                              ? Barcode.code128()
-                              : Barcode.qrCode(),
-                          data: b.code,
-                          width: double.infinity,
-                          height: 100,
-                          drawText: false,
+                        const SizedBox(height: 32),
+
+                        _buildInfoSection(
+                          "Kode",
+                          b.code,
+                          icon: b.type == 'qrcode' ? Icons.qr_code : Icons.onetwothree,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
-                    _buildInfoSection(
-                      "Kode",
-                      b.code,
-                      icon: b.type == 'qrcode' ? Icons.qr_code : Icons.onetwothree,
+                        _buildInfoSection(
+                          "Deskripsi",
+                          b.description.isEmpty ? "-" : b.description,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-
-                    _buildInfoSection(
-                      "Deskripsi",
-                      b.description.isEmpty ? "-" : b.description,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 16,),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: BannerAds(),
+            ),
+          ],
         ),
       ),
     );
