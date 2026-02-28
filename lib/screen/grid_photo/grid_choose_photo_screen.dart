@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:balance/screen/grid_photo/grid_background_photo_screen.dart';
 import 'package:balance/screen/grid_photo/widgets/grid_item.dart';
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -55,6 +56,11 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       images[index] = File(picked.path);
       setState(() {});
     }
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "grid_image_added",
+      parameters: {"index": index},
+    );
   }
 
   Future<void> _pickMultipleImages() async {
@@ -113,6 +119,8 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         );
       }
     });
+
+    FirebaseAnalytics.instance.logEvent(name: "grid_multi_image_added");
   }
 
   void _deleteImage(int index) {
@@ -308,6 +316,11 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
     if (image == null) return;
     if (!mounted) return;
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "grid_layout_completed",
+      parameters: {"total_slots": images.length},
+    );
 
     Navigator.push(
       context,

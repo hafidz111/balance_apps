@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/point_coffe_history.dart';
@@ -81,6 +82,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       await _prefsService.deletePointCoffee(data.tgl);
       _loadHistory();
     }
+
+    FirebaseAnalytics.instance.logEvent(name: "point_coffee_deleted");
   }
 
   Future<void> _deleteSayBread(SayBreadHistory data) async {
@@ -106,6 +109,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       await _prefsService.deleteSayBread(data.tgl);
       _loadHistory();
     }
+
+    FirebaseAnalytics.instance.logEvent(name: "say_bread_deleted");
   }
 
   Future<void> _editPointCoffee(PointCoffeeHistory data) async {
@@ -117,6 +122,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (result == true) {
       _loadHistory();
     }
+    FirebaseAnalytics.instance.logEvent(name: "point_coffee_edit");
   }
 
   Future<void> _editSayBread(SayBreadHistory data) async {
@@ -128,6 +134,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (result == true) {
       _loadHistory();
     }
+    FirebaseAnalytics.instance.logEvent(name: "say_bread_edit");
   }
 
   Future<void> _deleteAllData() async {
@@ -166,6 +173,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
       _loadHistory();
     }
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "history_delete_all",
+      parameters: {"tab": activeTab == 0 ? "point_coffee" : "say_bread"},
+    );
   }
 
   @override
@@ -261,6 +273,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildTabItem(String title, int index) {
     bool isActive = activeTab == index;
+    FirebaseAnalytics.instance.logEvent(
+      name: "history_tab_changed",
+      parameters: {"tab": index == 0 ? "point_coffee" : "say_bread"},
+    );
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => activeTab = index),
@@ -501,6 +518,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             context,
                             DateTime(selectedYear, selectedMonth),
                           );
+                          FirebaseAnalytics.instance.logEvent(
+                            name: "history_filter_applied",
+                            parameters: {
+                              "year": selectedYear,
+                              "month": selectedMonth,
+                            },
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF009688),
@@ -545,6 +569,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _showManualInputDialog() async {
+    FirebaseAnalytics.instance.logEvent(
+      name: "history_manual_input_opened",
+      parameters: {"tab": activeTab == 0 ? "point_coffee" : "say_bread"},
+    );
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -583,7 +612,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Tanggal: ${formatDate(data.tgl)}",
+                      formatDate(data.tgl),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     PopupMenuButton<String>(

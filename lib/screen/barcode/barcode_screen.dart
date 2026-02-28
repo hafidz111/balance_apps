@@ -1,4 +1,5 @@
 import 'package:balance/screen/barcode/choose_barcode_screen.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/barcode_data.dart';
@@ -46,6 +47,11 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
         return codeMatch || descMatch;
       }).toList();
     });
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "barcode_search",
+      parameters: {"query_length": query.length},
+    );
   }
 
   @override
@@ -227,6 +233,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
             color: const Color(0xFF2196F3),
             onPressed: () async {
               _toggleMenu();
+              FirebaseAnalytics.instance.logEvent(name: "barcode_scan_opened");
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ScannerScreen()),

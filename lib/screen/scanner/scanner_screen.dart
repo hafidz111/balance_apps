@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -49,12 +50,16 @@ class _ScannerScreenState extends State<ScannerScreen>
         }
       }
     }
+
+    FirebaseAnalytics.instance.logEvent(name: "camera_permission_granted");
   }
 
   Future<void> _handleScanResult(String code) async {
     final list = await SharedPreferencesService().getBarcodes();
 
     BarcodeData? found;
+
+    FirebaseAnalytics.instance.logEvent(name: "barcode_scanned");
 
     for (final b in list) {
       if (b.code == code) {
@@ -65,6 +70,10 @@ class _ScannerScreenState extends State<ScannerScreen>
 
     if (!mounted) return;
 
+    FirebaseAnalytics.instance.logEvent(
+      name: "barcode_scan_result",
+      parameters: {"found": found != null},
+    );
     if (found != null) {
       Navigator.push(
         context,
@@ -282,7 +291,7 @@ class LEDCornerWrapper extends StatelessWidget {
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
               borderRadius: isCircle ? null : BorderRadius.circular(20),
             ),

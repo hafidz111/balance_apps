@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/model/barcode_data.dart';
@@ -186,6 +187,8 @@ class SharedPreferencesService {
       pcKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
+
+    FirebaseAnalytics.instance.logEvent(name: "point_coffee_entry_added");
   }
 
   Future<List<PointCoffeeHistory>> getPointCoffee() async {
@@ -309,6 +312,8 @@ class SharedPreferencesService {
       sbKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
+
+    FirebaseAnalytics.instance.logEvent(name: "say_bread_entry_added");
   }
 
   Future<void> deleteSayBread(int tgl) async {
@@ -410,6 +415,8 @@ class SharedPreferencesService {
       barcodeKey,
       barcodes.map((e) => jsonEncode(e.toJson())).toList(),
     );
+
+    FirebaseAnalytics.instance.logEvent(name: "barcode_created");
   }
 
   Future<List<BarcodeData>> getBarcodes() async {
@@ -455,11 +462,14 @@ class SharedPreferencesService {
       barcodeKey,
       barcodes.map((e) => jsonEncode(e.toJson())).toList(),
     );
+
+    FirebaseAnalytics.instance.logEvent(name: "barcode_deleted");
   }
 
   Future<String> exportBarcodesToJson() async {
     final list = await getBarcodes();
     final jsonList = list.map((e) => e.toJson()).toList();
+    FirebaseAnalytics.instance.logEvent(name: "barcode_exported");
     return jsonEncode(jsonList);
   }
 
@@ -468,6 +478,8 @@ class SharedPreferencesService {
     final imported = decoded.map((e) => BarcodeData.fromJson(e)).toList();
 
     await saveBarcodes(imported);
+
+    FirebaseAnalytics.instance.logEvent(name: "barcode_imported");
   }
 
   Future<void> savePhoneNumber(String phone) async {

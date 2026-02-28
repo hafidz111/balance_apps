@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/barcode_data.dart';
@@ -57,6 +58,10 @@ class _BarcodeFormState extends State<BarcodeForm> {
     }
 
     if (!mounted) return;
+    FirebaseAnalytics.instance.logEvent(
+      name: "barcode_created",
+      parameters: {"type": widget.type},
+    );
     Navigator.pop(context, true);
   }
 
@@ -82,7 +87,7 @@ class _BarcodeFormState extends State<BarcodeForm> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

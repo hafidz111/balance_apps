@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -149,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final firebaseAuthProvider = context.read<FirebaseAuthProvider>();
     final sharedPreferenceProvider = context.read<SharedPreferenceProvider>();
 
+    FirebaseAnalytics.instance.logEvent(name: "login_attempt");
     await firebaseAuthProvider.signInUser(email, password);
 
     if (!mounted) return;

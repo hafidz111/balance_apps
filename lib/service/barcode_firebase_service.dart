@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../data/model/barcode_data.dart';
 import 'shared_preferences_service.dart';
@@ -21,6 +22,8 @@ class BarcodeFirebaseService {
 
     final now = DateTime.now();
     await SharedPreferencesService().saveLastBackupTime(now);
+
+    FirebaseAnalytics.instance.logEvent(name: "backup_success");
   }
 
   Future<DateTime?> getLastBackupTime(String uid) async {
@@ -83,6 +86,8 @@ class BarcodeFirebaseService {
 
     final now = DateTime.now();
     await SharedPreferencesService().saveLastSyncTime(now);
+
+    FirebaseAnalytics.instance.logEvent(name: "sync_success");
   }
 
   Future<DateTime?> getLastSyncTime(String uid) async {

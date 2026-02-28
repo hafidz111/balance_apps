@@ -1,5 +1,6 @@
 import 'package:balance/screen/widgets/ads/banner_ads.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/barcode_data.dart';
@@ -48,6 +49,7 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
     if (confirm == true) {
       await SharedPreferencesService().deleteBarcode(widget.barcode);
       if (!mounted) return;
+      FirebaseAnalytics.instance.logEvent(name: "barcode_deleted");
       Navigator.pop(context, true);
     }
   }

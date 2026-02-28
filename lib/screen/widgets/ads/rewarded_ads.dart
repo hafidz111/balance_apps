@@ -1,4 +1,5 @@
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -10,6 +11,7 @@ class RewardedAds extends StatefulWidget {
   final IconData icon;
   final Color color;
   final bool enabled;
+  final String featureName;
 
   const RewardedAds({
     super.key,
@@ -20,6 +22,7 @@ class RewardedAds extends StatefulWidget {
     this.label,
     this.loadingLabel,
     this.enabled = true,
+    required this.featureName,
   });
 
   @override
@@ -27,6 +30,8 @@ class RewardedAds extends StatefulWidget {
 }
 
 class _RewardedAdsState extends State<RewardedAds> {
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+
   RewardedAd? _rewardedAd;
   bool _isReady = false;
   bool _isProcessing = false;
@@ -44,9 +49,17 @@ class _RewardedAdsState extends State<RewardedAds> {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           _rewardedAd = ad;
+          _analytics.logEvent(
+            name: "rewarded_ad_loaded",
+            parameters: {"feature": widget.featureName},
+          );
           setState(() => _isReady = true);
         },
         onAdFailedToLoad: (error) {
+          _analytics.logEvent(
+            name: "rewarded_ad_failed",
+            parameters: {"error": error.code},
+          );
           setState(() => _isReady = false);
 
           Future.delayed(const Duration(seconds: 5), () {
@@ -64,7 +77,7 @@ class _RewardedAdsState extends State<RewardedAds> {
     await Future.delayed(const Duration(milliseconds: 300));
 
     if (_rewardedAd == null || !_isReady) {
-      if(!mounted) return;
+      if (!mounted) return;
       CustomSnackBar.show(
         context,
         message: "Iklan sedang tidak tersedia. Coba lagi nanti.",
@@ -98,8 +111,21 @@ class _RewardedAdsState extends State<RewardedAds> {
       },
     );
 
+    _analytics.logEvent(
+      name: "rewarded_ad_clicked",
+      parameters: {"feature": widget.featureName},
+    );
+
     _rewardedAd!.show(
       onUserEarnedReward: (ad, reward) async {
+        _analytics.logEvent(
+          name: "rewarded_ad_completed",
+          parameters: {
+            "feature": widget.featureName,
+            "reward_type": reward.type,
+            "reward_amount": reward.amount,
+          },
+        );
         await widget.onRewarded();
       },
     );

@@ -5,6 +5,7 @@ import 'package:balance/providers/shared_preference_provider.dart';
 import 'package:balance/screen/main/main_screen.dart';
 import 'package:balance/service/firebase_auth_service.dart';
 import 'package:balance/service/shared_preferences_service.dart';
+import 'package:balance/utils/track_app_start.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,8 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final firebaseAuth = FirebaseAuth.instance;
+  await trackAppStart();
+
   runApp(
     MultiProvider(
       providers: [

@@ -4,6 +4,7 @@ import 'package:balance/screen/widgets/ads/rewarded_ads.dart';
 import 'package:balance/screen/widgets/custom_text_field.dart';
 import 'package:balance/service/barcode_firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -201,6 +202,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isEditingSettings = false;
     });
 
+    FirebaseAnalytics.instance.logEvent(name: "settings_saved");
+
     CustomSnackBar.show(
       context,
       message: "Pengaturan berhasil disimpan",
@@ -237,6 +240,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 type: SnackType.success,
               );
             });
+
+        FirebaseAnalytics.instance.logEvent(name: "logout");
       } else {
         Navigator.push(
           context,
@@ -507,6 +512,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 12),
                     RewardedAds(
+                      featureName: "sync",
                       adUnitId: AdsHelper.rewardedSyncAdUnitId,
                       label: "Sinkronkan Sekarang",
                       loadingLabel: "Sedang Sync...",
@@ -526,12 +532,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           await barcodeService.syncBarcodes(user!.uid!);
                           await _loadLastSyncTime();
 
+                          FirebaseAnalytics.instance.logEvent(
+                            name: "sync_success",
+                          );
+
                           CustomSnackBar.show(
                             context,
                             message: "Sinkronisasi berhasil!",
                             type: SnackType.success,
                           );
                         } catch (e) {
+                          FirebaseAnalytics.instance.logEvent(
+                            name: "sync_failed",
+                          );
+
                           final message = e.toString();
 
                           if (message.contains("Belum ada backup di server") ||
@@ -599,6 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                     const SizedBox(height: 12),
                     RewardedAds(
+                      featureName: "backup",
                       adUnitId: AdsHelper.rewardedBackupAdUnitId,
                       label: "Backup Sekarang",
                       loadingLabel: "Sedang Backup...",
@@ -629,12 +644,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           await barcodeService.backupBarcodes(user!.uid!);
                           await _loadLastBackupTime();
 
+                          FirebaseAnalytics.instance.logEvent(
+                            name: "backup_success",
+                          );
+
                           CustomSnackBar.show(
                             context,
                             message: "Backup berhasil!",
                             type: SnackType.success,
                           );
                         } catch (e) {
+                          FirebaseAnalytics.instance.logEvent(
+                            name: "backup_failed",
+                          );
+
                           CustomSnackBar.show(
                             context,
                             message: "Backup gagal: $e",

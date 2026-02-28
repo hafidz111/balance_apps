@@ -1,5 +1,6 @@
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:balance/service/shared_preferences_service.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -56,6 +57,10 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     if (shiftCount != shift) {
       setState(() {
         shiftCount = shift.clamp(1, maxShift);
+        FirebaseAnalytics.instance.logEvent(
+          name: "say_bread_shift_changed",
+          parameters: {"shift_count": shiftCount},
+        );
       });
     }
   }
@@ -211,6 +216,12 @@ $historyText```
 
     await service.saveSayBread(data);
     await service.clearSayBreadDraft(tgl);
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "say_bread_saved",
+      parameters: {"total_sales": totalSales, "total_qty": totalQty},
+    );
+
     // ignore: use_build_context_synchronously
     CustomSnackBar.show(
       context,
@@ -231,6 +242,7 @@ $historyText```
     };
 
     await SharedPreferencesService().saveSayBreadDraft(tgl, data);
+    FirebaseAnalytics.instance.logEvent(name: "say_bread_draft_saved");
   }
 
   Future<void> _loadDraft() async {
@@ -242,7 +254,6 @@ $historyText```
     if (draft == null) return;
 
     shiftCount = draft["shiftCount"] ?? shiftCount;
-
     final sales = List<String>.from(draft["sales"] ?? []);
     final qty = List<String>.from(draft["qty"] ?? []);
 
@@ -322,9 +333,6 @@ $historyText```
 
               ActionButtons(
                 onWhatsApp: () async {
-                  await _saveData();
-
-                  final text = await _buildWhatsAppMessage();
                   final service = SharedPreferencesService();
                   final phone = service.getPhoneNumber();
 
@@ -336,11 +344,18 @@ $historyText```
                     );
                     return;
                   }
+
+                  await _saveData();
+                  final text = await _buildWhatsAppMessage();
+
                   final uri = Uri.parse(
                     "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
                   );
 
                   try {
+                    FirebaseAnalytics.instance.logEvent(
+                      name: "say_bread_whatsapp_sent",
+                    );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     // ignore: use_build_context_synchronously

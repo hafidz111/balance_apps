@@ -1,4 +1,5 @@
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/store_data.dart';
@@ -103,6 +104,10 @@ class _StoreScreenState extends State<StoreScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: () async {
+          FirebaseAnalytics.instance.logEvent(
+            name: "store_tab_changed",
+            parameters: {"tab": index == 0 ? "point_coffee" : "say_bread"},
+          );
           if (activeTab != index) {
             await _loadStoreData();
             setState(() => activeTab = index);
@@ -195,6 +200,14 @@ class _StoreScreenState extends State<StoreScreen> {
       );
     }
     if (!mounted) return;
-    CustomSnackBar.show(context, message: "Data $category berhasil disimpan", type: SnackType.success);
+    FirebaseAnalytics.instance.logEvent(
+      name: "store_saved",
+      parameters: {"category": category},
+    );
+    CustomSnackBar.show(
+      context,
+      message: "Data $category berhasil disimpan",
+      type: SnackType.success,
+    );
   }
 }

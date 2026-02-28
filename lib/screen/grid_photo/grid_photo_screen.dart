@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:screenshot/screenshot.dart';
 
@@ -77,6 +78,11 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
+        FirebaseAnalytics.instance.logEvent(
+          name: "grid_template_selected",
+          parameters: {"title": title, "rows": rows, "cols": cols},
+        );
+
         CustomSnackBar.show(
           context,
           message: "$title dipilih",

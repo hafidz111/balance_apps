@@ -1,5 +1,6 @@
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:balance/service/shared_preferences_service.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -281,6 +282,11 @@ $historyText```
     await service.savePointCoffee(data);
     await service.clearPointCoffeeDraft(tgl);
 
+    FirebaseAnalytics.instance.logEvent(
+      name: "point_coffee_saved",
+      parameters: {"total_sales": totalSales, "total_cup": totalCup},
+    );
+
     CustomSnackBar.show(
       context,
       message: "Data Point Coffee tersimpan",
@@ -301,6 +307,7 @@ $historyText```
     };
 
     await SharedPreferencesService().savePointCoffeeDraft(tgl, data);
+    FirebaseAnalytics.instance.logEvent(name: "point_coffee_draft_saved");
   }
 
   Future<void> _loadDraft() async {
@@ -416,9 +423,6 @@ $historyText```
 
               ActionButtons(
                 onWhatsApp: () async {
-                  await _saveData();
-
-                  final text = await _buildWhatsAppMessage();
                   final service = SharedPreferencesService();
                   final phone = service.getPhoneNumber();
 
@@ -430,11 +434,18 @@ $historyText```
                     );
                     return;
                   }
+
+                  await _saveData();
+                  final text = await _buildWhatsAppMessage();
+
                   final uri = Uri.parse(
                     "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
                   );
 
                   try {
+                    FirebaseAnalytics.instance.logEvent(
+                      name: "point_coffee_whatsapp_sent",
+                    );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     // ignore: use_build_context_synchronously

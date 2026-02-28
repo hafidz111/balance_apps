@@ -4,6 +4,7 @@ String formatDate(int ymd) {
   final day = (ymd % 100).toString().padLeft(2, '0');
 
   const monthNames = [
+    "",
     'Januari',
     'Februari',
     'Maret',
@@ -28,6 +29,7 @@ String formatDayFromYmd(int ymd) {
 
 String formatDateV1(DateTime date) {
   const monthNames = [
+    "",
     'Januari',
     'Februari',
     'Maret',

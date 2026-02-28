@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -83,6 +84,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         backgroundImage = file;
         canvasRatio = ratio;
       });
+      FirebaseAnalytics.instance.logEvent(name: "grid_background_added");
     }
   }
 
@@ -126,7 +128,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     try {
       final hasPermission = await _requestGalleryPermission();
       if (!hasPermission) {
-        if(!mounted) return;
+        if (!mounted) return;
         CustomSnackBar.show(
           context,
           message: "Izin storage diperlukan untuk menyimpan",
@@ -155,6 +157,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       await _scanFile(file.path);
 
       if (!mounted) return;
+      FirebaseAnalytics.instance.logEvent(name: "grid_saved_to_gallery");
       CustomSnackBar.show(
         context,
         message: "Berhasil disimpan ke ${directory.path}",
@@ -544,6 +547,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                           textController.text = newText.text;
                           showTextEditor = true;
                         });
+
+                        FirebaseAnalytics.instance.logEvent(
+                          name: "grid_text_added",
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,

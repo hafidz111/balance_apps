@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -11,6 +12,7 @@ class BannerAds extends StatefulWidget {
 }
 
 class _BannerAdsState extends State<BannerAds> {
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   BannerAd? _bannerAd;
 
   @override
@@ -38,6 +40,7 @@ class _BannerAdsState extends State<BannerAds> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          _analytics.logEvent(name: "banner_ad_loaded");
           if (!mounted) {
             ad.dispose();
             return;
@@ -48,6 +51,10 @@ class _BannerAdsState extends State<BannerAds> {
           });
         },
         onAdFailedToLoad: (ad, error) {
+          _analytics.logEvent(
+            name: "banner_ad_failed",
+            parameters: {"error": error.code},
+          );
           debugPrint("Ad failed: $error");
           ad.dispose();
         },

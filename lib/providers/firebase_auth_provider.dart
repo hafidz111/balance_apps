@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../data/model/profile.dart';
@@ -51,9 +52,11 @@ class FirebaseAuthProvider extends ChangeNotifier {
 
       _authStatus = FirebaseAuthStatus.authenticated;
       _message = "Login Berhasil!";
+      FirebaseAnalytics.instance.logEvent(name: "login_success");
     } catch (e) {
-      _message = e.toString();
+      _message = "Login Gagal!";
       _authStatus = FirebaseAuthStatus.error;
+      FirebaseAnalytics.instance.logEvent(name: "login_failed");
     }
     notifyListeners();
   }

@@ -9,6 +9,7 @@ import 'package:balance/screen/settings/settings_screen.dart';
 import 'package:balance/screen/store/store_screen.dart';
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,8 +30,10 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   int _selectedIndex = 1;
   int _barcodeRefreshKey = 0;
+  DateTime? _screenStartTime;
 
   List<Widget> get _widgetOptions => [
     const StoreScreen(),
@@ -97,12 +100,34 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onItemTapped(int index) {
+    final now = DateTime.now();
+
+    if (_screenStartTime != null) {
+      final duration = now.difference(_screenStartTime!).inSeconds;
+
+      _analytics.logEvent(
+        name: "screen_duration",
+        parameters: {
+          "screen_name": _titles[_selectedIndex],
+          "duration_seconds": duration,
+        },
+      );
+    }
+
+    _screenStartTime = now;
+
     setState(() {
       _selectedIndex = index;
     });
+
+    _analytics.logScreenView(
+      screenName: _titles[index],
+      screenClass: _titles[index],
+    );
   }
 
   Future<void> _exportBarcodes() async {
+    _analytics.logEvent(name: "barcode_export_clicked");
     try {
       final list = await SharedPreferencesService().getBarcodes();
 
@@ -129,6 +154,8 @@ class _MainScreenState extends State<MainScreen> {
 
       if (path == null) return;
 
+      _analytics.logEvent(name: "barcode_export_success");
+
       CustomSnackBar.show(
         context,
         message: "Backup berhasil disimpan",
@@ -144,6 +171,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _importBarcodes() async {
+    _analytics.logEvent(name: "barcode_import_clicked");
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -162,6 +191,9 @@ class _MainScreenState extends State<MainScreen> {
       _barcodeRefreshKey++;
       _selectedIndex = 4;
     });
+
+    _analytics.logEvent(name: "barcode_import_success");
+
     CustomSnackBar.show(
       context,
       message: "Import berhasil",
@@ -191,12 +223,14 @@ class _MainScreenState extends State<MainScreen> {
         actions: _selectedIndex == 4
             ? [
                 RewardedAds(
+                  featureName: "export",
                   adUnitId: AdsHelper.rewardedExportAdUnitId,
                   onRewarded: _exportBarcodes,
                   icon: Icons.upload_file,
                   color: Colors.white,
                 ),
                 RewardedAds(
+                  featureName: "import",
                   adUnitId: AdsHelper.rewardedImportAdUnitId,
                   onRewarded: _importBarcodes,
                   icon: Icons.download,
