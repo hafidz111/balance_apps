@@ -16,7 +16,9 @@ class SharedPreferencesService {
 
   SharedPreferences get prefs => _prefs!;
   static const pcKey = 'point_coffee_history';
+  static const pcDraftKey = "pc_draft";
   static const sbKey = 'say_bread_history';
+  static const sbDraftKey = "sb_draft";
   static const pcStoreKey = 'pc_store_data';
   static const sbStoreKey = 'sb_store_data';
   static const barcodeKey = 'barcode_list';
@@ -247,6 +249,28 @@ class SharedPreferencesService {
     );
   }
 
+  Future<void> savePointCoffeeDraft(int tgl, Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("$pcDraftKey$tgl", jsonEncode(data));
+  }
+
+  Future<Map<String, dynamic>?> getPointCoffeeDraft(int tgl) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString("$pcDraftKey$tgl");
+    if (jsonString == null) return null;
+    return jsonDecode(jsonString);
+  }
+
+  Future<void> clearPointCoffeeDraft(int tgl) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("$pcDraftKey$tgl");
+  }
+
+  Future<void> clearPointCoffee() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(pcKey);
+  }
+
   Future<void> saveSayBread(SayBreadHistory data) async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(sbKey) ?? [];
@@ -346,6 +370,28 @@ class SharedPreferencesService {
       final m = (e.tgl % 10000) ~/ 100;
       return y == year && m == month;
     }).toList();
+  }
+
+  Future<void> saveSayBreadDraft(int tgl, Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("$sbDraftKey$tgl", jsonEncode(data));
+  }
+
+  Future<Map<String, dynamic>?> getSayBreadDraft(int tgl) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString("$sbDraftKey$tgl");
+    if (jsonString == null) return null;
+    return jsonDecode(jsonString);
+  }
+
+  Future<void> clearSayBreadDraft(int tgl) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("$sbDraftKey$tgl");
+  }
+
+  Future<void> clearSayBread() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(sbKey);
   }
 
   Future<void> saveBarcode(BarcodeData data) async {

@@ -52,36 +52,35 @@ class _RewardedAdsState extends State<RewardedAds> {
           Future.delayed(const Duration(seconds: 5), () {
             _loadAd();
           });
-
-          if (mounted) {
-            CustomSnackBar.show(
-              context,
-              message: "Iklan sedang tidak tersedia. Coba lagi dalam 1 jam.",
-              type: SnackType.error,
-            );
-          }
         },
       ),
     );
   }
 
-  void _showAd() {
-    if (_rewardedAd == null) return;
+  void _showAd() async {
+    if (_isProcessing) return;
 
-    _rewardedAd!.show(
-      onUserEarnedReward: (ad, reward) async {
-        setState(() => _isProcessing = true);
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(milliseconds: 300));
 
-        await widget.onRewarded();
+    if (_rewardedAd == null || !_isReady) {
+      CustomSnackBar.show(
+        context,
+        message: "Iklan sedang tidak tersedia. Coba lagi nanti.",
+        type: SnackType.error,
+      );
 
-        setState(() => _isProcessing = false);
-      },
-    );
+      setState(() => _isProcessing = false);
+      return;
+    }
 
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _loadAd();
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
@@ -93,7 +92,14 @@ class _RewardedAdsState extends State<RewardedAds> {
             message: "Iklan gagal ditampilkan. Coba lagi dalam 1 jam.",
             type: SnackType.error,
           );
+          setState(() => _isProcessing = false);
         }
+      },
+    );
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (ad, reward) async {
+        await widget.onRewarded();
       },
     );
   }
@@ -107,10 +113,16 @@ class _RewardedAdsState extends State<RewardedAds> {
     if (!hasLabel) {
       return IconButton(
         onPressed: canPress ? _showAd : null,
-        icon: Icon(
-          _isProcessing ? Icons.hourglass_top : widget.icon,
-          color: widget.color,
-        ),
+        icon: _isProcessing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(widget.icon, color: widget.color),
       );
     }
 

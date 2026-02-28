@@ -39,6 +39,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     super.initState();
     _loadStore();
     _initControllers();
+    _loadDraft();
   }
 
   void _initControllers() {
@@ -144,6 +145,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
       apcControllers[i].text = _apc(sales, std);
     }
 
+    _saveDraft();
     setState(() {});
   }
 
@@ -277,12 +279,53 @@ $historyText```
     );
 
     await service.savePointCoffee(data);
+    await service.clearPointCoffeeDraft(tgl);
 
     CustomSnackBar.show(
       context,
       message: "Data Point Coffee tersimpan",
       type: SnackType.success,
     );
+  }
+
+  Future<void> _saveDraft() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final data = {
+      "shiftCount": shiftCount,
+      "sales": salesControllers.map((e) => e.text).toList(),
+      "std": stdControllers.map((e) => e.text).toList(),
+      "cup": cupControllers.map((e) => e.text).toList(),
+      "add": addControllers.map((e) => e.text).toList(),
+    };
+
+    await SharedPreferencesService().savePointCoffeeDraft(tgl, data);
+  }
+
+  Future<void> _loadDraft() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final draft = await SharedPreferencesService().getPointCoffeeDraft(tgl);
+
+    if (draft == null) return;
+
+    shiftCount = draft["shiftCount"] ?? shiftCount;
+
+    final sales = List<String>.from(draft["sales"] ?? []);
+    final std = List<String>.from(draft["std"] ?? []);
+    final cup = List<String>.from(draft["cup"] ?? []);
+    final add = List<String>.from(draft["add"] ?? []);
+
+    for (int i = 0; i < maxShift; i++) {
+      if (i < sales.length) salesControllers[i].text = sales[i];
+      if (i < std.length) stdControllers[i].text = std[i];
+      if (i < cup.length) cupControllers[i].text = cup[i];
+      if (i < add.length) addControllers[i].text = add[i];
+    }
+
+    _updateAll();
   }
 
   @override

@@ -130,6 +130,44 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Future<void> _deleteAllData() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Hapus Semua Data"),
+        content: Text(
+          activeTab == 0
+              ? "Yakin ingin menghapus semua data Point Coffee?"
+              : "Yakin ingin menghapus semua data Say Bread?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Hapus Semua",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      if (activeTab == 0) {
+        await _prefsService.clearPointCoffee();
+      } else {
+        await _prefsService.clearSayBread();
+      }
+
+      _loadHistory();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,6 +204,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red[200]!),
+                  ),
+                  child: IconButton(
+                    onPressed: _deleteAllData,
+                    icon: const Icon(Icons.delete_forever, color: Colors.red),
                   ),
                 ),
 

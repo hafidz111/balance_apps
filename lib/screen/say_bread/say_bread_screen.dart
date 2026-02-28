@@ -41,6 +41,8 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
       qtyControllers[i].addListener(_updateSummary);
     }
     akmLastMonth.addListener(_updateSummary);
+
+    _loadDraft();
   }
 
   @override
@@ -110,7 +112,10 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     return buffer.toString();
   }
 
-  void _updateSummary() => setState(() {});
+  void _updateSummary() {
+    _saveDraft();
+    setState(() {});
+  }
 
   Future<String> _buildWhatsAppMessage() async {
     final today = DateTime.now();
@@ -205,13 +210,50 @@ $historyText```
     );
 
     await service.saveSayBread(data);
-
+    await service.clearSayBreadDraft(tgl);
     // ignore: use_build_context_synchronously
     CustomSnackBar.show(
       context,
       message: "Data Say Bread tersimpan",
       type: SnackType.success,
     );
+  }
+
+  Future<void> _saveDraft() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final data = {
+      "shiftCount": shiftCount,
+      "sales": salesControllers.map((e) => e.text).toList(),
+      "qty": qtyControllers.map((e) => e.text).toList(),
+      "akmLastMonth": akmLastMonth.text,
+    };
+
+    await SharedPreferencesService().saveSayBreadDraft(tgl, data);
+  }
+
+  Future<void> _loadDraft() async {
+    final now = DateTime.now();
+    final tgl = now.year * 10000 + now.month * 100 + now.day;
+
+    final draft = await SharedPreferencesService().getSayBreadDraft(tgl);
+
+    if (draft == null) return;
+
+    shiftCount = draft["shiftCount"] ?? shiftCount;
+
+    final sales = List<String>.from(draft["sales"] ?? []);
+    final qty = List<String>.from(draft["qty"] ?? []);
+
+    for (int i = 0; i < maxShift; i++) {
+      if (i < sales.length) salesControllers[i].text = sales[i];
+      if (i < qty.length) qtyControllers[i].text = qty[i];
+    }
+
+    akmLastMonth.text = draft["akmLastMonth"] ?? "";
+
+    setState(() {});
   }
 
   @override
