@@ -1,10 +1,14 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:balance/service/shared_preferences_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/model/point_coffe_history.dart';
 import '../../data/model/store_data.dart';
+import '../../providers/shared_preference_provider.dart';
 import '../../utils/date_format.dart';
+import '../../utils/number_format.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/shift_card.dart';
@@ -19,32 +23,37 @@ class PointCoffeeScreen extends StatefulWidget {
 }
 
 class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
-  final s1Sales = TextEditingController();
-  final s1Std = TextEditingController();
-  final s1Apc = TextEditingController();
-  final s1Cup = TextEditingController();
-  final s1Add = TextEditingController();
-
-  final s2Sales = TextEditingController();
-  final s2Std = TextEditingController();
-  final s2Apc = TextEditingController();
-  final s2Cup = TextEditingController();
-  final s2Add = TextEditingController();
-
   StoreData? store;
+
+  late List<TextEditingController> salesControllers;
+  late List<TextEditingController> stdControllers;
+  late List<TextEditingController> apcControllers;
+  late List<TextEditingController> cupControllers;
+  late List<TextEditingController> addControllers;
+
+  static const int maxShift = 4;
+  int shiftCount = 2;
 
   @override
   void initState() {
     super.initState();
     _loadStore();
+    _initControllers();
+  }
 
-    s1Sales.addListener(_updateAll);
-    s1Std.addListener(_updateAll);
-    s2Sales.addListener(_updateAll);
-    s2Std.addListener(_updateAll);
-    s1Cup.addListener(_updateAll);
-    s1Add.addListener(_updateAll);
-    s2Add.addListener(_updateAll);
+  void _initControllers() {
+    salesControllers = List.generate(maxShift, (_) => TextEditingController());
+    stdControllers = List.generate(maxShift, (_) => TextEditingController());
+    apcControllers = List.generate(maxShift, (_) => TextEditingController());
+    cupControllers = List.generate(maxShift, (_) => TextEditingController());
+    addControllers = List.generate(maxShift, (_) => TextEditingController());
+
+    for (int i = 0; i < maxShift; i++) {
+      salesControllers[i].addListener(_updateAll);
+      stdControllers[i].addListener(_updateAll);
+      cupControllers[i].addListener(_updateAll);
+      addControllers[i].addListener(_updateAll);
+    }
   }
 
   Future<void> _loadStore() async {
@@ -54,15 +63,57 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     });
   }
 
-  int _toInt(TextEditingController c) => int.tryParse(c.text) ?? 0;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-  int get totalSales => _toInt(s1Sales) + _toInt(s2Sales);
+    final pref = context.watch<SharedPreferenceProvider>();
 
-  int get totalStd => _toInt(s1Std) + _toInt(s2Std);
+    final shift = pref.shiftCount ?? 2;
 
-  int get totalCup => _toInt(s1Cup) + _toInt(s2Cup);
+    if (shiftCount != shift) {
+      setState(() {
+        shiftCount = shift.clamp(1, maxShift);
+      });
+    }
+  }
 
-  int get totalAdd => _toInt(s1Add) + _toInt(s2Add);
+  int _toInt(TextEditingController c) {
+    final clean = c.text.replaceAll('.', '');
+    return int.tryParse(clean) ?? 0;
+  }
+
+  int get totalSales {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(salesControllers[i]);
+    }
+    return total;
+  }
+
+  int get totalStd {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(stdControllers[i]);
+    }
+    return total;
+  }
+
+  int get totalCup {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(cupControllers[i]);
+    }
+    return total;
+  }
+
+  int get totalAdd {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(addControllers[i]);
+    }
+    return total;
+  }
 
   String _rupiahShort(int value) {
     return (value / 1000000).toStringAsFixed(1);
@@ -75,32 +126,37 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     );
   }
 
-  String _number(int value) => value.toString();
+  // String _number(int value) => value.toString();
 
   String _apc(int sales, int std) {
-    if (std == 0) return "0";
-    return (sales / std / 1000).toStringAsFixed(0);
+    if (std == 0) return "0,000";
+
+    final result = (sales / std);
+    return result.toStringAsFixed(3).replaceAll('.', ',');
   }
 
   void _updateAll() {
-    final newS1Apc = _calculateAPC(s1Sales, s1Std);
-    final newS2Apc = _calculateAPC(s2Sales, s2Std);
+    for (int i = 0; i < shiftCount; i++) {
+      final sales = _toInt(salesControllers[i]);
+      final std = _toInt(stdControllers[i]);
 
-    if (s1Apc.text != newS1Apc) s1Apc.text = newS1Apc;
-    if (s2Apc.text != newS2Apc) s2Apc.text = newS2Apc;
+      apcControllers[i].text = std == 0
+          ? "0.000"
+          : (sales / std).toStringAsFixed(3);
+    }
 
     setState(() {});
   }
 
-  String _calculateAPC(
-    TextEditingController salesCtrl,
-    TextEditingController stdCtrl,
-  ) {
-    final sales = int.tryParse(salesCtrl.text) ?? 0;
-    final std = int.tryParse(stdCtrl.text) ?? 0;
-    if (std == 0) return "0.000";
-    return (sales / std).toStringAsFixed(3);
-  }
+  // String _calculateAPC(
+  //   TextEditingController salesCtrl,
+  //   TextEditingController stdCtrl,
+  // ) {
+  //   final sales = int.tryParse(salesCtrl.text) ?? 0;
+  //   final std = int.tryParse(stdCtrl.text) ?? 0;
+  //   if (std == 0) return "0.000";
+  //   return (sales / std).toStringAsFixed(3);
+  // }
 
   double get apc => totalStd == 0 ? 0 : totalSales / totalStd / 1000;
 
@@ -132,18 +188,13 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
   @override
   void dispose() {
-    s1Sales.dispose();
-    s1Std.dispose();
-    s1Apc.dispose();
-    s1Cup.dispose();
-    s1Add.dispose();
-
-    s2Sales.dispose();
-    s2Std.dispose();
-    s2Apc.dispose();
-    s2Cup.dispose();
-    s2Add.dispose();
-
+    for (int i = 0; i < maxShift; i++) {
+      salesControllers[i].dispose();
+      stdControllers[i].dispose();
+      apcControllers[i].dispose();
+      cupControllers[i].dispose();
+      addControllers[i].dispose();
+    }
     super.dispose();
   }
 
@@ -168,23 +219,25 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     final tglGo = store?.tgl ?? "-";
     final area = store?.area ?? "-";
 
+    String shiftText = "";
+
+    for (int i = 0; i < shiftCount; i++) {
+      shiftText +=
+          """
+*Shift ${i + 1}* ```
+Sales : ${_rupiah(_toInt(salesControllers[i]))}
+Std   : ${_toInt(stdControllers[i])}
+Apc   : ${apcControllers[i].text}
+Cup   : ${_toInt(cupControllers[i])}
+Add   : ${_toInt(addControllers[i])} ```
+""";
+    }
+
     return """
 *$title*
 ```Tanggal $tgl```
 
-*Shift 1* ```
-Sales.   : ${_rupiah(_toInt(s1Sales))}
-Std.     : ${_number(_toInt(s1Std))}
-Apc      : ${_apc(_toInt(s1Sales), _toInt(s1Std))}
-Cup.     : ${_number(_toInt(s1Cup))}
-Add      : ${_number(_toInt(s1Add))} ```
-
-*Shift 2* ```
-Sales.   : ${_rupiah(_toInt(s2Sales))}
-Std      : ${_number(_toInt(s2Std))}
-Apc      : ${_apc(_toInt(s2Sales), _toInt(s2Std))}
-Cup      : ${_number(_toInt(s2Cup))}
-Add      : ${_number(_toInt(s2Add))} ```
+$shiftText
 
 *TOTAL* ```
 Sales    : ${_rupiah(totalSales)}
@@ -215,136 +268,80 @@ $historyText```
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              ShiftCard(
-                title: "Shift 1",
-                accentColor: Colors.teal,
-                child: Column(
+              ...List.generate(shiftCount, (index) {
+                return Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Sales",
-                            controller: s1Sales,
-                            keyboardType: TextInputType.number,
+                    ShiftCard(
+                      title: "Shift ${index + 1}",
+                      accentColor:
+                          Colors.primaries[index % Colors.primaries.length],
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: CustomInputField(
+                                  label: "Sales",
+                                  controller: salesControllers[index],
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [RupiahInputFormatter()],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: CustomInputField(
+                                  label: "Std",
+                                  controller: stdControllers[index],
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [RupiahInputFormatter()],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Std",
-                            controller: s1Std,
-                            keyboardType: TextInputType.number,
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: CustomInputField(
+                                  label: "Apc",
+                                  controller: apcControllers[index],
+                                  enabled: false,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: CustomInputField(
+                                  label: "Cup",
+                                  controller: cupControllers[index],
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [RupiahInputFormatter()],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Apc",
-                            controller: s1Apc,
-                            readOnly: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Cup",
-                            controller: s1Cup,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
+                          const SizedBox(height: 12),
+                          CustomInputField(
                             label: "Add",
-                            controller: s1Add,
+                            controller: addControllers[index],
                             keyboardType: TextInputType.number,
+                            inputFormatters: [RupiahInputFormatter()],
                           ),
-                        ),
-                        const Spacer(),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 16),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              ShiftCard(
-                title: "Shift 2",
-                accentColor: Colors.orange.shade200,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Sales",
-                            controller: s2Sales,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Std",
-                            controller: s2Std,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Apc",
-                            controller: s2Apc,
-                            readOnly: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Cup",
-                            controller: s2Cup,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomInputField(
-                            label: "Add",
-                            controller: s2Add,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const Spacer(),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
+                );
+              }),
 
               SummarySection(
                 rows: [
                   SummaryRow(label: "Sales:", value: totalSales.toString()),
                   SummaryRow(label: "Std:", value: totalStd.toString()),
-                  SummaryRow(label: "Apc:", value: apc.toStringAsFixed(3)),
+                  SummaryRow(
+                    label: "Apc:",
+                    value: apc.toStringAsFixed(3).replaceAll('.', ','),
+                  ),
                   SummaryRow(label: "Cup:", value: totalCup.toString()),
                   SummaryRow(label: "Add:", value: totalAdd.toString()),
                 ],
@@ -354,34 +351,6 @@ $historyText```
 
               ActionButtons(
                 onSave: () async {
-                  final controllers = [
-                    s1Sales,
-                    s1Std,
-                    s1Apc,
-                    s1Cup,
-                    s1Add,
-                    s2Sales,
-                    s2Std,
-                    s2Apc,
-                    s2Cup,
-                    s2Add,
-                  ];
-
-                  final emptyFields = controllers
-                      .where((c) => c.text.trim().isEmpty)
-                      .toList();
-                  if (emptyFields.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Semua field harus diisi sebelum menyimpan!",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
                   final now = DateTime.now();
                   final tgl = now.year * 10000 + now.month * 100 + now.day;
 
@@ -402,58 +371,38 @@ $historyText```
                   await service.savePointCoffee(data);
 
                   // ignore: use_build_context_synchronously
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Data Point Coffee tersimpan"),
-                    ),
+                  CustomSnackBar.show(
+                    context,
+                    message: "Data Point Coffee tersimpan",
+                    type: SnackType.success,
                   );
                 },
                 onWhatsApp: () async {
-                  final controllers = [
-                    s1Sales,
-                    s1Std,
-                    s1Apc,
-                    s1Cup,
-                    s1Add,
-                    s2Sales,
-                    s2Std,
-                    s2Apc,
-                    s2Cup,
-                    s2Add,
-                  ];
+                  final text = await _buildWhatsAppMessage();
+                  final service = SharedPreferencesService();
+                  final phone = service.getPhoneNumber();
 
-                  final emptyFields = controllers
-                      .where((c) => c.text.trim().isEmpty)
-                      .toList();
-                  if (emptyFields.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Semua field harus diisi sebelum mengirim WA!",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
+                  if (phone == null || phone.trim().isEmpty) {
+                    CustomSnackBar.show(
+                      context,
+                      message: "Nomor WhatsApp belum diatur di Settings",
+                      type: SnackType.error,
                     );
                     return;
                   }
-
-                  final text = await _buildWhatsAppMessage();
-
                   final uri = Uri.parse(
-                    "https://wa.me/6281290057505?text=${Uri.encodeComponent(text)}",
+                    "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
                   );
 
                   try {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     // ignore: use_build_context_synchronously
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
+                    CustomSnackBar.show(
+                      context,
+                      message:
                           "Gagal membuka WhatsApp: ${e.toString().replaceAll('Exception: ', '')}",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
+                      type: SnackType.error,
                     );
                   }
                 },

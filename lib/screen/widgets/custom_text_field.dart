@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final TextInputType keyboardType;
-  final bool readOnly;
+  final bool enabled;
+  final String? hintText;
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomInputField({
     super.key,
     required this.label,
     required this.controller,
     this.keyboardType = TextInputType.text,
-    this.readOnly = false,
+    this.enabled = true,
+    this.hintText,
+    this.inputFormatters,
   });
 
   @override
@@ -24,14 +29,16 @@ class CustomInputField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: keyboardType,
-          readOnly: readOnly,
+          enabled: enabled,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
+            hintText: hintText,
             isDense: true,
             filled: true,
             fillColor: Colors.grey[200],
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          style: TextStyle(color: readOnly ? Colors.grey[600] : Colors.black),
+          style: TextStyle(color: enabled ? Colors.black : Colors.grey[600]),
         ),
       ],
     );

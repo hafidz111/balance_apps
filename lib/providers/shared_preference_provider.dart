@@ -5,13 +5,24 @@ import '../service/shared_preferences_service.dart';
 class SharedPreferenceProvider extends ChangeNotifier {
   final SharedPreferencesService _service;
 
-  SharedPreferenceProvider(this._service);
+  SharedPreferenceProvider(this._service) {
+    _load();
+  }
 
   bool _isLogin = false;
-  bool get isLogin => _isLogin;
 
-  Future init() async {
+  bool get isLogin => _isLogin;
+  String? _phoneNumber;
+  int? _shiftCount;
+
+  String? get phoneNumber => _phoneNumber;
+
+  int? get shiftCount => _shiftCount;
+
+  Future<void> _load() async {
     _isLogin = _service.isLogin;
+    _phoneNumber = _service.getPhoneNumber();
+    _shiftCount = _service.getShiftCount();
     notifyListeners();
   }
 
@@ -24,6 +35,18 @@ class SharedPreferenceProvider extends ChangeNotifier {
   Future logout() async {
     await _service.logout();
     _isLogin = false;
+    notifyListeners();
+  }
+
+  Future<void> savePhoneNumber(String phone) async {
+    await _service.savePhoneNumber(phone);
+    _phoneNumber = phone;
+    notifyListeners();
+  }
+
+  Future<void> saveShiftCount(int shift) async {
+    await _service.saveShiftCount(shift);
+    _shiftCount = shift;
     notifyListeners();
   }
 }

@@ -21,6 +21,8 @@ class SharedPreferencesService {
   static const sbStoreKey = 'sb_store_data';
   static const barcodeKey = 'barcode_list';
   static const keyLogin = "login";
+  static const phoneKey = "phone_number";
+  static const shiftKey = "shift_count";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
 
@@ -407,5 +409,21 @@ class SharedPreferencesService {
       barcodeKey,
       barcodes.map((e) => jsonEncode(e.toJson())).toList(),
     );
+  }
+
+  Future<void> savePhoneNumber(String phone) async {
+    await prefs.setString(phoneKey, phone);
+  }
+
+  String? getPhoneNumber() {
+    return prefs.getString(phoneKey);
+  }
+
+  Future<void> saveShiftCount(int shift) async {
+    await prefs.setInt(shiftKey, shift);
+  }
+
+  int? getShiftCount() {
+    return prefs.getInt(shiftKey);
   }
 }

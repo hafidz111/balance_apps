@@ -1,9 +1,13 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:balance/service/shared_preferences_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/model/say_bread_history.dart';
+import '../../providers/shared_preference_provider.dart';
 import '../../utils/date_format.dart';
+import '../../utils/number_format.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/shift_card.dart';
@@ -18,28 +22,62 @@ class SayBreadScreen extends StatefulWidget {
 }
 
 class _SayBreadScreenState extends State<SayBreadScreen> {
-  final s1Sales = TextEditingController();
-  final s1Qty = TextEditingController();
-  final s2Sales = TextEditingController();
-  final s2Qty = TextEditingController();
+  late List<TextEditingController> salesControllers;
+  late List<TextEditingController> qtyControllers;
+
+  static const int maxShift = 4;
+  int shiftCount = 2; // DEFAULT 2
   final akmLastMonth = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    s1Sales.addListener(_updateSummary);
-    s1Qty.addListener(_updateSummary);
-    s2Sales.addListener(_updateSummary);
-    s2Qty.addListener(_updateSummary);
+    salesControllers = List.generate(maxShift, (_) => TextEditingController());
+    qtyControllers = List.generate(maxShift, (_) => TextEditingController());
+
+    for (int i = 0; i < maxShift; i++) {
+      salesControllers[i].addListener(_updateSummary);
+      qtyControllers[i].addListener(_updateSummary);
+    }
     akmLastMonth.addListener(_updateSummary);
   }
 
-  int _toInt(TextEditingController c) => int.tryParse(c.text) ?? 0;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-  int get totalSales => _toInt(s1Sales) + _toInt(s2Sales);
+    final pref = context.watch<SharedPreferenceProvider>();
 
-  int get totalQty => _toInt(s1Qty) + _toInt(s2Qty);
+    final shift = pref.shiftCount ?? 2;
+
+    if (shiftCount != shift) {
+      setState(() {
+        shiftCount = shift.clamp(1, maxShift);
+      });
+    }
+  }
+
+  int _toInt(TextEditingController c) {
+    final clean = c.text.replaceAll('.', '');
+    return int.tryParse(clean) ?? 0;
+  }
+
+  int get totalSales {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(salesControllers[i]);
+    }
+    return total;
+  }
+
+  int get totalQty {
+    int total = 0;
+    for (int i = 0; i < shiftCount; i++) {
+      total += _toInt(qtyControllers[i]);
+    }
+    return total;
+  }
 
   String _rupiah(int value) {
     return value.toString().replaceAllMapped(
@@ -94,17 +132,21 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     final akmQty = history.fold(0, (sum, e) => sum + e.qty);
     final akmSales = history.fold(0, (sum, e) => sum + e.sales);
 
+    String shiftText = "";
+
+    for (int i = 0; i < shiftCount; i++) {
+      shiftText +=
+          """
+*Shift ${i + 1}* ```
+Sales : ${_rupiah(_toInt(salesControllers[i]))}
+Qty   : ${_toInt(qtyControllers[i])}```
+""";
+    }
     return """
 *$sbtitle*
 ```Tanggal $tgl```
 
-*Shift 1* ```
-Sales.     : ${_rupiah(_toInt(s1Sales))}
-Qty.        : ${_toInt(s1Qty)}```
-
-*Shift 2* ```
-Sales.     : ${_rupiah(_toInt(s2Sales))}
-Qty.        : ${_toInt(s2Qty)}```
+$shiftText
 
 *TOTAL*```
 Sales.     : ${_rupiah(totalSales)}
@@ -133,6 +175,16 @@ $historyText```
   }
 
   @override
+  void dispose() {
+    for (int i = 0; i < maxShift; i++) {
+      salesControllers[i].dispose();
+      qtyControllers[i].dispose();
+    }
+    akmLastMonth.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -140,57 +192,39 @@ $historyText```
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              ShiftCard(
-                title: "Shift 1",
-                accentColor: Colors.teal,
-                child: Row(
+              ...List.generate(shiftCount, (index) {
+                return Column(
                   children: [
-                    Expanded(
-                      child: CustomInputField(
-                        label: "Sales",
-                        controller: s1Sales,
-                        keyboardType: TextInputType.number,
+                    ShiftCard(
+                      title: "Shift ${index + 1}",
+                      accentColor:
+                          Colors.primaries[index % Colors.primaries.length],
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CustomInputField(
+                              label: "Sales",
+                              controller: salesControllers[index],
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [RupiahInputFormatter()],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: CustomInputField(
+                              label: "Qty",
+                              controller: qtyControllers[index],
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [RupiahInputFormatter()],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: CustomInputField(
-                        label: "Qty",
-                        controller: s1Qty,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
+                    const SizedBox(height: 16),
                   ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              ShiftCard(
-                title: "Shift 2",
-                accentColor: Colors.orange.shade200,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CustomInputField(
-                        label: "Sales",
-                        controller: s2Sales,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: CustomInputField(
-                        label: "Qty",
-                        controller: s2Qty,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
+                );
+              }),
 
               ShiftCard(
                 title: "Last Month",
@@ -199,6 +233,7 @@ $historyText```
                   label: "AKM Qty. Last Month",
                   controller: akmLastMonth,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
                 ),
               ),
 
@@ -215,29 +250,6 @@ $historyText```
 
               ActionButtons(
                 onSave: () async {
-                  final controllers = [
-                    s1Sales,
-                    s1Qty,
-                    s2Sales,
-                    s2Qty,
-                    akmLastMonth,
-                  ];
-                  final emptyFields = controllers
-                      .where((c) => c.text.trim().isEmpty)
-                      .toList();
-
-                  if (emptyFields.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Semua field harus diisi sebelum menyimpan!",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
                   final now = DateTime.now();
                   final tgl = now.year * 10000 + now.month * 100 + now.day;
 
@@ -262,49 +274,37 @@ $historyText```
                   await service.saveSayBread(data);
 
                   // ignore: use_build_context_synchronously
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Data Say Bread tersimpan")),
+                  CustomSnackBar.show(
+                    context,
+                    message: "Data Say Bread tersimpan",
+                    type: SnackType.success,
                   );
                 },
                 onWhatsApp: () async {
-                  final controllers = [
-                    s1Sales,
-                    s1Qty,
-                    s2Sales,
-                    s2Qty,
-                    akmLastMonth,
-                  ];
-                  final emptyFields = controllers
-                      .where((c) => c.text.trim().isEmpty)
-                      .toList();
+                  final text = await _buildWhatsAppMessage();
+                  final service = SharedPreferencesService();
+                  final phone = service.getPhoneNumber();
 
-                  if (emptyFields.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Semua field harus diisi sebelum mengirim WA!",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
+                  if (phone == null || phone.trim().isEmpty) {
+                    CustomSnackBar.show(
+                      context,
+                      message: "Nomor WhatsApp belum diatur di Settings",
+                      type: SnackType.error,
                     );
                     return;
                   }
-
-                  final text = await _buildWhatsAppMessage();
-
                   final uri = Uri.parse(
-                    "https://wa.me/6281290057505?text=${Uri.encodeComponent(text)}",
+                    "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
                   );
 
                   try {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     // ignore: use_build_context_synchronously
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Gagal membuka WhatsApp"),
-                        backgroundColor: Colors.red,
-                      ),
+                    CustomSnackBar.show(
+                      context,
+                      message: "Gagal membuka WhatsApp",
+                      type: SnackType.error,
                     );
                   }
                 },
