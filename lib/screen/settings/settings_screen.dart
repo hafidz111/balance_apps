@@ -2,12 +2,16 @@ import 'package:balance/screen/login/login_screen.dart';
 import 'package:balance/screen/main/main_screen.dart';
 import 'package:balance/screen/widgets/ads/rewarded_ads.dart';
 import 'package:balance/screen/widgets/custom_text_field.dart';
+import 'package:balance/service/barcode_firebase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
+import '../../service/shared_preferences_service.dart';
 import '../../utils/ads_helper.dart';
+import '../../utils/date_format.dart';
 import '../widgets/ads/banner_ads.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -28,6 +32,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isEditing = false;
   String? _originalPhone;
   bool _isLoaded = false;
+  DateTime? _syncCooldownUntil;
+  DateTime? _lastBackupTime;
+  DateTime? _lastSyncTime;
+
+  Future<void> _loadLastBackupTime() async {
+    final user = context.read<FirebaseAuthProvider>().profile;
+    if (user == null) return;
+
+    final service = BarcodeFirebaseService();
+    final shared = SharedPreferencesService();
+
+    final cache = await shared.getLastBackupTimeCache();
+    if (mounted && cache != null) {
+      setState(() => _lastBackupTime = cache);
+    }
+
+    try {
+      final serverTime = await service.getLastBackupTime(user.uid!);
+
+      if (serverTime != null) {
+        await shared.saveLastBackupTime(serverTime);
+
+        if (mounted) {
+          setState(() => _lastBackupTime = serverTime);
+        }
+      }
+    } on FirebaseException catch (e) {
+      if (e.code == "unavailable") {
+        CustomSnackBar.show(
+          context,
+          message: "Sedang offline, menampilkan data terakhir",
+          type: SnackType.error,
+        );
+      } else {
+        debugPrint("Firestore error: ${e.code}");
+      }
+    } catch (e) {
+      debugPrint("General error, pakai cache");
+    }
+  }
+
+  Future<void> _loadLastSyncTime() async {
+    final user = context.read<FirebaseAuthProvider>().profile;
+    if (user == null) return;
+
+    final service = BarcodeFirebaseService();
+    final shared = SharedPreferencesService();
+
+    final cache = await shared.getLastSyncTimeCache();
+
+    if (mounted && cache != null) {
+      setState(() => _lastSyncTime = cache);
+    }
+
+    try {
+      final serverTime = await service.getLastSyncTime(user.uid!);
+
+      if (serverTime != null) {
+        await shared.saveLastSyncTime(serverTime);
+
+        if (mounted) {
+          setState(() => _lastSyncTime = serverTime);
+        }
+      }
+    } on FirebaseException catch (e) {
+      if (e.code == "unavailable") {
+        CustomSnackBar.show(
+          context,
+          message: "Sedang offline, menampilkan data terakhir",
+          type: SnackType.error,
+        );
+      } else {
+        debugPrint("Firestore error: ${e.code}");
+      }
+    } catch (e) {
+      debugPrint("General error, pakai cache");
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -42,6 +124,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _originalPhone = pref.phoneNumber ?? "";
 
     _isLoaded = true;
+    _loadLastBackupTime();
+    _loadLastSyncTime();
   }
 
   Future<void> _saveSettings() async {
@@ -111,6 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const Color primaryTeal = Color(0xFF009688);
     final authProvider = context.watch<FirebaseAuthProvider>();
     final user = authProvider.profile;
+    final barcodeService = BarcodeFirebaseService();
 
     void _tapToSignOutOrLogin() async {
       final sharedPreferenceProvider = context.read<SharedPreferenceProvider>();
@@ -312,7 +397,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       "Sinkronkan data lokal dengan server",
                       style: TextStyle(color: Colors.grey, fontSize: 13),
                     ),
-                    const SizedBox(height: 20),
+
+                    if (_lastSyncTime != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          "Sync terakhir: ${formatDates(_lastSyncTime!)}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 12),
                     RewardedAds(
@@ -321,18 +418,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       loadingLabel: "Sedang Sync...",
                       icon: Icons.sync,
                       color: Colors.blue[700]!,
-                      enabled: isLoggedIn && !_isSyncing,
+                      enabled:
+                          isLoggedIn &&
+                          !_isSyncing &&
+                          (_syncCooldownUntil == null ||
+                              DateTime.now().isAfter(_syncCooldownUntil!)),
                       onRewarded: () async {
+                        if (_isSyncing) return;
+
                         setState(() => _isSyncing = true);
 
-                        // try {
-                        //   final backupProvider =
-                        //   context.read<BackupProvider>();
-                        //   await backupProvider.sync(user.uid!);
-                        // CustomSnackBar.show(context, message: "Sync berhasil", type: SnackType.success);
-                        // } finally {
-                        //   setState(() => _isSyncing = false);
-                        // }
+                        try {
+                          await barcodeService.syncBarcodes(user!.uid!);
+                          await _loadLastSyncTime();
+
+                          CustomSnackBar.show(
+                            context,
+                            message: "Sinkronisasi berhasil!",
+                            type: SnackType.success,
+                          );
+                        } catch (e) {
+                          final message = e.toString();
+
+                          if (message.contains("Belum ada backup di server") ||
+                              message.contains("Data kosong di server")) {
+                            setState(() {
+                              _syncCooldownUntil = DateTime.now().add(
+                                const Duration(minutes: 10),
+                              );
+                            });
+
+                            CustomSnackBar.show(
+                              context,
+                              message:
+                                  "Tidak ada data yang disinkronkan. Coba lagi 10 menit.",
+                              type: SnackType.error,
+                            );
+                          } else {
+                            CustomSnackBar.show(
+                              context,
+                              message: "Sync gagal: $e",
+                              type: SnackType.error,
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSyncing = false);
+                          }
+                        }
                       },
                     ),
                   ],
@@ -358,8 +491,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       "Cadangkan semua data aplikasi Anda",
                       style: TextStyle(color: Colors.grey, fontSize: 13),
                     ),
-                    const SizedBox(height: 20),
-
+                    if (_lastBackupTime != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          "Backup terakhir: ${formatDates(_lastBackupTime!)}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     RewardedAds(
                       adUnitId: AdsHelper.rewardedBackupAdUnitId,
@@ -369,22 +512,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: Colors.purple[700]!,
                       enabled: isLoggedIn && !_isBackingUp,
                       onRewarded: () async {
+                        final barcodes = await SharedPreferencesService()
+                            .getBarcodes();
+
+                        if (barcodes.isEmpty) {
+                          CustomSnackBar.show(
+                            context,
+                            message: "Tidak ada data untuk dibackup",
+                            type: SnackType.error,
+                          );
+
+                          setState(() {
+                            _isBackingUp = false;
+                          });
+
+                          return;
+                        }
+
                         setState(() => _isBackingUp = true);
 
-                        // try {
-                        //   final backupProvider =
-                        //   context.read<BackupProvider>();
-                        //
-                        //   await backupProvider.backup(user!.uid!);
-                        //
-                        //   CustomSnackBar.show(
-                        //     context,
-                        //     message: "Backup berhasil",
-                        //     type: SnackType.success,
-                        //   );
-                        // } finally {
-                        //   setState(() => _isBackingUp = false);
-                        // }
+                        try {
+                          await barcodeService.backupBarcodes(user!.uid!);
+                          await _loadLastBackupTime();
+
+                          CustomSnackBar.show(
+                            context,
+                            message: "Backup berhasil!",
+                            type: SnackType.success,
+                          );
+                        } catch (e) {
+                          CustomSnackBar.show(
+                            context,
+                            message: "Backup gagal: $e",
+                            type: SnackType.error,
+                          );
+                        } finally {
+                          setState(() => _isBackingUp = false);
+                        }
                       },
                     ),
                   ],

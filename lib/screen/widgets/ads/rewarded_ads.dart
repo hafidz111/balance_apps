@@ -1,3 +1,4 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -45,8 +46,20 @@ class _RewardedAdsState extends State<RewardedAds> {
           _rewardedAd = ad;
           setState(() => _isReady = true);
         },
-        onAdFailedToLoad: (_) {
+        onAdFailedToLoad: (error) {
           setState(() => _isReady = false);
+
+          Future.delayed(const Duration(seconds: 5), () {
+            _loadAd();
+          });
+
+          if (mounted) {
+            CustomSnackBar.show(
+              context,
+              message: "Iklan sedang tidak tersedia. Coba lagi dalam 1 jam.",
+              type: SnackType.error,
+            );
+          }
         },
       ),
     );
@@ -70,9 +83,17 @@ class _RewardedAdsState extends State<RewardedAds> {
         ad.dispose();
         _loadAd();
       },
-      onAdFailedToShowFullScreenContent: (ad, _) {
+      onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _loadAd();
+
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            message: "Iklan gagal ditampilkan. Coba lagi dalam 1 jam.",
+            type: SnackType.error,
+          );
+        }
       },
     );
   }

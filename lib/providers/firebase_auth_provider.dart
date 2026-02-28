@@ -14,7 +14,9 @@ class FirebaseAuthProvider extends ChangeNotifier {
   FirebaseAuthStatus _authStatus = FirebaseAuthStatus.unauthenticated;
 
   Profile? get profile => _profile;
+
   String? get message => _message;
+
   FirebaseAuthStatus get authStatus => _authStatus;
 
   Future createAccount(String email, String password) async {
@@ -25,7 +27,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
       await _service.createUser(email, password);
 
       _authStatus = FirebaseAuthStatus.accountCreated;
-      _message = "Create account is success";
+      _message = "Berhasil Buat Akun!";
     } catch (e) {
       _message = e.toString();
       _authStatus = FirebaseAuthStatus.error;
@@ -48,7 +50,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
       );
 
       _authStatus = FirebaseAuthStatus.authenticated;
-      _message = "Sign in is success";
+      _message = "Login Berhasil!";
     } catch (e) {
       _message = e.toString();
       _authStatus = FirebaseAuthStatus.error;
@@ -63,8 +65,10 @@ class FirebaseAuthProvider extends ChangeNotifier {
 
       await _service.signOut();
 
+      _profile = null;
+
       _authStatus = FirebaseAuthStatus.unauthenticated;
-      _message = "Sign out is success";
+      _message = "Logout Berhasil!";
     } catch (e) {
       _message = e.toString();
       _authStatus = FirebaseAuthStatus.error;

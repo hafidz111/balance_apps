@@ -439,4 +439,24 @@ class SharedPreferencesService {
   int? getShiftCount() {
     return prefs.getInt(shiftKey);
   }
+
+  Future<void> saveLastBackupTime(DateTime date) async {
+    await prefs.setString("last_backup_time", date.toIso8601String());
+  }
+
+  Future<DateTime?> getLastBackupTimeCache() async {
+    final value = prefs.getString("last_backup_time");
+    if (value == null) return null;
+    return DateTime.tryParse(value);
+  }
+
+  Future<void> saveLastSyncTime(DateTime date) async {
+    await prefs.setString("last_sync_time", date.toIso8601String());
+  }
+
+  Future<DateTime?> getLastSyncTimeCache() async {
+    final value = prefs.getString("last_sync_time");
+    if (value == null) return null;
+    return DateTime.tryParse(value);
+  }
 }
