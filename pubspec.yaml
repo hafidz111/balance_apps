@@ -13,6 +13,7 @@ dependencies:
   cloud_firestore: ^6.1.2
   cupertino_icons: ^1.0.8
   dio: ^5.9.1
+  excel: ^4.0.6
   file_picker: ^10.3.10
   firebase_analytics: ^12.1.2
   firebase_auth: ^6.1.4
@@ -48,3 +49,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/file/

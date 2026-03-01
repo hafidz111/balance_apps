@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:balance/screen/barcode/barcode_screen.dart';
 import 'package:balance/screen/history/history_screen.dart';
 import 'package:balance/screen/point_coffee/point_coffee_screen.dart';
+import 'package:balance/screen/schedule/schedule_screen.dart';
 import 'package:balance/screen/settings/settings_screen.dart';
 import 'package:balance/screen/store/store_screen.dart';
 import 'package:balance/screen/widgets/custom_snack_bar.dart';
@@ -42,6 +43,7 @@ class _MainScreenState extends State<MainScreen> {
     const HistoryScreen(),
     BarcodeScreen(key: ValueKey(_barcodeRefreshKey)),
     const GridPhotoScreen(),
+    const ScheduleScreen(),
     const SettingsScreen(),
   ];
 
@@ -52,6 +54,7 @@ class _MainScreenState extends State<MainScreen> {
     "History",
     "Barcode",
     "Space",
+    "Schedule",
     'Settings',
   ];
 
@@ -62,6 +65,7 @@ class _MainScreenState extends State<MainScreen> {
     Icons.history,
     Icons.qr_code,
     Icons.space_dashboard,
+    Icons.calendar_month,
     Icons.settings,
   ];
 
@@ -264,7 +268,7 @@ class _MainScreenState extends State<MainScreen> {
                       Navigator.pop(context);
 
                       if (isLogin) {
-                        _onItemTapped(6);
+                        _onItemTapped(7);
                       } else {
                         Navigator.push(
                           context,

@@ -26,6 +26,7 @@ class SharedPreferencesService {
   static const keyLogin = "login";
   static const phoneKey = "phone_number";
   static const shiftKey = "shift_count";
+  static const scheduleKey = "schedule_data";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
 
@@ -72,59 +73,6 @@ class SharedPreferencesService {
       }).toList();
 
       await saveBarcodes(fixed);
-    }
-  }
-
-  Future<Map<String, dynamic>> getAllLocalData() async {
-    final barcodes = await getBarcodes();
-    final pointCoffee = await getPointCoffee();
-    final sayBread = await getSayBread();
-    final pcStore = await getPointCoffeeStore();
-    final sbStore = await getSayBreadStore();
-
-    return {
-      "barcodes": barcodes.map((e) => e.toJson()).toList(),
-      "pointCoffee": pointCoffee.map((e) => e.toJson()).toList(),
-      "sayBread": sayBread.map((e) => e.toJson()).toList(),
-      "store": {
-        "point_coffee": pcStore?.toJson(),
-        "say_bread": sbStore?.toJson(),
-      },
-    };
-  }
-
-  Future<void> saveFromServer(Map<String, dynamic> data) async {
-    final barcodeList = (data['barcodes'] as List? ?? [])
-        .map((e) => BarcodeData.fromJson(e))
-        .toList();
-    await saveBarcodes(barcodeList);
-
-    final pcList = (data['pointCoffee'] as List? ?? [])
-        .map((e) => PointCoffeeHistory.fromJson(e))
-        .toList();
-
-    for (final item in pcList) {
-      await savePointCoffee(item);
-    }
-
-    final sbList = (data['sayBread'] as List? ?? [])
-        .map((e) => SayBreadHistory.fromJson(e))
-        .toList();
-
-    for (final item in sbList) {
-      await saveSayBread(item);
-    }
-
-    if (data['store'] != null) {
-      if (data['store']['point_coffee'] != null) {
-        await savePointCoffeeStore(
-          StoreData.fromJson(data['store']['point_coffee']),
-        );
-      }
-
-      if (data['store']['say_bread'] != null) {
-        await saveSayBreadStore(StoreData.fromJson(data['store']['say_bread']));
-      }
     }
   }
 
@@ -516,5 +464,39 @@ class SharedPreferencesService {
     final value = prefs.getString("last_sync_time");
     if (value == null) return null;
     return DateTime.tryParse(value);
+  }
+
+  Future<void> saveSchedules(Map<String, String> data) async {
+    await prefs.setString(scheduleKey, jsonEncode(data));
+  }
+
+  Future<Map<String, String>> getSchedules() async {
+    final jsonString = prefs.getString(scheduleKey);
+    if (jsonString == null) return {};
+    return Map<String, String>.from(jsonDecode(jsonString));
+  }
+
+  Future<void> setSchedule(String name, String date, String shift) async {
+    final schedules = await getSchedules();
+    schedules["${name}_$date"] = shift;
+    await saveSchedules(schedules);
+  }
+
+  Future<void> deleteSchedule(String name, String date) async {
+    final schedules = await getSchedules();
+    schedules.remove("${name}_$date");
+    await saveSchedules(schedules);
+  }
+
+  Future<void> clearSchedulesByMonth(int year, int month) async {
+    final schedules = await getSchedules();
+
+    final monthPrefix = "$year-${month.toString().padLeft(2, '0')}";
+
+    schedules.removeWhere((key, value) {
+      return key.contains(monthPrefix);
+    });
+
+    await saveSchedules(schedules);
   }
 }
