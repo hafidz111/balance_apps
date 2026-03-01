@@ -1,23 +1,25 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 
-import '../../data/model/point_coffe_history.dart';
-import '../../service/shared_preferences_service.dart';
-import 'dialog_input_field.dart';
+import '../../../data/model/say_bread_history.dart';
+import '../../../service/shared_preferences_service.dart';
+import '../../widgets/dialog_input_field.dart';
 
-class PointCoffeeDialog extends StatefulWidget {
-  final PointCoffeeHistory? editData;
+class SayBreadDialog extends StatefulWidget {
+  final SayBreadHistory? editData;
 
-  const PointCoffeeDialog({super.key, this.editData});
+  const SayBreadDialog({super.key, this.editData});
 
   @override
-  State<PointCoffeeDialog> createState() => _PointCoffeeDialogState();
+  State<SayBreadDialog> createState() => _SayBreadDialogState();
 }
 
-class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
+class _SayBreadDialogState extends State<SayBreadDialog> {
   final tglCtrl = TextEditingController();
-  final spdCtrl = TextEditingController();
-  final cupCtrl = TextEditingController();
+  final salesCtrl = TextEditingController();
+  final qtyCtrl = TextEditingController();
 
+  final _service = SharedPreferencesService();
   DateTime? selectedDate;
 
   int _toYmd(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
@@ -43,41 +45,71 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
 
   Future<void> _save() async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(
+      CustomSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Tanggal belum dipilih")));
+        message: "Tanggal belum dipilih",
+        type: SnackType.error,
+      );
       return;
     }
 
-    if (spdCtrl.text.trim().isEmpty || cupCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
+    if (salesCtrl.text.trim().isEmpty) {
+      CustomSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text("SPD dan CUP wajib diisi")));
+        message: "Total Sales wajib diisi",
+        type: SnackType.error,
+      );
       return;
     }
 
-    final spd = int.tryParse(spdCtrl.text);
-    final cup = int.tryParse(cupCtrl.text);
-
-    if (spd == null || cup == null) {
-      ScaffoldMessenger.of(
+    final sales = int.tryParse(salesCtrl.text);
+    if (sales == null) {
+      CustomSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text("SPD dan CUP harus angka")));
+        message: "Sales harus berupa angka",
+        type: SnackType.error,
+      );
+      return;
+    }
+
+    if (qtyCtrl.text.trim().isEmpty) {
+      CustomSnackBar.show(
+        context,
+        message: "Qty wajib diisi",
+        type: SnackType.error,
+      );
+      return;
+    }
+
+    final qty = int.tryParse(qtyCtrl.text);
+    if (qty == null) {
+      CustomSnackBar.show(
+        context,
+        message: "Qty harus berupa angka",
+        type: SnackType.error,
+      );
       return;
     }
 
     final tgl = _toYmd(selectedDate!);
 
-    final data = PointCoffeeHistory(
+    final data = SayBreadHistory(
       tgl: tgl,
-      spd: spd,
-      cup: cup,
-      akmCup: 0,
-      cpd: 0,
+      sales: sales,
+      qty: qty,
+      akmQty: 0,
+      akmSales: 0,
+      average: 0,
     );
 
-    await SharedPreferencesService().savePointCoffee(data);
+    await _service.saveSayBread(data);
     if (!mounted) return;
+    CustomSnackBar.show(
+      context,
+      message: "Data berhasil disimpan",
+      type: SnackType.success,
+    );
+
     Navigator.pop(context, true);
   }
 
@@ -98,8 +130,8 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
           "${selectedDate!.month.toString().padLeft(2, '0')}-"
           "${selectedDate!.year}";
 
-      spdCtrl.text = d.spd.toString();
-      cupCtrl.text = d.cup.toString();
+      salesCtrl.text = d.sales.toString();
+      qtyCtrl.text = d.qty.toString();
     }
   }
 
@@ -116,12 +148,13 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
             alignment: Alignment.center,
             child: Text(
               widget.editData == null
-                  ? "Tambah Data Point Coffee"
-                  : "Edit Data Point Coffee",
+                  ? "Tambah Data Say Bread"
+                  : "Edit Data Say Bread",
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
+
           Align(
             alignment: Alignment.centerRight,
             child: IconButton(
@@ -145,8 +178,8 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
                 readOnly: true,
                 onTap: _pickDate,
               ),
-              DialogInputField(label: "SPD", controller: spdCtrl),
-              DialogInputField(label: "CUP", controller: cupCtrl),
+              DialogInputField(label: "Total Sales", controller: salesCtrl),
+              DialogInputField(label: "Qty", controller: qtyCtrl),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -156,6 +189,7 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF009688),
                     foregroundColor: Colors.white,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

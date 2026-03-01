@@ -6,6 +6,7 @@ import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../static/firebase_auth_status.dart';
 import '../main/main_screen.dart';
+import '../widgets/custom_snack_bar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -139,8 +140,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = passC.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Isi email dan password dengan benar")),
+      CustomSnackBar.show(
+        context,
+        message: "Isi email dan password dengan benar",
+        type: SnackType.error,
       );
       return;
     }
@@ -170,9 +173,11 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
 
       default:
-        ScaffoldMessenger.of(
+        CustomSnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text("Login gagal")));
+          message: "Login gagal",
+          type: SnackType.error,
+        );
     }
   }
 

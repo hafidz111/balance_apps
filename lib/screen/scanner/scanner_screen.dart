@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../data/model/barcode_data.dart';
 import '../../service/shared_preferences_service.dart';
 import '../barcode/barcode_detail_screen.dart';
-import '../widgets/barcode_form.dart';
+import '../barcode/widgets/barcode_form.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});

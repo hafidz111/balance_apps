@@ -1,7 +1,8 @@
+import 'package:balance/screen/widgets/custom_snack_bar.dart';
 import 'package:balance/utils/date_format.dart';
 import 'package:flutter/material.dart';
 
-import 'custom_text_field.dart';
+import '../../widgets/custom_text_field.dart';
 
 class StoreCard extends StatefulWidget {
   final TextEditingController titleController;
@@ -98,11 +99,10 @@ class _StoreCardState extends State<StoreCard> {
     ];
 
     if (fields.any((c) => c.text.trim().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Semua field harus diisi sebelum menyimpan!"),
-          backgroundColor: Colors.red,
-        ),
+      CustomSnackBar.show(
+        context,
+        message: "Semua field harus diisi sebelum menyimpan!",
+        type: SnackType.error,
       );
       return;
     }

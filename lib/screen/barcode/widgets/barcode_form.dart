@@ -1,8 +1,9 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
-import '../../data/model/barcode_data.dart';
-import '../../service/shared_preferences_service.dart';
+import '../../../data/model/barcode_data.dart';
+import '../../../service/shared_preferences_service.dart';
+import '../../widgets/custom_snack_bar.dart';
 
 class BarcodeForm extends StatefulWidget {
   final String type;
@@ -45,9 +46,11 @@ class _BarcodeFormState extends State<BarcodeForm> {
     );
 
     if (codeC.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
+      CustomSnackBar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Kode tidak boleh kosong")));
+        message: "Kode tidak boleh kosong",
+        type: SnackType.error,
+      );
       return;
     }
 

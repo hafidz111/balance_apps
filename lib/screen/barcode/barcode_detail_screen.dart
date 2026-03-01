@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/model/barcode_data.dart';
 import '../../service/shared_preferences_service.dart';
-import '../widgets/barcode_form.dart';
+import 'widgets/barcode_form.dart';
 
 class BarcodeDetailScreen extends StatefulWidget {
   final BarcodeData barcode;

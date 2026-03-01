@@ -6,8 +6,8 @@ import '../../data/model/say_bread_history.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
-import '../widgets/point_coffe_dialog.dart';
-import '../widgets/say_bread_dialog.dart';
+import 'widgets/point_coffe_dialog.dart';
+import 'widgets/say_bread_dialog.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});

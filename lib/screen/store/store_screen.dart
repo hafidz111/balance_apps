@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/model/store_data.dart';
 import '../../service/shared_preferences_service.dart';
-import '../widgets/store_card.dart';
+import 'widgets/store_card.dart';
 
 class StoreScreen extends StatefulWidget {
   const StoreScreen({super.key});

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../data/model/barcode_data.dart';
 import '../../service/shared_preferences_service.dart';
 import '../scanner/scanner_screen.dart';
+import '../widgets/custom_snack_bar.dart';
 import 'barcode_detail_screen.dart';
 
 class BarcodeScreen extends StatefulWidget {
@@ -241,9 +242,11 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
               if (result != null) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(
+                CustomSnackBar.show(
                   context,
-                ).showSnackBar(SnackBar(content: Text("Barcode: $result")));
+                  message: "Barcode: $result",
+                  type: SnackType.success,
+                );
               }
             },
           ),
