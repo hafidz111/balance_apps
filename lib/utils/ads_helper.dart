@@ -50,4 +50,34 @@ class AdsHelper {
       throw UnsupportedError('Unsupported Platform');
     }
   }
+
+  static String get rewardedDownloadTemplateAdUnitId {
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-4122766238215136/6319852251';
+    } else if (Platform.isIOS) {
+      return '';
+    } else {
+      throw UnsupportedError('Unsupported Platform');
+    }
+  }
+
+  static String get rewardedImportTemplateAdUnitId {
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-4122766238215136/4226169824';
+    } else if (Platform.isIOS) {
+      return '';
+    } else {
+      throw UnsupportedError('Unsupported Platform');
+    }
+  }
+
+  static String get rewardedSaveScheduleAdUnitId {
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-4122766238215136/5006770582';
+    } else if (Platform.isIOS) {
+      return '';
+    } else {
+      throw UnsupportedError('Unsupported Platform');
+    }
+  }
 }

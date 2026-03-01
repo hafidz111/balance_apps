@@ -1,13 +1,16 @@
 import 'dart:io';
 
+import 'package:balance/utils/ads_helper.dart';
 import 'package:excel/excel.dart' as ex;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:screenshot/screenshot.dart';
 
 import '../../service/shared_preferences_service.dart';
+import '../widgets/ads/rewarded_ads.dart';
 import '../widgets/custom_snack_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -27,6 +30,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
   final int _activeYear = DateTime.now().year;
 
+  final ScreenshotController _screenshotController = ScreenshotController();
+  static const platform = MethodChannel('gallery_saver');
+  String _storeCode = "FBVO";
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +43,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _loadSchedules() async {
     _schedules = await _prefsService.getSchedules();
     _shiftCount = _prefsService.getShiftCount() ?? 2;
+
+    final store = await _prefsService.getPointCoffeeStore();
+    _storeCode = store?.kode.isNotEmpty == true ? store!.kode : "FBVO";
 
     setState(() {});
   }
@@ -278,6 +288,259 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  Future<bool> _requestGalleryPermission() async {
+    if (Platform.isAndroid) {
+      final storage = await Permission.storage.request();
+      final photos = await Permission.photos.request();
+
+      if (storage.isGranted || photos.isGranted) {
+        return true;
+      }
+
+      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    } else {
+      final photos = await Permission.photos.request();
+      if (photos.isGranted || photos.isLimited) {
+        return true;
+      }
+
+      if (photos.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      return false;
+    }
+  }
+
+  Future<void> _scanFile(String path) async {
+    if (Platform.isAndroid) {
+      try {
+        await platform.invokeMethod('scanFile', {"path": path});
+      } catch (e) {
+        debugPrint("Scan error: $e");
+      }
+    }
+  }
+
+  Future<void> _exportAsImage() async {
+    if (_employeeNames.isEmpty) {
+      CustomSnackBar.show(
+        context,
+        message: "Belum ada jadwal untuk diexport",
+        type: SnackType.error,
+      );
+      return;
+    }
+
+    try {
+      final hasPermission = await _requestGalleryPermission();
+      if (!hasPermission) {
+        CustomSnackBar.show(
+          context,
+          message: "Izin storage diperlukan",
+          type: SnackType.error,
+        );
+        return;
+      }
+
+      final Uint8List? image = await _screenshotController.captureFromWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: _buildExportLayoutOnly(),
+        ),
+        pixelRatio: 3.0,
+      );
+
+      if (image == null) return;
+
+      Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
+
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      final filePath =
+          "${directory.path}/balance_jadwal_${DateTime.now().millisecondsSinceEpoch}.png";
+
+      File file = File(filePath);
+      await file.writeAsBytes(image);
+
+      await _scanFile(file.path);
+
+      CustomSnackBar.show(
+        context,
+        message: "Berhasil disimpan ke Gallery",
+        type: SnackType.success,
+      );
+    } catch (e) {
+      debugPrint("Save error: $e");
+      CustomSnackBar.show(
+        context,
+        message: "Gagal menyimpan gambar",
+        type: SnackType.error,
+      );
+    }
+  }
+
+  Widget _buildExportLayoutOnly() {
+    final double nameWidth = 60;
+    final double dayWidth = 20;
+    final double fullWidth = nameWidth + (15 * dayWidth);
+
+    Widget buildTable(int startDay, int endDay) {
+      final dayCount = endDay - startDay + 1;
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              _buildExportCell('', width: nameWidth, isHeader: true),
+              _buildExportCell('', width: nameWidth, isHeader: true),
+              ..._employeeNames.map(
+                (name) =>
+                    _buildExportCell(name, width: nameWidth, isName: true),
+              ),
+            ],
+          ),
+
+          Column(
+            children: [
+              Row(
+                children: List.generate(
+                  dayCount,
+                  (i) => _buildExportCell(
+                    "${startDay + i}",
+                    width: dayWidth,
+                    isHeader: true,
+                  ),
+                ),
+              ),
+
+              Row(
+                children: List.generate(dayCount, (i) {
+                  final date = DateTime(
+                    _currentMonth.year,
+                    _currentMonth.month,
+                    startDay + i,
+                  );
+
+                  const days = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
+
+                  return _buildExportCell(
+                    days[date.weekday % 7],
+                    width: dayWidth,
+                    isHeader: true,
+                  );
+                }),
+              ),
+
+              ..._employeeNames.map((name) {
+                return Row(
+                  children: List.generate(dayCount, (i) {
+                    final day = startDay + i;
+
+                    final date = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month,
+                      day,
+                    );
+
+                    final dateString =
+                        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+                    final shift = _schedules["${name}_$dateString"] ?? "";
+
+                    return _buildExportCell(
+                      shift,
+                      width: dayWidth,
+                      isLibur: shift == "X",
+                    );
+                  }),
+                );
+              }),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Material(
+      color: Colors.white,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.topCenter,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: fullWidth,
+                child: Text(
+                  "$_storeCode - $_formattedMonth",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              buildTable(1, 15),
+
+              if (_daysInMonth > 15) ...[
+                const SizedBox(height: 16),
+                buildTable(16, _daysInMonth),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportCell(
+    String text, {
+    required double width,
+    bool isHeader = false,
+    bool isLibur = false,
+    bool isName = false,
+  }) {
+    Color bgColor = Colors.white;
+
+    if (isHeader) bgColor = Colors.green.shade300;
+    if (isLibur) bgColor = Colors.red;
+    if (isName) bgColor = _getColorForName(text);
+
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      // super kecil
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: Colors.grey.shade400, width: 0.5),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        style: TextStyle(
+          fontSize: 8, // sangat kecil
+          fontWeight: FontWeight.bold,
+          color: isLibur ? Colors.white : Colors.black,
+        ),
+        overflow: TextOverflow.clip,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -296,13 +559,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 children: [
                   Row(
                     children: [
-                      _headerButton(
-                        Icons.download,
-                        "Download Template",
-                        _exportExcel,
+                      RewardedAds(
+                        adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
+                        featureName: "download_template",
+                        customChild: _headerButton(
+                          Icons.download,
+                          "Download Template",
+                        ),
+                        onRewarded: () async {
+                          await _exportExcel();
+                        },
                       ),
                       const SizedBox(width: 8),
-                      _headerButton(Icons.upload, "Import Excel", _importExcel),
+                      RewardedAds(
+                        adUnitId: AdsHelper.rewardedImportTemplateAdUnitId,
+                        featureName: "import_excel",
+                        customChild: _headerButton(
+                          Icons.upload,
+                          "Import Excel",
+                        ),
+                        onRewarded: () async {
+                          await _importExcel();
+                        },
+                      ),
                       const SizedBox(width: 8),
                       SizedBox(
                         height: 40,
@@ -351,23 +630,53 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 12),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showAddShiftDialog(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text("Tambah Jadwal"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showAddShiftDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text("Tambah Jadwal"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+
+                      const SizedBox(width: 4),
+
+                      RewardedAds(
+                        adUnitId: AdsHelper.rewardedSaveScheduleAdUnitId,
+                        featureName: "export_image",
+                        icon: Icons.image,
+                        color: Colors.black,
+                        customChild: SizedBox(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: null,
+                            child: const Icon(Icons.image, color: Colors.black),
+                          ),
+                        ),
+                        onRewarded: () async {
+                          await _exportAsImage();
+                        },
+                      ),
+                    ],
                   ),
+
                   const SizedBox(height: 20),
 
                   Row(
@@ -409,11 +718,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _headerButton(IconData icon, String label, VoidCallback? onPressed) {
+  Widget _headerButton(IconData icon, String label) {
     return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(label),
+      onPressed: null,
+      icon: Icon(icon, color: Colors.black),
+      label: Text(label, style: TextStyle(color: Colors.black)),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         foregroundColor: Colors.black87,

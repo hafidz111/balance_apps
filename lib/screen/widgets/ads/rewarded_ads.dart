@@ -8,21 +8,23 @@ class RewardedAds extends StatefulWidget {
   final Future<void> Function() onRewarded;
   final String? label;
   final String? loadingLabel;
-  final IconData icon;
-  final Color color;
+  final IconData? icon;
+  final Color? color;
   final bool enabled;
   final String featureName;
+  final Widget? customChild;
 
   const RewardedAds({
     super.key,
     required this.adUnitId,
     required this.onRewarded,
-    required this.icon,
-    required this.color,
+    this.icon,
+    this.color,
     this.label,
     this.loadingLabel,
     this.enabled = true,
     required this.featureName,
+    this.customChild,
   });
 
   @override
@@ -155,6 +157,16 @@ class _RewardedAdsState extends State<RewardedAds> {
   Widget build(BuildContext context) {
     final bool canPress = widget.enabled && !_isProcessing;
 
+    if (widget.customChild != null) {
+      return AbsorbPointer(
+        absorbing: !canPress,
+        child: GestureDetector(
+          onTap: canPress ? _showAd : null,
+          child: widget.customChild!,
+        ),
+      );
+    }
+
     final bool hasLabel = widget.label != null;
 
     if (!hasLabel) {
@@ -169,7 +181,10 @@ class _RewardedAdsState extends State<RewardedAds> {
                   color: Colors.white,
                 ),
               )
-            : Icon(widget.icon, color: widget.color),
+            : Icon(
+                widget.icon ?? Icons.star,
+                color: widget.color ?? Theme.of(context).iconTheme.color,
+              ),
       );
     }
 
@@ -178,7 +193,10 @@ class _RewardedAdsState extends State<RewardedAds> {
       height: 48,
       child: ElevatedButton.icon(
         onPressed: canPress ? _showAd : null,
-        icon: Icon(_isProcessing ? Icons.hourglass_top : widget.icon, size: 18),
+        icon: Icon(
+          _isProcessing ? Icons.hourglass_top : (widget.icon),
+          size: 18,
+        ),
         label: Text(
           _isProcessing
               ? (widget.loadingLabel ?? widget.label!)
@@ -186,9 +204,12 @@ class _RewardedAdsState extends State<RewardedAds> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: widget.color,
+          backgroundColor: widget.color ?? Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: widget.color.withValues(alpha: 0.4),
+          disabledBackgroundColor:
+              (widget.color ?? Theme.of(context).primaryColor).withValues(
+                alpha: 0.4,
+              ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
