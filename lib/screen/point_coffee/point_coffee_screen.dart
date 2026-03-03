@@ -35,12 +35,18 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   static const int maxShift = 4;
   int shiftCount = 2;
 
+  late TextEditingController cpdManualController;
+  String? savedMonthKey;
+
   @override
   void initState() {
     super.initState();
     _loadStore();
     _initControllers();
     _loadDraft();
+    cpdManualController = TextEditingController();
+    cpdManualController.addListener(_saveCpdManual);
+    _loadCpdManual();
   }
 
   void _initControllers() {
@@ -118,7 +124,11 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   String _rupiahShort(int value) {
-    return (value / 1000000).toStringAsFixed(1);
+    final juta = value / 1000000;
+
+    final truncated = (juta * 10).floor() / 10;
+
+    return truncated.toStringAsFixed(1);
   }
 
   String _rupiah(int value) {
@@ -127,8 +137,6 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
       (m) => '${m[1]}.',
     );
   }
-
-  // String _number(int value) => value.toString();
 
   String _apc(int sales, int std) {
     if (std == 0) return "0";
@@ -150,16 +158,6 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     setState(() {});
   }
 
-  // String _calculateAPC(
-  //   TextEditingController salesCtrl,
-  //   TextEditingController stdCtrl,
-  // ) {
-  //   final sales = int.tryParse(salesCtrl.text) ?? 0;
-  //   final std = int.tryParse(stdCtrl.text) ?? 0;
-  //   if (std == 0) return "0.000";
-  //   return (sales / std).toStringAsFixed(3);
-  // }
-
   double get apc => totalStd == 0 ? 0 : totalSales / totalStd / 1000;
 
   Future<String> _buildMonthlyHistory() async {
@@ -178,14 +176,25 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     return buffer.toString();
   }
 
-  double _calculateCpdToday({
-    required List<PointCoffeeHistory> history,
-    required int todayCup,
-    required int dayOfMonth,
-  }) {
-    final akmCup = history.fold(0, (sum, e) => sum + e.cup) + todayCup;
-    if (dayOfMonth == 0) return 0;
-    return akmCup / dayOfMonth;
+  Future<void> _loadCpdManual() async {
+    final service = SharedPreferencesService();
+    final value = await service.getPointCoffeeCpdManual();
+
+    if (value != null) {
+      cpdManualController.text = value;
+    }
+  }
+
+  Future<void> _saveCpdManual() async {
+    final value = cpdManualController.text.trim();
+    final service = SharedPreferencesService();
+
+    if (value.isEmpty) {
+      await service.clearPointCoffeeCpdManual();
+      return;
+    }
+
+    await service.savePointCoffeeCpdManual(value);
   }
 
   @override
@@ -207,13 +216,13 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     final historyText = await _buildMonthlyHistory();
 
     final service = SharedPreferencesService();
-    final history = await service.getPointCoffee();
+    final manualCpd = await service.getPointCoffeeCpdManual();
 
-    final cpdNow = _calculateCpdToday(
-      history: history,
-      todayCup: totalCup,
-      dayOfMonth: today.day,
-    ).toStringAsFixed(0);
+    String? cpdNow;
+
+    if (manualCpd != null && manualCpd.isNotEmpty) {
+      cpdNow = manualCpd;
+    }
 
     final title = store?.title ?? "LAPORAN POINT COFFEE";
     final nama = store?.nama ?? "-";
@@ -253,7 +262,7 @@ Kode toko  = $kode
 Tgl GO     = $tglGo
 Area toko  = $area
 
-CPD: $cpdNow
+${cpdNow != null ? "CPD: $cpdNow\n" : ""}
 
 _Bulan berjalan :
 $blnIni
@@ -408,6 +417,23 @@ $historyText```
                   ],
                 );
               }),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: BoxBorder.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: CustomInputField(
+                  label: "CPD Bulan Lalu",
+                  controller: cpdManualController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               SummarySection(
                 rows: [

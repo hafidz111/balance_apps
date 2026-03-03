@@ -27,6 +27,8 @@ class SharedPreferencesService {
   static const phoneKey = "phone_number";
   static const shiftKey = "shift_count";
   static const scheduleKey = "schedule_data";
+  static const pcCpdManualKey = "pc_cpd_manual";
+  static const pcCpdMonthKey = "pc_cpd_month";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
 
@@ -498,5 +500,41 @@ class SharedPreferencesService {
     });
 
     await saveSchedules(schedules);
+  }
+
+  Future<void> savePointCoffeeCpdManual(String cpd) async {
+    final now = DateTime.now();
+    final monthKey = "${now.year}-${now.month}";
+
+    await prefs.setString(pcCpdManualKey, cpd);
+    await prefs.setString(pcCpdMonthKey, monthKey);
+
+    FirebaseAnalytics.instance.logEvent(
+      name: "point_coffee_cpd_manual_saved",
+    );
+  }
+
+  Future<String?> getPointCoffeeCpdManual() async {
+    final now = DateTime.now();
+    final currentMonthKey = "${now.year}-${now.month}";
+
+    final savedMonth = prefs.getString(pcCpdMonthKey);
+    final savedCpd = prefs.getString(pcCpdManualKey);
+
+    if (savedMonth == null || savedCpd == null) {
+      return null;
+    }
+
+    if (savedMonth != currentMonthKey) {
+      await clearPointCoffeeCpdManual();
+      return null;
+    }
+
+    return savedCpd;
+  }
+
+  Future<void> clearPointCoffeeCpdManual() async {
+    await prefs.remove(pcCpdManualKey);
+    await prefs.remove(pcCpdMonthKey);
   }
 }
