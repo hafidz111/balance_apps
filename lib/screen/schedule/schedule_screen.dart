@@ -522,7 +522,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: 2),
-      // super kecil
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bgColor,
@@ -559,32 +558,60 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 children: [
                   Row(
                     children: [
-                      RewardedAds(
-                        adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
-                        featureName: "download_template",
-                        customChild: _headerButton(
-                          Icons.download,
-                          "Download Template",
+                      Expanded(
+                        child: RewardedAds(
+                          adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
+                          featureName: "download_template",
+                          customChild: _headerButton(
+                            Icons.download,
+                            "Download Template",
+                          ),
+                          onRewarded: () async {
+                            await _exportExcel();
+                          },
                         ),
-                        onRewarded: () async {
-                          await _exportExcel();
-                        },
                       ),
                       const SizedBox(width: 8),
-                      RewardedAds(
-                        adUnitId: AdsHelper.rewardedImportTemplateAdUnitId,
-                        featureName: "import_excel",
-                        customChild: _headerButton(
-                          Icons.upload,
-                          "Import Excel",
+                      Expanded(
+                        child: RewardedAds(
+                          adUnitId: AdsHelper.rewardedImportTemplateAdUnitId,
+                          featureName: "import_excel",
+                          customChild: _headerButton(
+                            Icons.upload,
+                            "Import Excel",
+                          ),
+                          onRewarded: () async {
+                            await _importExcel();
+                          },
                         ),
-                        onRewarded: () async {
-                          await _importExcel();
-                        },
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showAddShiftDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text("Tambah Jadwal"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(width: 8),
+
                       SizedBox(
                         height: 40,
+                        width: 48,
                         child: OutlinedButton(
                           onPressed: () async {
                             final confirm = await showDialog<bool>(
@@ -615,42 +642,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           },
                           style: OutlinedButton.styleFrom(
                             padding: EdgeInsets.zero,
-                            minimumSize: const Size(40, 40),
                             side: const BorderSide(color: Colors.red),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           child: const Icon(
                             Icons.delete_outline,
                             color: Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showAddShiftDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text("Tambah Jadwal"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
                           ),
                         ),
                       ),
 
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 8),
 
                       RewardedAds(
                         adUnitId: AdsHelper.rewardedSaveScheduleAdUnitId,
