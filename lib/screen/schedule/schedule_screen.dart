@@ -531,7 +531,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         text,
         maxLines: 1,
         style: TextStyle(
-          fontSize: 8, // sangat kecil
+          fontSize: 8,
           fontWeight: FontWeight.bold,
           color: isLibur ? Colors.white : Colors.black,
         ),
@@ -558,18 +558,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: RewardedAds(
-                          adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
-                          featureName: "download_template",
-                          customChild: _headerButton(
-                            Icons.download,
-                            "Download Template",
-                          ),
-                          onRewarded: () async {
-                            await _exportExcel();
-                          },
+                      RewardedAds(
+                        adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
+                        featureName: "download_template",
+                        customChild: _headerButton(
+                          Icons.download,
+                          "Download Template",
                         ),
+                        onRewarded: () async {
+                          await _exportExcel();
+                        },
                       ),
                       const SizedBox(width: 8),
                       Expanded(
