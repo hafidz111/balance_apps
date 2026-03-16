@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:balance/utils/ads_helper.dart';
 import 'package:excel/excel.dart' as ex;
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
 
@@ -100,14 +100,68 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final monthPrefix =
         "${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}";
 
-    final names = _schedules.keys
-        .where((key) => key.contains(monthPrefix))
-        .map((e) => e.split("_").first)
-        .toSet()
+    final seen = <String>{};
+    final names = <String>[];
+
+    for (final key in _schedules.keys) {
+      if (!key.contains(monthPrefix)) continue;
+
+      final name = key.split("_").first;
+
+      if (!seen.contains(name)) {
+        seen.add(name);
+        names.add(name);
+      }
+    }
+
+    return names;
+  }
+
+  Future<void> _deleteEmployee(String name) async {
+    final schedules = await _prefsService.getSchedules();
+
+    final keysToDelete = schedules.keys
+        .where((key) => key.startsWith("${name}_"))
         .toList();
 
-    names.sort();
-    return names;
+    for (final key in keysToDelete) {
+      final date = key.split("_")[1];
+      await _prefsService.deleteSchedule(name, date);
+    }
+
+    await _loadSchedules();
+
+    if (!mounted) return;
+
+    CustomSnackBar.show(
+      context,
+      message: "$name berhasil dihapus",
+      type: SnackType.success,
+    );
+  }
+
+  Future<void> _confirmDeleteEmployee(String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Hapus Karyawan"),
+        content: Text("Semua jadwal $name akan dihapus."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Hapus"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _deleteEmployee(name);
+    }
   }
 
   final List<Color> _nameColors = [
@@ -159,30 +213,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _exportExcel() async {
-    await Permission.storage.request();
+    try {
+      final byteData = await rootBundle.load('assets/file/schedule.xlsx');
+      final bytes = byteData.buffer.asUint8List();
 
-    final byteData = await rootBundle.load('assets/file/schedule.xlsx');
-    final bytes = byteData.buffer.asUint8List();
+      await FileSaver.instance.saveFile(
+        name: "balance_schedule",
+        bytes: bytes,
+        fileExtension: "xlsx",
+        mimeType: MimeType.microsoftExcel,
+      );
 
-    Directory? directory;
+      if (!mounted) return;
 
-    if (Platform.isAndroid) {
-      directory = Directory('/storage/emulated/0/Download');
-    } else {
-      directory = await getApplicationDocumentsDirectory();
+      CustomSnackBar.show(
+        context,
+        message: "Template berhasil di download",
+        type: SnackType.success,
+      );
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        message: "Download gagal",
+        type: SnackType.error,
+      );
     }
-
-    final file = File('${directory.path}/balance_jadwal.xlsx');
-
-    await file.writeAsBytes(bytes);
-
-    if (!mounted) return;
-
-    CustomSnackBar.show(
-      context,
-      message: "Template berhasil di download",
-      type: SnackType.success,
-    );
   }
 
   Future<void> _importExcel() async {
@@ -809,7 +864,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               _buildFixedCell('', isHeader: true),
               _buildFixedCell('', isHeader: true),
               ..._employeeNames.map(
-                (name) => _buildFixedCell(name, isHeader: false, isName: true),
+                (name) => GestureDetector(
+                  onTap: () => _confirmDeleteEmployee(name),
+                  child: _buildFixedCell(name, isHeader: false, isName: true),
+                ),
               ),
             ],
           ),
