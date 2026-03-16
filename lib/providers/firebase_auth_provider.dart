@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 
 import '../data/model/profile.dart';
 import '../service/firebase_auth_service.dart';
+import '../service/premium_service.dart';
+import '../service/purchase_service.dart';
 import '../static/firebase_auth_status.dart';
 
 class FirebaseAuthProvider extends ChangeNotifier {
@@ -13,6 +15,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
   String? _message;
   Profile? _profile;
   FirebaseAuthStatus _authStatus = FirebaseAuthStatus.unauthenticated;
+  final PurchaseService _purchaseService = PurchaseService();
 
   Profile? get profile => _profile;
 
@@ -50,6 +53,10 @@ class FirebaseAuthProvider extends ChangeNotifier {
         photoUrl: result.user?.photoURL,
       );
 
+      await _purchaseService.init();
+
+      await PremiumService.isPremium();
+
       _authStatus = FirebaseAuthStatus.authenticated;
       _message = "Login Berhasil!";
       FirebaseAnalytics.instance.logEvent(name: "login_success");
@@ -67,6 +74,10 @@ class FirebaseAuthProvider extends ChangeNotifier {
       notifyListeners();
 
       await _service.signOut();
+
+      _purchaseService.dispose();
+
+      PremiumService.reset();
 
       _profile = null;
 

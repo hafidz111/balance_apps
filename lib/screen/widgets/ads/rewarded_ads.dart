@@ -3,6 +3,8 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../../../service/premium_service.dart';
+
 class RewardedAds extends StatefulWidget {
   final String adUnitId;
   final Future<void> Function() onRewarded;
@@ -13,6 +15,7 @@ class RewardedAds extends StatefulWidget {
   final bool enabled;
   final String featureName;
   final Widget? customChild;
+  final String interstitialAdUnitId;
 
   const RewardedAds({
     super.key,
@@ -25,6 +28,7 @@ class RewardedAds extends StatefulWidget {
     this.enabled = true,
     required this.featureName,
     this.customChild,
+    required this.interstitialAdUnitId,
   });
 
   @override
@@ -38,10 +42,27 @@ class _RewardedAdsState extends State<RewardedAds> {
   bool _isReady = false;
   bool _isProcessing = false;
 
+  InterstitialAd? _interstitialAd;
+  bool _isInterstitialReady = false;
+
+  bool _isPremium = false;
+
   @override
   void initState() {
     super.initState();
-    _loadAd();
+
+    _checkPremium().then((_) {
+      if (!_isPremium) {
+        _loadAd();
+        _loadInterstitial();
+      }
+    });
+  }
+
+  Future<void> _checkPremium() async {
+    _isPremium = PremiumService.cachedPremium
+        ? true
+        : await PremiumService.isPremium();
   }
 
   void _loadAd() {
@@ -98,15 +119,16 @@ class _RewardedAdsState extends State<RewardedAds> {
     setState(() => _isProcessing = true);
     await Future.delayed(const Duration(milliseconds: 300));
 
-    if (_rewardedAd == null || !_isReady) {
-      if (!mounted) return;
-      CustomSnackBar.show(
-        context,
-        message: "Iklan sedang tidak tersedia. Coba lagi nanti.",
-        type: SnackType.error,
-      );
+    if (_isPremium) {
+      await widget.onRewarded();
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+      return;
+    }
 
-      setState(() => _isProcessing = false);
+    if (_rewardedAd == null || !_isReady) {
+      await _showInterstitialFallback();
       return;
     }
 
@@ -151,6 +173,66 @@ class _RewardedAdsState extends State<RewardedAds> {
         await widget.onRewarded();
       },
     );
+  }
+
+  void _loadInterstitial() {
+    InterstitialAd.load(
+      adUnitId: widget.interstitialAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+          _isInterstitialReady = true;
+
+          _analytics.logEvent(
+            name: "interstitial_loaded",
+            parameters: {"feature": widget.featureName},
+          );
+        },
+        onAdFailedToLoad: (error) {
+          _isInterstitialReady = false;
+
+          _analytics.logEvent(
+            name: "interstitial_failed",
+            parameters: {"error": error.code},
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showInterstitialFallback() async {
+    if (_interstitialAd == null || !_isInterstitialReady) {
+      CustomSnackBar.show(
+        context,
+        message: "Iklan sedang tidak tersedia.",
+        type: SnackType.error,
+      );
+
+      setState(() => _isProcessing = false);
+      return;
+    }
+
+    _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) async {
+        ad.dispose();
+        _loadInterstitial();
+
+        await widget.onRewarded();
+
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        _loadInterstitial();
+
+        setState(() => _isProcessing = false);
+      },
+    );
+
+    _interstitialAd!.show();
   }
 
   @override

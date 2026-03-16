@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
 
+import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../widgets/ads/rewarded_ads.dart';
 import '../widgets/custom_snack_bar.dart';
@@ -558,30 +559,48 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 children: [
                   Row(
                     children: [
-                      RewardedAds(
-                        adUnitId: AdsHelper.rewardedDownloadTemplateAdUnitId,
-                        featureName: "download_template",
-                        customChild: _headerButton(
-                          Icons.download,
-                          "Download Template",
-                        ),
-                        onRewarded: () async {
-                          await _exportExcel();
-                        },
-                      ),
+                      PremiumService.cachedPremium
+                          ? _headerButton(
+                              Icons.download,
+                              "Download Template",
+                              onTap: _exportExcel,
+                            )
+                          : RewardedAds(
+                              adUnitId:
+                                  AdsHelper.rewardedDownloadTemplateAdUnitId,
+                              interstitialAdUnitId: AdsHelper
+                                  .rewardedDownloadScheduleTemplateAdUnitId,
+                              featureName: "download_template",
+                              customChild: _headerButton(
+                                Icons.download,
+                                "Download Template",
+                              ),
+                              onRewarded: () async {
+                                await _exportExcel();
+                              },
+                            ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: RewardedAds(
-                          adUnitId: AdsHelper.rewardedImportTemplateAdUnitId,
-                          featureName: "import_excel",
-                          customChild: _headerButton(
-                            Icons.upload,
-                            "Import Excel",
-                          ),
-                          onRewarded: () async {
-                            await _importExcel();
-                          },
-                        ),
+                        child: PremiumService.cachedPremium
+                            ? _headerButton(
+                                Icons.upload,
+                                "Import Excel",
+                                onTap: _importExcel,
+                              )
+                            : RewardedAds(
+                                adUnitId:
+                                    AdsHelper.rewardedImportTemplateAdUnitId,
+                                interstitialAdUnitId:
+                                    AdsHelper.rewardedImportScheduleAdUnitId,
+                                featureName: "import_excel",
+                                customChild: _headerButton(
+                                  Icons.upload,
+                                  "Import Excel",
+                                ),
+                                onRewarded: () async {
+                                  await _importExcel();
+                                },
+                              ),
                       ),
                     ],
                   ),
@@ -654,28 +673,52 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                       const SizedBox(width: 8),
 
-                      RewardedAds(
-                        adUnitId: AdsHelper.rewardedSaveScheduleAdUnitId,
-                        featureName: "export_image",
-                        icon: Icons.image,
-                        color: Colors.black,
-                        customChild: SizedBox(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              side: BorderSide(color: Colors.grey.shade300),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                      PremiumService.cachedPremium
+                          ? SizedBox(
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: _exportAsImage,
+                                child: const Icon(
+                                  Icons.image,
+                                  color: Colors.black,
+                                ),
                               ),
+                            )
+                          : RewardedAds(
+                              adUnitId: AdsHelper.rewardedSaveScheduleAdUnitId,
+                              interstitialAdUnitId:
+                                  AdsHelper.rewardedExportScheduleAdUnitId,
+                              featureName: "export_image",
+                              icon: Icons.image,
+                              color: Colors.black,
+                              customChild: SizedBox(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: null,
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                              onRewarded: () async {
+                                await _exportAsImage();
+                              },
                             ),
-                            onPressed: null,
-                            child: const Icon(Icons.image, color: Colors.black),
-                          ),
-                        ),
-                        onRewarded: () async {
-                          await _exportAsImage();
-                        },
-                      ),
                     ],
                   ),
 
@@ -720,9 +763,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _headerButton(IconData icon, String label) {
+  Widget _headerButton(IconData icon, String label, {VoidCallback? onTap}) {
     return OutlinedButton.icon(
-      onPressed: null,
+      onPressed: onTap,
       icon: Icon(icon, color: Colors.black),
       label: Text(label, style: TextStyle(color: Colors.black)),
       style: OutlinedButton.styleFrom(

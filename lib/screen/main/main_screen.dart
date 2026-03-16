@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
+import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../utils/ads_helper.dart';
 import '../grid_photo/grid_photo_screen.dart';
@@ -226,20 +227,38 @@ class _MainScreenState extends State<MainScreen> {
         ),
         actions: _selectedIndex == 4
             ? [
-                RewardedAds(
-                  featureName: "export",
-                  adUnitId: AdsHelper.rewardedExportAdUnitId,
-                  onRewarded: _exportBarcodes,
-                  icon: Icons.upload_file,
-                  color: Colors.white,
-                ),
-                RewardedAds(
-                  featureName: "import",
-                  adUnitId: AdsHelper.rewardedImportAdUnitId,
-                  onRewarded: _importBarcodes,
-                  icon: Icons.download,
-                  color: Colors.white,
-                ),
+                PremiumService.cachedPremium
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.upload_file,
+                          color: Colors.white,
+                        ),
+                        onPressed: _exportBarcodes,
+                      )
+                    : RewardedAds(
+                        featureName: "export",
+                        adUnitId: AdsHelper.rewardedExportAdUnitId,
+                        interstitialAdUnitId:
+                            AdsHelper.rewardedExportBarcodeAdUnitId,
+                        onRewarded: _exportBarcodes,
+                        icon: Icons.upload_file,
+                        color: Colors.white,
+                      ),
+
+                PremiumService.cachedPremium
+                    ? IconButton(
+                        icon: const Icon(Icons.download, color: Colors.white),
+                        onPressed: _importBarcodes,
+                      )
+                    : RewardedAds(
+                        featureName: "import",
+                        adUnitId: AdsHelper.rewardedImportAdUnitId,
+                        interstitialAdUnitId:
+                            AdsHelper.rewardedImportBarcodeAdUnitId,
+                        onRewarded: _importBarcodes,
+                        icon: Icons.download,
+                        color: Colors.white,
+                      ),
               ]
             : [],
       ),

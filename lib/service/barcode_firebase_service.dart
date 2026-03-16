@@ -1,24 +1,26 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 import '../data/model/barcode_data.dart';
 import 'shared_preferences_service.dart';
 
 class BarcodeFirebaseService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseDatabase _database = FirebaseDatabase.instanceFor(
+    app: Firebase.app(),
+    databaseURL:
+        "https://balance-apps-991c6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  );
+
+  late final DatabaseReference _db = _database.ref();
 
   Future<void> backupBarcodes(String uid) async {
     final barcodes = await SharedPreferencesService().getBarcodes();
 
-    await _firestore
-        .collection("users")
-        .doc(uid)
-        .collection("barcode_backup")
-        .doc("latest")
-        .set({
-          "barcodes": barcodes.map((e) => e.toJson()).toList(),
-          "updatedAt": FieldValue.serverTimestamp(),
-        });
+    await _db.child("users/$uid/barcode_backup/latest").set({
+      "barcodes": barcodes.map((e) => e.toJson()).toList(),
+      "updatedAt": ServerValue.timestamp,
+    });
 
     final now = DateTime.now();
     await SharedPreferencesService().saveLastBackupTime(now);
@@ -27,41 +29,35 @@ class BarcodeFirebaseService {
   }
 
   Future<DateTime?> getLastBackupTime(String uid) async {
-    final doc = await _firestore
-        .collection("users")
-        .doc(uid)
-        .collection("barcode_backup")
-        .doc("latest")
+    final snapshot = await _db
+        .child("users/$uid/barcode_backup/latest/updatedAt")
         .get();
 
-    if (!doc.exists) return null;
+    if (!snapshot.exists) return null;
 
-    final timestamp = doc.data()?["updatedAt"];
+    final timestamp = snapshot.value as int;
 
-    if (timestamp == null) return null;
-
-    return (timestamp as Timestamp).toDate();
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
   Future<void> syncBarcodes(String uid) async {
-    final doc = await _firestore
-        .collection("users")
-        .doc(uid)
-        .collection("barcode_backup")
-        .doc("latest")
+    final snapshot = await _db
+        .child("users/$uid/barcode_backup/latest/barcodes")
         .get();
 
-    if (!doc.exists) {
+    if (!snapshot.exists) {
       throw Exception("Belum ada backup di server");
     }
 
-    final data = doc.data()?["barcodes"] as List?;
+    final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
       throw Exception("Data kosong di server");
     }
 
-    final firebaseBarcodes = data.map((e) => BarcodeData.fromJson(e)).toList();
+    final firebaseBarcodes = data
+        .map((e) => BarcodeData.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
 
     final localBarcodes = await SharedPreferencesService().getBarcodes();
 
@@ -77,12 +73,9 @@ class BarcodeFirebaseService {
 
     await SharedPreferencesService().saveBarcodes(merged);
 
-    await _firestore
-        .collection("users")
-        .doc(uid)
-        .collection("barcode_backup")
-        .doc("latest")
-        .update({"lastSyncAt": FieldValue.serverTimestamp()});
+    await _db
+        .child("users/$uid/barcode_backup/latest/lastSyncAt")
+        .set(ServerValue.timestamp);
 
     final now = DateTime.now();
     await SharedPreferencesService().saveLastSyncTime(now);
@@ -91,19 +84,14 @@ class BarcodeFirebaseService {
   }
 
   Future<DateTime?> getLastSyncTime(String uid) async {
-    final doc = await _firestore
-        .collection("users")
-        .doc(uid)
-        .collection("barcode_backup")
-        .doc("latest")
+    final snapshot = await _db
+        .child("users/$uid/barcode_backup/latest/lastSyncAt")
         .get();
 
-    if (!doc.exists) return null;
+    if (!snapshot.exists) return null;
 
-    final timestamp = doc.data()?["lastSyncAt"];
+    final timestamp = snapshot.value as int;
 
-    if (timestamp == null) return null;
-
-    return (timestamp as Timestamp).toDate();
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 }

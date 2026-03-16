@@ -10,7 +10,6 @@ environment:
 
 dependencies:
   barcode_widget: ^2.0.4
-  cloud_firestore: ^6.1.2
   cupertino_icons: ^1.0.8
   dio: ^5.9.1
   excel: ^4.0.6
@@ -18,10 +17,12 @@ dependencies:
   firebase_analytics: ^12.1.2
   firebase_auth: ^6.1.4
   firebase_core: ^4.4.0
+  firebase_database: ^12.1.4
   flutter:
     sdk: flutter
   google_mobile_ads: ^7.0.0
   image_picker: ^1.2.1
+  in_app_purchase: ^3.2.3
   mobile_scanner: ^7.1.4
   package_info_plus: ^9.0.0
   path_provider: ^2.1.5

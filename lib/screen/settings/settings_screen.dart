@@ -3,13 +3,15 @@ import 'package:balance/screen/main/main_screen.dart';
 import 'package:balance/screen/widgets/ads/rewarded_ads.dart';
 import 'package:balance/screen/widgets/custom_text_field.dart';
 import 'package:balance/service/barcode_firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/shared_preference_provider.dart';
+import '../../service/premium_service.dart';
+import '../../service/purchase_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../utils/ads_helper.dart';
 import '../../utils/date_format.dart';
@@ -77,17 +79,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } on FirebaseException catch (e) {
-      if (e.code == "unavailable") {
+      if (e.code == "network-error") {
         CustomSnackBar.show(
           context,
           message: "Sedang offline, menampilkan data terakhir",
           type: SnackType.error,
         );
       } else {
-        debugPrint("Firestore error: ${e.code}");
+        debugPrint("Realtime DB error: ${e.code}");
       }
-    } catch (e) {
-      debugPrint("General error, pakai cache");
     }
   }
 
@@ -115,14 +115,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } on FirebaseException catch (e) {
-      if (e.code == "unavailable") {
+      if (e.code == "network-error") {
         CustomSnackBar.show(
           context,
           message: "Sedang offline, menampilkan data terakhir",
           type: SnackType.error,
         );
       } else {
-        debugPrint("Firestore error: ${e.code}");
+        debugPrint("Realtime DB error: ${e.code}");
       }
     } catch (e) {
       debugPrint("General error, pakai cache");
@@ -211,6 +211,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _buyRemoveAds() async {
+    try {
+      final purchaseService = PurchaseService();
+
+      await purchaseService.buyRemoveAds();
+      await PremiumService.isPremium();
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        message: "Pembelian gagal",
+        type: SnackType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color primaryTeal = Color(0xFF009688);
@@ -227,6 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .signOutUser()
             .then((value) async {
               await sharedPreferenceProvider.logout();
+              PremiumService.reset();
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -266,7 +284,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              const BannerAds(),
+              if (!PremiumService.cachedPremium) const BannerAds(),
+              const SizedBox(height: 8),
+              if (!PremiumService.cachedPremium)
+                _buildButton(
+                  label: "Hapus Iklan (Sekali Bayar)",
+                  icon: Icons.workspace_premium,
+                  color: Colors.amber[700]!,
+                  onPressed: _buyRemoveAds,
+                ),
               const SizedBox(height: 16),
               _buildSectionCard(
                 child: Column(
@@ -497,6 +523,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(color: Colors.grey, fontSize: 13),
                     ),
 
+                    const SizedBox(height: 12),
+                    if (PremiumService.cachedPremium)
+                      _buildButton(
+                        label: "Sinkronkan Sekarang",
+                        icon: Icons.sync,
+                        color: Colors.blue[700]!,
+                        onPressed: () async {
+                          if (user == null) return;
+
+                          await barcodeService.syncBarcodes(user.uid!);
+                          await _loadLastSyncTime();
+                        },
+                      )
+                    else
+                      RewardedAds(
+                        featureName: "sync",
+                        adUnitId: AdsHelper.rewardedSyncAdUnitId,
+                        interstitialAdUnitId:
+                            AdsHelper.rewardedSyncDataAdUnitId,
+                        label: "Sinkronkan Sekarang",
+                        loadingLabel: "Sedang Sync...",
+                        icon: Icons.sync,
+                        color: Colors.blue[700]!,
+                        enabled:
+                            isLoggedIn &&
+                            !_isSyncing &&
+                            (_syncCooldownUntil == null ||
+                                DateTime.now().isAfter(_syncCooldownUntil!)),
+                        onRewarded: () async {
+                          if (_isSyncing) return;
+
+                          setState(() => _isSyncing = true);
+
+                          try {
+                            await barcodeService.syncBarcodes(user!.uid!);
+                            await _loadLastSyncTime();
+
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "sync_success",
+                            );
+
+                            CustomSnackBar.show(
+                              context,
+                              message: "Sinkronisasi berhasil!",
+                              type: SnackType.success,
+                            );
+                          } catch (e) {
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "sync_failed",
+                            );
+
+                            final message = e.toString();
+
+                            if (message.contains(
+                                  "Belum ada backup di server",
+                                ) ||
+                                message.contains("Data kosong di server")) {
+                              setState(() {
+                                _syncCooldownUntil = DateTime.now().add(
+                                  const Duration(minutes: 10),
+                                );
+                              });
+
+                              CustomSnackBar.show(
+                                context,
+                                message:
+                                    "Tidak ada data yang disinkronkan. Coba lagi 10 menit.",
+                                type: SnackType.error,
+                              );
+                            } else {
+                              CustomSnackBar.show(
+                                context,
+                                message: "Sync gagal: $e",
+                                type: SnackType.error,
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSyncing = false);
+                            }
+                          }
+                        },
+                      ),
                     if (_lastSyncTime != null) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -509,73 +618,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ],
-
-                    const SizedBox(height: 12),
-                    RewardedAds(
-                      featureName: "sync",
-                      adUnitId: AdsHelper.rewardedSyncAdUnitId,
-                      label: "Sinkronkan Sekarang",
-                      loadingLabel: "Sedang Sync...",
-                      icon: Icons.sync,
-                      color: Colors.blue[700]!,
-                      enabled:
-                          isLoggedIn &&
-                          !_isSyncing &&
-                          (_syncCooldownUntil == null ||
-                              DateTime.now().isAfter(_syncCooldownUntil!)),
-                      onRewarded: () async {
-                        if (_isSyncing) return;
-
-                        setState(() => _isSyncing = true);
-
-                        try {
-                          await barcodeService.syncBarcodes(user!.uid!);
-                          await _loadLastSyncTime();
-
-                          FirebaseAnalytics.instance.logEvent(
-                            name: "sync_success",
-                          );
-
-                          CustomSnackBar.show(
-                            context,
-                            message: "Sinkronisasi berhasil!",
-                            type: SnackType.success,
-                          );
-                        } catch (e) {
-                          FirebaseAnalytics.instance.logEvent(
-                            name: "sync_failed",
-                          );
-
-                          final message = e.toString();
-
-                          if (message.contains("Belum ada backup di server") ||
-                              message.contains("Data kosong di server")) {
-                            setState(() {
-                              _syncCooldownUntil = DateTime.now().add(
-                                const Duration(minutes: 10),
-                              );
-                            });
-
-                            CustomSnackBar.show(
-                              context,
-                              message:
-                                  "Tidak ada data yang disinkronkan. Coba lagi 10 menit.",
-                              type: SnackType.error,
-                            );
-                          } else {
-                            CustomSnackBar.show(
-                              context,
-                              message: "Sync gagal: $e",
-                              type: SnackType.error,
-                            );
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() => _isSyncing = false);
-                          }
-                        }
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -599,6 +641,114 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       "Cadangkan semua data aplikasi Anda",
                       style: TextStyle(color: Colors.grey, fontSize: 13),
                     ),
+                    const SizedBox(height: 12),
+                    if (PremiumService.cachedPremium)
+                      _buildButton(
+                        label: "Backup Sekarang",
+                        icon: Icons.cloud_upload_outlined,
+                        color: Colors.purple[700]!,
+                        onPressed: () async {
+                          final barcodes = await SharedPreferencesService()
+                              .getBarcodes();
+
+                          if (barcodes.isEmpty) {
+                            CustomSnackBar.show(
+                              context,
+                              message: "Tidak ada data untuk dibackup",
+                              type: SnackType.error,
+                            );
+                            return;
+                          }
+
+                          setState(() => _isBackingUp = true);
+
+                          try {
+                            await barcodeService.backupBarcodes(user!.uid!);
+                            await _loadLastBackupTime();
+
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "backup_success",
+                            );
+
+                            CustomSnackBar.show(
+                              context,
+                              message: "Backup berhasil!",
+                              type: SnackType.success,
+                            );
+                          } catch (e) {
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "backup_failed",
+                            );
+
+                            CustomSnackBar.show(
+                              context,
+                              message: "Backup gagal: $e",
+                              type: SnackType.error,
+                            );
+                          } finally {
+                            setState(() => _isBackingUp = false);
+                          }
+                        },
+                      )
+                    else
+                      RewardedAds(
+                        featureName: "backup",
+                        adUnitId: AdsHelper.rewardedBackupAdUnitId,
+                        interstitialAdUnitId:
+                            AdsHelper.rewardedBackupDataAdUnitId,
+                        label: "Backup Sekarang",
+                        loadingLabel: "Sedang Backup...",
+                        icon: Icons.cloud_upload_outlined,
+                        color: Colors.purple[700]!,
+                        enabled: isLoggedIn && !_isBackingUp,
+                        onRewarded: () async {
+                          final barcodes = await SharedPreferencesService()
+                              .getBarcodes();
+
+                          if (barcodes.isEmpty) {
+                            CustomSnackBar.show(
+                              context,
+                              message: "Tidak ada data untuk dibackup",
+                              type: SnackType.error,
+                            );
+
+                            setState(() {
+                              _isBackingUp = false;
+                            });
+
+                            return;
+                          }
+
+                          setState(() => _isBackingUp = true);
+
+                          try {
+                            await barcodeService.backupBarcodes(user!.uid!);
+                            await _loadLastBackupTime();
+
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "backup_success",
+                            );
+
+                            CustomSnackBar.show(
+                              context,
+                              message: "Backup berhasil!",
+                              type: SnackType.success,
+                            );
+                          } catch (e) {
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "backup_failed",
+                            );
+
+                            CustomSnackBar.show(
+                              context,
+                              message: "Backup gagal: $e",
+                              type: SnackType.error,
+                            );
+                          } finally {
+                            setState(() => _isBackingUp = false);
+                          }
+                        },
+                      ),
                     if (_lastBackupTime != null) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -611,63 +761,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    RewardedAds(
-                      featureName: "backup",
-                      adUnitId: AdsHelper.rewardedBackupAdUnitId,
-                      label: "Backup Sekarang",
-                      loadingLabel: "Sedang Backup...",
-                      icon: Icons.cloud_upload_outlined,
-                      color: Colors.purple[700]!,
-                      enabled: isLoggedIn && !_isBackingUp,
-                      onRewarded: () async {
-                        final barcodes = await SharedPreferencesService()
-                            .getBarcodes();
-
-                        if (barcodes.isEmpty) {
-                          CustomSnackBar.show(
-                            context,
-                            message: "Tidak ada data untuk dibackup",
-                            type: SnackType.error,
-                          );
-
-                          setState(() {
-                            _isBackingUp = false;
-                          });
-
-                          return;
-                        }
-
-                        setState(() => _isBackingUp = true);
-
-                        try {
-                          await barcodeService.backupBarcodes(user!.uid!);
-                          await _loadLastBackupTime();
-
-                          FirebaseAnalytics.instance.logEvent(
-                            name: "backup_success",
-                          );
-
-                          CustomSnackBar.show(
-                            context,
-                            message: "Backup berhasil!",
-                            type: SnackType.success,
-                          );
-                        } catch (e) {
-                          FirebaseAnalytics.instance.logEvent(
-                            name: "backup_failed",
-                          );
-
-                          CustomSnackBar.show(
-                            context,
-                            message: "Backup gagal: $e",
-                            type: SnackType.error,
-                          );
-                        } finally {
-                          setState(() => _isBackingUp = false);
-                        }
-                      },
-                    ),
                   ],
                 ),
               ),

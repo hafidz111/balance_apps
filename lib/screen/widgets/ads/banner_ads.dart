@@ -2,6 +2,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../../../service/premium_service.dart';
 import '../../../utils/ads_helper.dart';
 
 class BannerAds extends StatefulWidget {
@@ -14,14 +15,26 @@ class BannerAds extends StatefulWidget {
 class _BannerAdsState extends State<BannerAds> {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   BannerAd? _bannerAd;
+  bool _isPremium = false;
 
   @override
   void initState() {
     super.initState();
+    _init();
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadAd();
-    });
+  Future<void> _init() async {
+    _isPremium = PremiumService.cachedPremium
+        ? true
+        : await PremiumService.isPremium();
+
+    if (!_isPremium) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAd();
+      });
+    }
+
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAd() async {
@@ -29,10 +42,7 @@ class _BannerAdsState extends State<BannerAds> {
       MediaQuery.of(context).size.width.truncate(),
     );
 
-    if (size == null) {
-      debugPrint("Ad size null");
-      return;
-    }
+    if (size == null) return;
 
     final banner = BannerAd(
       adUnitId: AdsHelper.bannerAdUnitId,
@@ -85,7 +95,7 @@ class _BannerAdsState extends State<BannerAds> {
 
   @override
   Widget build(BuildContext context) {
-    if (_bannerAd == null) {
+    if (_isPremium || _bannerAd == null) {
       return const SizedBox();
     }
 

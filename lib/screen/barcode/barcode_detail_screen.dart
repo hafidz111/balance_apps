@@ -4,6 +4,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/model/barcode_data.dart';
+import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import 'widgets/barcode_form.dart';
 
@@ -185,10 +186,11 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
             ),
 
             const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: BannerAds(),
-            ),
+            if (!PremiumService.cachedPremium)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: BannerAds(),
+              ),
           ],
         ),
       ),
