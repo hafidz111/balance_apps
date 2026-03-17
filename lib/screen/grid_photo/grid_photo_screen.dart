@@ -42,6 +42,12 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
       "rows": 4,
       "cols": 4,
     },
+    {
+      "title": "General Cleaning",
+      "icon": Icons.clean_hands,
+      "rows": 3,
+      "cols": 3,
+    },
   ];
 
   final List<Map<String, Color>> _menuColors = [
@@ -94,7 +100,8 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => GridChoosePhotoScreen(rows: rows, cols: cols),
+              builder: (_) =>
+                  GridChoosePhotoScreen(rows: rows, cols: cols, title: title),
             ),
           );
         });
@@ -103,8 +110,8 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 70,
+            height: 70,
             decoration: BoxDecoration(
               color: colorSet["bg"],
               borderRadius: BorderRadius.circular(20),
@@ -117,7 +124,7 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -137,14 +144,13 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
                 builder: (context, constraints) {
                   return GridView.builder(
                     itemCount: _gridOptions.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _gridOptions.length >= 4
-                          ? 4
-                          : _gridOptions.length,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.65,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.8,
+                        ),
                     itemBuilder: (context, index) {
                       final grid = _gridOptions[index];
                       return _buildMenuItem(

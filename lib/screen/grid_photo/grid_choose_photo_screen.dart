@@ -8,16 +8,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:screenshot/screenshot.dart';
 
 class GridChoosePhotoScreen extends StatefulWidget {
   final int rows;
   final int cols;
+  final String title;
 
   const GridChoosePhotoScreen({
     super.key,
     required this.rows,
     required this.cols,
+    required this.title,
   });
 
   @override
@@ -157,6 +160,53 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Widget _gridBox(int index) {
+    if (images[index] == null) {
+      return _buildItem(index);
+    }
+
+    return LongPressDraggable<int>(
+      data: index,
+
+      onDragStarted: () {
+        HapticFeedback.mediumImpact();
+      },
+
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width / widget.cols,
+          height: MediaQuery.of(context).size.width / widget.cols,
+          child: _buildItem(index),
+        ),
+      ),
+
+      childWhenDragging: Opacity(opacity: 0.3, child: _buildItem(index)),
+
+      child: DragTarget<int>(
+        onAccept: (fromIndex) {
+          setState(() {
+            final temp = images[fromIndex];
+            images[fromIndex] = images[index];
+            images[index] = temp;
+          });
+        },
+
+        builder: (context, candidateData, rejectedData) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              border: candidateData.isNotEmpty
+                  ? Border.all(color: Colors.teal, width: 2)
+                  : null,
+            ),
+            child: _buildItem(index),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildItem(int index) {
     return GridItem(
       image: images.length > index ? images[index] : null,
       isLocked: isSaved,
@@ -253,7 +303,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   Widget _buildDefaultGrid() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: GridView.builder(
+      child: ReorderableGridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: images.length,
@@ -263,22 +313,33 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
           crossAxisSpacing: 8,
           childAspectRatio: 1,
         ),
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) newIndex--;
+
+            final item = images.removeAt(oldIndex);
+            images.insert(newIndex, item);
+          });
+        },
         itemBuilder: (context, index) {
-          return GridItem(
-            image: images[index],
-            isLocked: isSaved,
-            showDelete: activeDeleteIndex == index,
-            onPick: isSaved ? null : () => _pickImage(index),
-            onDelete: isSaved ? null : () => _deleteImage(index),
-            onDeleteToggle: isSaved
-                ? null
-                : () {
-                    setState(() {
-                      activeDeleteIndex = activeDeleteIndex == index
-                          ? null
-                          : index;
-                    });
-                  },
+          return Container(
+            key: ValueKey("item_$index"),
+            child: GridItem(
+              image: images[index],
+              isLocked: isSaved,
+              showDelete: activeDeleteIndex == index,
+              onPick: isSaved ? null : () => _pickImage(index),
+              onDelete: isSaved ? null : () => _deleteImage(index),
+              onDeleteToggle: isSaved
+                  ? null
+                  : () {
+                      setState(() {
+                        activeDeleteIndex = activeDeleteIndex == index
+                            ? null
+                            : index;
+                      });
+                    },
+            ),
           );
         },
       ),
@@ -286,9 +347,9 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Widget _buildGrid() {
-    if (widget.rows == 3 && widget.cols == 3) {
+    if (widget.title == "Kalibrasi") {
       return _buildKalibrasi();
-    } else if (widget.rows == 4 && widget.cols == 4) {
+    } else if (widget.title == "Initial") {
       return _buildInitial();
     } else {
       return _buildDefaultGrid();
@@ -327,7 +388,11 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       MaterialPageRoute(
         builder: (_) => GridBackgroundPhotoScreen(capturedImage: image),
       ),
-    );
+    ).then((_) {
+      setState(() {
+        isSaved = false;
+      });
+    });
   }
 
   @override

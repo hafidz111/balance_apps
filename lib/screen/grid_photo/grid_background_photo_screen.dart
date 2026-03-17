@@ -8,8 +8,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
 
+import '../../service/shared_preferences_service.dart';
 import '../main/main_screen.dart';
 import '../widgets/custom_snack_bar.dart';
+
+enum BackgroundMode { defaultBg, custom, none }
 
 class GridBackgroundPhotoScreen extends StatefulWidget {
   final Uint8List capturedImage;
@@ -45,6 +48,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   double canvasRatio = 1.0;
 
   File? backgroundImage;
+  BackgroundMode bgMode = BackgroundMode.defaultBg;
+
   final ScreenshotController screenshotController = ScreenshotController();
   final ImagePicker _picker = ImagePicker();
 
@@ -58,6 +63,37 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
   List<TextItem> texts = [];
   int? selectedTextIndex;
+
+  String? selectedAssetBg;
+  String defaultBg = "assets/images/bg-grid-default.jpeg";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedBackground();
+  }
+
+  Future<void> _loadSavedBackground() async {
+    final path = SharedPreferencesService().getCustomBackground();
+
+    if (path != null) {
+      final file = File(path);
+
+      if (file.existsSync()) {
+        final ratio = await _getImageRatio(file);
+
+        setState(() {
+          backgroundImage = file;
+          bgMode = BackgroundMode.custom;
+          canvasRatio = ratio;
+        });
+      } else {
+        setState(() {
+          bgMode = BackgroundMode.defaultBg;
+        });
+      }
+    }
+  }
 
   bool showTextEditor = false;
   final TextEditingController textController = TextEditingController();
@@ -80,9 +116,12 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       final file = File(picked.path);
       final ratio = await _getImageRatio(file);
 
+      await SharedPreferencesService().saveCustomBackground(file.path);
+
       setState(() {
         backgroundImage = file;
         canvasRatio = ratio;
+        bgMode = BackgroundMode.custom;
       });
       FirebaseAnalytics.instance.logEvent(name: "grid_background_added");
     }
@@ -323,12 +362,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                               : false,
                           onChanged: (value) {
                             if (selectedTextIndex != null) {
-                              // update canvas
                               setState(() {
                                 texts[selectedTextIndex!].isBold = value;
                               });
 
-                              // update bottomsheet
                               setModalState(() {});
                             }
                           },
@@ -356,6 +393,26 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         );
       },
     );
+  }
+
+  Widget _buildBackground() {
+    switch (bgMode) {
+      case BackgroundMode.none:
+        return Container(
+          color: Colors.grey.shade200,
+          child: const Center(child: Text("No Background")),
+        );
+
+      case BackgroundMode.custom:
+        if (backgroundImage != null) {
+          return Image.file(backgroundImage!, fit: BoxFit.cover);
+        }
+        return const SizedBox();
+
+      case BackgroundMode.defaultBg:
+      default:
+        return Image.asset(defaultBg, fit: BoxFit.cover);
+    }
   }
 
   @override
@@ -387,13 +444,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         controller: screenshotController,
                         child: Stack(
                           children: [
-                            if (backgroundImage != null)
-                              Positioned.fill(
-                                child: Image.file(
-                                  backgroundImage!,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+                            Positioned.fill(child: _buildBackground()),
 
                             GestureDetector(
                               onScaleStart: (details) {
@@ -473,57 +524,51 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Column(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _pickBackground,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  Row(
+                    children: [
+                      _buildIconAction(
+                        icon: Icons.add_photo_alternate,
+                        label: "Tambah",
+                        color: Colors.blue,
+                        onTap: _pickBackground,
                       ),
-                      child: const Text(
-                        "Tambah Background",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 12),
+                      _buildIconAction(
+                        icon: Icons.image,
+                        label: "Custom",
+                        color: Colors.teal,
+                        onTap: _pickBackground,
+                      ),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: backgroundImage == null
-                          ? null
-                          : () {
-                              setState(() {
-                                backgroundImage = null;
-                                canvasRatio = 1.0;
-                              });
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      _buildIconAction(
+                        icon: Icons.refresh,
+                        label: "Default",
+                        color: Colors.orange,
+                        onTap: () async {
+                          await SharedPreferencesService()
+                              .clearCustomBackground();
+
+                          setState(() {
+                            backgroundImage = null;
+                            bgMode = BackgroundMode.defaultBg;
+                            canvasRatio = 1.0;
+                          });
+                        },
                       ),
-                      child: const Text(
-                        "Hapus Background",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+
+                      _buildIconAction(
+                        icon: Icons.block,
+                        label: "None",
+                        color: Colors.grey,
+                        onTap: () {
+                          setState(() {
+                            backgroundImage = null;
+                            bgMode = BackgroundMode.none;
+                            canvasRatio = 1.0;
+                          });
+                        },
                       ),
-                    ),
+                    ],
                   ),
 
                   const SizedBox(height: 16),
@@ -570,7 +615,6 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  /// SAVE
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -596,6 +640,48 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    final isDisabled = onTap == null;
+
+    return Flexible(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Opacity(
+            opacity: isDisabled ? 0.4 : 1,
+            child: Column(
+              children: [
+                Container(
+                  height: 56,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

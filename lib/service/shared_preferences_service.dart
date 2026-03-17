@@ -29,6 +29,7 @@ class SharedPreferencesService {
   static const scheduleKey = "schedule_data";
   static const pcCpdManualKey = "pc_cpd_manual";
   static const pcCpdMonthKey = "pc_cpd_month";
+  static const customBackgroundKey = "custom_background";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
 
@@ -509,9 +510,7 @@ class SharedPreferencesService {
     await prefs.setString(pcCpdManualKey, cpd);
     await prefs.setString(pcCpdMonthKey, monthKey);
 
-    FirebaseAnalytics.instance.logEvent(
-      name: "point_coffee_cpd_manual_saved",
-    );
+    FirebaseAnalytics.instance.logEvent(name: "point_coffee_cpd_manual_saved");
   }
 
   Future<String?> getPointCoffeeCpdManual() async {
@@ -536,5 +535,17 @@ class SharedPreferencesService {
   Future<void> clearPointCoffeeCpdManual() async {
     await prefs.remove(pcCpdManualKey);
     await prefs.remove(pcCpdMonthKey);
+  }
+
+  Future<void> saveCustomBackground(String path) async {
+    await prefs.setString(customBackgroundKey, path);
+  }
+
+  String? getCustomBackground() {
+    return prefs.getString(customBackgroundKey);
+  }
+
+  Future<void> clearCustomBackground() async {
+    await prefs.remove(customBackgroundKey);
   }
 }
