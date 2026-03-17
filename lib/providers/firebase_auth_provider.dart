@@ -11,6 +11,20 @@ class FirebaseAuthProvider extends ChangeNotifier {
   final FirebaseAuthService _service;
 
   FirebaseAuthProvider(this._service);
+  Future<void> checkToken() async {
+    final user = _service.currentUser;
+
+    if (user == null) {
+      await forceLogout();
+      return;
+    }
+
+    try {
+      await user.getIdToken();
+    } catch (_) {
+      await forceLogout();
+    }
+  }
 
   String? _message;
   Profile? _profile;
@@ -45,6 +59,11 @@ class FirebaseAuthProvider extends ChangeNotifier {
       notifyListeners();
 
       final result = await _service.signInUser(email, password);
+
+      if (result.user == null) {
+        await forceLogout();
+        return;
+      }
 
       _profile = Profile(
         uid: result.user?.uid,
@@ -112,6 +131,25 @@ class FirebaseAuthProvider extends ChangeNotifier {
       _message = e.toString();
       _authStatus = FirebaseAuthStatus.error;
     }
+
+    notifyListeners();
+  }
+
+  Future<void> validateSession() async {
+    await checkToken();
+  }
+
+  Future<void> forceLogout() async {
+    try {
+      await _service.signOut();
+    } catch (_) {}
+
+    _purchaseService.dispose();
+    PremiumService.reset();
+
+    _profile = null;
+    _authStatus = FirebaseAuthStatus.unauthenticated;
+    _message = "Sesi login berakhir";
 
     notifyListeners();
   }

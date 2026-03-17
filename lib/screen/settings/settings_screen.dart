@@ -49,6 +49,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
 
+    Future.microtask(() {
+      context.read<FirebaseAuthProvider>().validateSession();
+    });
+
     _nameController.addListener(() {
       if (_isEditingProfile) {
         setState(() {});
@@ -291,7 +295,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: "Hapus Iklan (Sekali Bayar)",
                   icon: Icons.workspace_premium,
                   color: Colors.amber[700]!,
-                  onPressed: _buyRemoveAds,
+                  onPressed: isLoggedIn ? _buyRemoveAds : null,
+                ),
+              if (!isLoggedIn && !PremiumService.cachedPremium)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text(
+                    "Login untuk membeli fitur premium",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ),
               const SizedBox(height: 16),
               _buildSectionCard(

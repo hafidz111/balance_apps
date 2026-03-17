@@ -23,7 +23,7 @@ class PremiumService {
       return false;
     }
 
-    final snapshot = await _db.child("users/${user.uid}/premium").get();
+    final snapshot = await _db.child("users/${user.uid}/premium/remove_ads").get();
 
     _cachePremium = snapshot.value == true;
 
@@ -35,10 +35,11 @@ class PremiumService {
 
     if (user == null) return;
 
-    await _db.child("users/${user.uid}").update({
-      "premium": true,
-      "purchaseToken": purchaseToken,
-      "purchaseDate": ServerValue.timestamp,
+    await _db.child("users/${user.uid}/premium").update({
+      "remove_ads": true,
+      "product_id": "remove_ads",
+      "purchase_token": purchaseToken,
+      "purchase_time": ServerValue.timestamp,
     });
 
     _cachePremium = true;
