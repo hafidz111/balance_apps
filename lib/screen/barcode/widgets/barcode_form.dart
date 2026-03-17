@@ -40,6 +40,7 @@ class _BarcodeFormState extends State<BarcodeForm> {
 
   void save() async {
     final newData = BarcodeData(
+      id: isEdit ? widget.barcode!.id : UniqueKey().toString(),
       type: widget.type,
       code: codeC.text,
       description: descC.text,
@@ -65,7 +66,7 @@ class _BarcodeFormState extends State<BarcodeForm> {
       name: "barcode_created",
       parameters: {"type": widget.type},
     );
-    Navigator.pop(context, true);
+    Navigator.pop(context, newData);
   }
 
   @override

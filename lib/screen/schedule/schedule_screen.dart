@@ -297,8 +297,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
 
       for (int row = 13; row <= 18; row++) {
+        final importedNames = <String>{..._employeeNames};
         final name = sheet.rows[row][1]?.value?.toString().trim();
         if (name == null || name.isEmpty) continue;
+
+        if (!importedNames.contains(name) && importedNames.length >= 6) {
+          continue;
+        }
 
         for (int col = 2; col <= 17; col++) {
           final dayCell = sheet.rows[11][col]?.value;
@@ -1167,8 +1172,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         const SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () async {
-                            if (nameController.text.isEmpty ||
-                                dateController.text.isEmpty) {
+                            final name = nameController.text.trim();
+
+                            if (name.isEmpty || dateController.text.isEmpty) {
+                              return;
+                            }
+
+                            final isNewEmployee = !_employeeNames.contains(
+                              name,
+                            );
+
+                            if (isNewEmployee && _employeeNames.length >= 6) {
+                              CustomSnackBar.show(
+                                context,
+                                message: "Maksimal 6 karyawan",
+                                type: SnackType.error,
+                              );
                               return;
                             }
 
@@ -1178,7 +1197,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 "${parts[2]}-${parts[1]}-${parts[0]}";
 
                             await _setSchedule(
-                              nameController.text.trim(),
+                              name,
                               formattedDate,
                               selectedShift,
                             );

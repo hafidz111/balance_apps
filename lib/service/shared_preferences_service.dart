@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/model/barcode_data.dart';
@@ -50,7 +51,7 @@ class SharedPreferencesService {
   }
 
   static const dbVersionKey = 'db_version';
-  static const currentDbVersion = 1;
+  static const currentDbVersion = 2;
 
   Future<void> initDb() async {
     final prefs = await SharedPreferences.getInstance();
@@ -69,6 +70,7 @@ class SharedPreferencesService {
 
       final fixed = list.map((e) {
         return BarcodeData(
+          id: UniqueKey().toString(),
           type: e.type,
           code: e.code,
           description: e.description,
@@ -358,7 +360,7 @@ class SharedPreferencesService {
         .map((e) => BarcodeData.fromJson(jsonDecode(e)))
         .toList();
 
-    barcodes.removeWhere((e) => e.code == data.code);
+    barcodes.removeWhere((e) => e.id == data.id);
 
     barcodes.add(data);
 
@@ -389,9 +391,7 @@ class SharedPreferencesService {
   Future<void> updateBarcode(BarcodeData oldData, BarcodeData newData) async {
     final list = await getBarcodes();
 
-    final index = list.indexWhere(
-      (e) => e.code == oldData.code && e.type == oldData.type,
-    );
+    final index = list.indexWhere((e) => e.id == oldData.id);
 
     if (index != -1) {
       list[index] = newData;
@@ -407,7 +407,7 @@ class SharedPreferencesService {
         .map((e) => BarcodeData.fromJson(jsonDecode(e)))
         .toList();
 
-    barcodes.removeWhere((e) => e.code == data.code && e.type == data.type);
+    barcodes.removeWhere((e) => e.id == data.id);
 
     await prefs.setStringList(
       barcodeKey,

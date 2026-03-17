@@ -35,6 +35,10 @@ class _ScannerScreenState extends State<ScannerScreen>
     _checkPermission();
   }
 
+  void didPopNext() {
+    isScanned = false;
+  }
+
   Future<void> _checkPermission() async {
     var status = await Permission.camera.status;
 
@@ -75,7 +79,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       parameters: {"found": found != null},
     );
     if (found != null) {
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
       );

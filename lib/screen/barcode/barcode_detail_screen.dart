@@ -62,17 +62,12 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
         builder: (_) => BarcodeForm(type: _current.type, barcode: _current),
       ),
     );
-    if (result == true) await _reload();
-  }
 
-  Future<void> _reload() async {
-    final list = await SharedPreferencesService().getBarcodes();
-    final updated = list.firstWhere(
-      (e) => e.code == widget.barcode.code,
-      orElse: () => widget.barcode,
-    );
-    if (!mounted) return;
-    setState(() => _current = updated);
+    if (result is BarcodeData) {
+      setState(() {
+        _current = result;
+      });
+    }
   }
 
   @override
