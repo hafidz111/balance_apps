@@ -79,17 +79,25 @@ class _ScannerScreenState extends State<ScannerScreen>
       parameters: {"found": found != null},
     );
     if (found != null) {
-      Navigator.pushReplacement(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
       );
+
+      if (result == true) {
+        Navigator.pop(context, true);
+      }
     } else {
-      Navigator.pushReplacement(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => BarcodeForm(type: 'code128', initialCode: code),
         ),
       );
+
+      if (result != null) {
+        Navigator.pop(context, true);
+      }
     }
   }
 

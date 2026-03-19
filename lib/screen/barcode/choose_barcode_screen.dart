@@ -54,8 +54,7 @@ class ChooseBarcodeScreen extends StatelessWidget {
           MaterialPageRoute(builder: (_) => BarcodeForm(type: type)),
         );
 
-        if (result == true) {
-          if (!context.mounted) return;
+        if (result != null) {
           Navigator.pop(context, true);
         }
       },

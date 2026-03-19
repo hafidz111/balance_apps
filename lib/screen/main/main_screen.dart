@@ -36,13 +36,31 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
   int _barcodeRefreshKey = 0;
   DateTime? _screenStartTime;
+  bool isBarcodeSelectionMode = false;
+  int selectedBarcodeCount = 0;
+  VoidCallback? deleteSelectedBarcodes;
+  VoidCallback? selectAllBarcodes;
+  VoidCallback? exitSelectionMode;
 
   List<Widget> get _widgetOptions => [
     const StoreScreen(),
     const PointCoffeeScreen(),
     const SayBreadScreen(),
     const HistoryScreen(),
-    BarcodeScreen(key: ValueKey(_barcodeRefreshKey)),
+    BarcodeScreen(
+      key: ValueKey(_barcodeRefreshKey),
+      onSelectionChanged: (isSelecting, count) {
+        setState(() {
+          isBarcodeSelectionMode = isSelecting;
+          selectedBarcodeCount = count;
+        });
+      },
+      onRegisterActions: (delete, selectAll, exit) {
+        deleteSelectedBarcodes = delete;
+        selectAllBarcodes = selectAll;
+        exitSelectionMode = exit;
+      },
+    ),
     const GridPhotoScreen(),
     const ScheduleScreen(),
     const SettingsScreen(),
@@ -214,53 +232,77 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF009688),
-        title: Text(
-          _titles[_selectedIndex],
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu),
-            color: Colors.white,
-          ),
-        ),
-        actions: _selectedIndex == 4
+        title: isBarcodeSelectionMode && _selectedIndex == 4
+            ? Text(
+                "$selectedBarcodeCount dipilih",
+                style: const TextStyle(color: Colors.white),
+              )
+            : Text(
+                _titles[_selectedIndex],
+                style: const TextStyle(color: Colors.white),
+              ),
+        leading: isBarcodeSelectionMode && _selectedIndex == 4
+            ? IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: exitSelectionMode,
+              )
+            : Builder(
+                builder: (context) => IconButton(
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  icon: const Icon(Icons.menu),
+                  color: Colors.white,
+                ),
+              ),
+        actions: isBarcodeSelectionMode && _selectedIndex == 4
             ? [
-                PremiumService.cachedPremium
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.upload_file,
-                          color: Colors.white,
-                        ),
-                        onPressed: _exportBarcodes,
-                      )
-                    : RewardedAds(
-                        featureName: "export",
-                        adUnitId: AdsHelper.rewardedExportAdUnitId,
-                        interstitialAdUnitId:
-                            AdsHelper.rewardedExportBarcodeAdUnitId,
-                        onRewarded: _exportBarcodes,
-                        icon: Icons.upload_file,
-                        color: Colors.white,
-                      ),
-
-                PremiumService.cachedPremium
-                    ? IconButton(
-                        icon: const Icon(Icons.download, color: Colors.white),
-                        onPressed: _importBarcodes,
-                      )
-                    : RewardedAds(
-                        featureName: "import",
-                        adUnitId: AdsHelper.rewardedImportAdUnitId,
-                        interstitialAdUnitId:
-                            AdsHelper.rewardedImportBarcodeAdUnitId,
-                        onRewarded: _importBarcodes,
-                        icon: Icons.download,
-                        color: Colors.white,
-                      ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.white),
+                  onPressed: deleteSelectedBarcodes,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.select_all, color: Colors.white),
+                  onPressed: selectAllBarcodes,
+                ),
               ]
-            : [],
+            : (_selectedIndex == 4
+                  ? [
+                      PremiumService.cachedPremium
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.upload_file,
+                                color: Colors.white,
+                              ),
+                              onPressed: _exportBarcodes,
+                            )
+                          : RewardedAds(
+                              featureName: "export",
+                              adUnitId: AdsHelper.rewardedExportAdUnitId,
+                              interstitialAdUnitId:
+                                  AdsHelper.rewardedExportBarcodeAdUnitId,
+                              onRewarded: _exportBarcodes,
+                              icon: Icons.upload_file,
+                              color: Colors.white,
+                            ),
+
+                      PremiumService.cachedPremium
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.download,
+                                color: Colors.white,
+                              ),
+                              onPressed: _importBarcodes,
+                            )
+                          : RewardedAds(
+                              featureName: "import",
+                              adUnitId: AdsHelper.rewardedImportAdUnitId,
+                              interstitialAdUnitId:
+                                  AdsHelper.rewardedImportBarcodeAdUnitId,
+                              onRewarded: _importBarcodes,
+                              icon: Icons.download,
+                              color: Colors.white,
+                            ),
+                    ]
+                  : []),
       ),
       body: _widgetOptions[_selectedIndex],
       drawer: Drawer(

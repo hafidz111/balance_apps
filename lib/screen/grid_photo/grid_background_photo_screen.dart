@@ -93,6 +93,15 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         });
       }
     }
+
+    final ratio = await _getAssetImageRatio(defaultBg);
+
+    if (!mounted) return;
+
+    setState(() {
+      bgMode = BackgroundMode.defaultBg;
+      canvasRatio = ratio;
+    });
   }
 
   bool showTextEditor = false;
@@ -132,6 +141,17 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     final codec = await instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;
+    return image.width / image.height;
+  }
+
+  Future<double> _getAssetImageRatio(String assetPath) async {
+    final data = await rootBundle.load(assetPath);
+    final bytes = data.buffer.asUint8List();
+
+    final codec = await instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
     return image.width / image.height;
   }
 
@@ -399,8 +419,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     switch (bgMode) {
       case BackgroundMode.none:
         return Container(
-          color: Colors.grey.shade200,
-          child: const Center(child: Text("No Background")),
+          color: Colors.black,
+          child: const SizedBox()
         );
 
       case BackgroundMode.custom:
@@ -548,10 +568,12 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                           await SharedPreferencesService()
                               .clearCustomBackground();
 
+                          final ratio = await _getAssetImageRatio(defaultBg);
+
                           setState(() {
                             backgroundImage = null;
                             bgMode = BackgroundMode.defaultBg;
-                            canvasRatio = 1.0;
+                            canvasRatio = ratio;
                           });
                         },
                       ),

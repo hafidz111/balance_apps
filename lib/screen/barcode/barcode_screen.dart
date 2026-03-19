@@ -9,7 +9,19 @@ import '../widgets/custom_snack_bar.dart';
 import 'barcode_detail_screen.dart';
 
 class BarcodeScreen extends StatefulWidget {
-  const BarcodeScreen({super.key});
+  final Function(bool isSelecting, int count)? onSelectionChanged;
+  final Function(
+    VoidCallback delete,
+    VoidCallback selectAll,
+    VoidCallback exit,
+  )?
+  onRegisterActions;
+
+  const BarcodeScreen({
+    super.key,
+    this.onSelectionChanged,
+    this.onRegisterActions,
+  });
 
   @override
   State<BarcodeScreen> createState() => _BarcodeScreenState();
@@ -17,6 +29,44 @@ class BarcodeScreen extends StatefulWidget {
 
 class _BarcodeScreenState extends State<BarcodeScreen> {
   bool isOpened = false;
+  Set<int> selectedIndexes = {};
+  bool isSelectionMode = false;
+
+  void _updateSelectionState() {
+    widget.onSelectionChanged?.call(isSelectionMode, selectedIndexes.length);
+  }
+
+  void _onLongPressItem(int index) {
+    setState(() {
+      isSelectionMode = true;
+      selectedIndexes.add(index);
+    });
+    _updateSelectionState();
+  }
+
+  void _onTapItem(int index) {
+    if (isSelectionMode) {
+      setState(() {
+        if (selectedIndexes.contains(index)) {
+          selectedIndexes.remove(index);
+          if (selectedIndexes.isEmpty) isSelectionMode = false;
+        } else {
+          selectedIndexes.add(index);
+        }
+      });
+      _updateSelectionState();
+    } else {
+      _openDetail(filteredBarcodes[index]);
+    }
+  }
+
+  void _openDetail(BarcodeData b) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: b)),
+    );
+    if (result == true) load();
+  }
 
   void _toggleMenu() {
     setState(() => isOpened = !isOpened);
@@ -30,11 +80,25 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   void initState() {
     super.initState();
     load();
+
+    widget.onRegisterActions?.call(
+      _deleteSelected,
+      _selectAll,
+      _exitSelectionMode,
+    );
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      isSelectionMode = false;
+      selectedIndexes.clear();
+    });
+    _updateSelectionState();
   }
 
   void load() async {
     barcodes = await SharedPreferencesService().getBarcodes();
-    filteredBarcodes = barcodes;
+    filteredBarcodes = List.from(barcodes);
     if (mounted) setState(() {});
   }
 
@@ -59,6 +123,40 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _deleteSelected() async {
+    final selectedItems = selectedIndexes
+        .map((i) => filteredBarcodes[i])
+        .toList();
+
+    barcodes.removeWhere((b) => selectedItems.contains(b));
+
+    await SharedPreferencesService().saveBarcodes(barcodes);
+
+    setState(() {
+      isSelectionMode = false;
+      selectedIndexes.clear();
+      filteredBarcodes = barcodes;
+    });
+
+    _updateSelectionState();
+
+    CustomSnackBar.show(
+      context,
+      message: "${selectedItems.length} barcode dihapus",
+      type: SnackType.success,
+    );
+  }
+
+  void _selectAll() {
+    setState(() {
+      selectedIndexes = List.generate(
+        filteredBarcodes.length,
+        (i) => i,
+      ).toSet();
+    });
+    _updateSelectionState();
   }
 
   @override
@@ -131,15 +229,8 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                         final b = filteredBarcodes[i];
 
                         return GestureDetector(
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BarcodeDetailScreen(barcode: b),
-                              ),
-                            );
-                            if (result == true) load();
-                          },
+                          onLongPress: () => _onLongPressItem(i),
+                          onTap: () => _onTapItem(i),
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(20),
@@ -159,6 +250,11 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                             ),
                             child: Row(
                               children: [
+                                if (isSelectionMode)
+                                  Checkbox(
+                                    value: selectedIndexes.contains(i),
+                                    onChanged: (_) => _onTapItem(i),
+                                  ),
                                 Container(
                                   width: 48,
                                   height: 48,
@@ -269,7 +365,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 MaterialPageRoute(builder: (_) => const ChooseBarcodeScreen()),
               );
 
-              if (result == true) load();
+              if (result != null) load();
             },
           ),
         ),

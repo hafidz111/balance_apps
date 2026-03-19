@@ -1042,186 +1042,193 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           child: StatefulBuilder(
             builder: (context, setStateDialog) {
               return Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(width: 24),
-                        const Text(
-                          "Tambah Shift",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    const Text("Masukkan detail shift baru"),
-
-                    const SizedBox(height: 24),
-
-                    _buildDialogField(
-                      label: "Tanggal",
-                      child: TextField(
-                        controller: dateController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: "dd/mm/yyyy",
-                          suffixIcon: const Icon(Icons.calendar_today),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onTap: () async {
-                          final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: _currentMonth,
-                            firstDate: DateTime(_activeYear, 1, 1),
-                            lastDate: DateTime(_activeYear, 12, 31),
-                          );
-
-                          if (pickedDate != null) {
-                            dateController.text =
-                                "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                "${pickedDate.year}";
-                          }
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    _buildDialogField(
-                      label: "Nama",
-                      child: TextField(
-                        controller: nameController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    _buildDialogField(
-                      label: "Shift",
-                      child: DropdownButtonFormField<String>(
-                        initialValue: selectedShift,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        items: [
-                          ...List.generate(
-                            _shiftCount,
-                            (i) => DropdownMenuItem(
-                              value: "${i + 1}",
-                              child: Text("Shift ${i + 1}"),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 24),
+                          const Text(
+                            "Tambah Shift",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const DropdownMenuItem(
-                            value: "X",
-                            child: Text("Libur (X)"),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close),
                           ),
                         ],
-                        onChanged: (val) {
-                          setStateDialog(() {
-                            selectedShift = val!;
-                          });
-                        },
                       ),
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 4),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
+                      const Text("Masukkan detail shift baru"),
+
+                      const SizedBox(height: 24),
+
+                      _buildDialogField(
+                        label: "Tanggal",
+                        child: TextField(
+                          controller: dateController,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            hintText: "dd/mm/yyyy",
+                            suffixIcon: const Icon(Icons.calendar_today),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
                           ),
-                          child: const Text("Batal"),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final name = nameController.text.trim();
-
-                            if (name.isEmpty || dateController.text.isEmpty) {
-                              return;
-                            }
-
-                            final isNewEmployee = !_employeeNames.contains(
-                              name,
+                          onTap: () async {
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: _currentMonth,
+                              firstDate: DateTime(_activeYear, 1, 1),
+                              lastDate: DateTime(_activeYear, 12, 31),
                             );
 
-                            if (isNewEmployee && _employeeNames.length >= 6) {
-                              CustomSnackBar.show(
-                                context,
-                                message: "Maksimal 6 karyawan",
-                                type: SnackType.error,
-                              );
-                              return;
+                            if (pickedDate != null) {
+                              dateController.text =
+                                  "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                  "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                  "${pickedDate.year}";
                             }
-
-                            final parts = dateController.text.split("/");
-
-                            final formattedDate =
-                                "${parts[2]}-${parts[1]}-${parts[0]}";
-
-                            await _setSchedule(
-                              name,
-                              formattedDate,
-                              selectedShift,
-                            );
-
-                            Navigator.pop(context);
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      _buildDialogField(
+                        label: "Nama",
+                        child: TextField(
+                          controller: nameController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                          child: const Text(
-                            "Tambah",
-                            style: TextStyle(color: Colors.white),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      _buildDialogField(
+                        label: "Shift",
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedShift,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          items: [
+                            ...List.generate(
+                              _shiftCount,
+                              (i) => DropdownMenuItem(
+                                value: "${i + 1}",
+                                child: Text("Shift ${i + 1}"),
+                              ),
+                            ),
+                            const DropdownMenuItem(
+                              value: "X",
+                              child: Text("Libur (X)"),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            setStateDialog(() {
+                              selectedShift = val!;
+                            });
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text("Batal"),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () async {
+                              final name = nameController.text.trim();
+
+                              if (name.isEmpty || dateController.text.isEmpty) {
+                                return;
+                              }
+
+                              final isNewEmployee = !_employeeNames.contains(
+                                name,
+                              );
+
+                              if (isNewEmployee && _employeeNames.length >= 6) {
+                                CustomSnackBar.show(
+                                  context,
+                                  message: "Maksimal 6 karyawan",
+                                  type: SnackType.error,
+                                );
+                                return;
+                              }
+
+                              final parts = dateController.text.split("/");
+
+                              final formattedDate =
+                                  "${parts[2]}-${parts[1]}-${parts[0]}";
+
+                              await _setSchedule(
+                                name,
+                                formattedDate,
+                                selectedShift,
+                              );
+
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text(
+                              "Tambah",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

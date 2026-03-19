@@ -67,6 +67,7 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
       setState(() {
         _current = result;
       });
+      Navigator.pop(context, true);
     }
   }
 
