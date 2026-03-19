@@ -11,20 +11,6 @@ class FirebaseAuthProvider extends ChangeNotifier {
   final FirebaseAuthService _service;
 
   FirebaseAuthProvider(this._service);
-  Future<void> checkToken() async {
-    final user = _service.currentUser;
-
-    if (user == null) {
-      await forceLogout();
-      return;
-    }
-
-    try {
-      await user.getIdToken();
-    } catch (_) {
-      await forceLogout();
-    }
-  }
 
   String? _message;
   Profile? _profile;
@@ -136,7 +122,32 @@ class FirebaseAuthProvider extends ChangeNotifier {
   }
 
   Future<void> validateSession() async {
-    await checkToken();
+    final user = _service.currentUser;
+
+    if (user == null) {
+      await forceLogout();
+      return;
+    }
+
+    try {
+      await user.getIdToken();
+
+      _profile = Profile(
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photoUrl: user.photoURL,
+      );
+
+      _authStatus = FirebaseAuthStatus.authenticated;
+
+      await _purchaseService.init();
+      await PremiumService.isPremium();
+    } catch (_) {
+      await forceLogout();
+    }
+
+    notifyListeners();
   }
 
   Future<void> forceLogout() async {

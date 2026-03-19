@@ -548,4 +548,24 @@ class SharedPreferencesService {
   Future<void> clearCustomBackground() async {
     await prefs.remove(customBackgroundKey);
   }
+
+  Future<bool> isNewMonth() async {
+    final now = DateTime.now();
+    final currentMonthKey = "${now.year}-${now.month}";
+
+    final savedMonth = prefs.getString("last_saved_month");
+
+    if (savedMonth == null) {
+      await prefs.setString("last_saved_month", currentMonthKey);
+      return false;
+    }
+
+    return savedMonth != currentMonthKey;
+  }
+
+  Future<void> updateCurrentMonth() async {
+    final now = DateTime.now();
+    final currentMonthKey = "${now.year}-${now.month}";
+    await prefs.setString("last_saved_month", currentMonthKey);
+  }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/model/point_coffe_history.dart';
 import '../../data/model/say_bread_history.dart';
+import '../../service/barcode_firebase_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
@@ -24,11 +25,88 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<PointCoffeeHistory> pcHistory = [];
   List<SayBreadHistory> sbHistory = [];
   DateTime selectedMonthYear = DateTime.now();
+  final _firebaseService = BarcodeFirebaseService();
 
   @override
   void initState() {
     super.initState();
+    _checkMonthChange();
     _loadHistory();
+  }
+
+  Future<void> _checkMonthChange() async {
+    final isNewMonth = await _prefsService.isNewMonth();
+    if (!isNewMonth) return;
+
+    final hasData =
+        (await _prefsService.getPointCoffee()).isNotEmpty ||
+        (await _prefsService.getSayBread()).isNotEmpty;
+
+    if (!hasData) {
+      await _prefsService.updateCurrentMonth();
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Bulan Baru"),
+        content: const Text(
+          "Sudah masuk bulan baru.\n\n"
+          "Data bulan lalu akan di-backup sebelum dihapus.\n"
+          "Lanjutkan?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Lanjutkan"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final uid = "USER_UID";
+      final email = "USER_EMAIL";
+
+      await _firebaseService.backupAll(uid, email);
+
+      await _firebaseService.deleteOldMonths(uid);
+
+      await _prefsService.clearPointCoffee();
+      await _prefsService.clearSayBread();
+      await _prefsService.clearPointCoffeeCpdManual();
+
+      await _prefsService.updateCurrentMonth();
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Backup & reset berhasil")));
+
+      FirebaseAnalytics.instance.logEvent(name: "monthly_backup_and_clear");
+    } catch (e) {
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal backup: $e")));
+
+      FirebaseAnalytics.instance.logEvent(name: "monthly_backup_failed");
+    }
   }
 
   Future<void> _loadHistory() async {

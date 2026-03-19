@@ -544,7 +544,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: () async {
                           if (user == null) return;
 
-                          await barcodeService.syncBarcodes(user.uid!);
+                          await barcodeService.syncAll(user.uid!);
                           await _loadLastSyncTime();
                         },
                       )
@@ -675,7 +675,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           setState(() => _isBackingUp = true);
 
                           try {
-                            await barcodeService.backupBarcodes(user!.uid!);
+                            await barcodeService.backupAll(
+                              user!.uid!,
+                              user.email ?? "unknown",
+                            );
                             await _loadLastBackupTime();
 
                             FirebaseAnalytics.instance.logEvent(
@@ -734,7 +737,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           setState(() => _isBackingUp = true);
 
                           try {
-                            await barcodeService.backupBarcodes(user!.uid!);
+                            await barcodeService.backupAll(
+                              user!.uid!,
+                              user.email ?? "unknown",
+                            );
                             await _loadLastBackupTime();
 
                             FirebaseAnalytics.instance.logEvent(
