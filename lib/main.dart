@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:balance/providers/firebase_auth_provider.dart';
-import 'package:balance/providers/shared_preference_provider.dart';
-import 'package:balance/screen/main/main_screen.dart';
-import 'package:balance/service/firebase_auth_service.dart';
-import 'package:balance/service/shared_preferences_service.dart';
-import 'package:balance/utils/track_app_start.dart';
+import 'package:starvy/providers/firebase_auth_provider.dart';
+import 'package:starvy/providers/shared_preference_provider.dart';
+import 'package:starvy/screen/main/main_screen.dart';
+import 'package:starvy/service/firebase_auth_service.dart';
+import 'package:starvy/service/shared_preferences_service.dart';
+import 'package:starvy/utils/track_app_start.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +47,7 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const appTitle = 'Balance';
+  static const appTitle = 'Starvy';
 
   @override
   Widget build(BuildContext context) {

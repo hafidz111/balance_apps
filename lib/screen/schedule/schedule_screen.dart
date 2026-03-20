@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:balance/utils/ads_helper.dart';
+import 'package:starvy/utils/ads_helper.dart';
 import 'package:excel/excel.dart' as ex;
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';

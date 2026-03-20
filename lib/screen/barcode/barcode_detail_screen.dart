@@ -1,4 +1,4 @@
-import 'package:balance/screen/widgets/ads/banner_ads.dart';
+import 'package:starvy/screen/widgets/ads/banner_ads.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';

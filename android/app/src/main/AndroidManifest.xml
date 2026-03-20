@@ -11,7 +11,7 @@
     <uses-permission android:name="com.android.vending.BILLING"/>
 
     <application
-        android:label="balance"
+        android:label="Starvy"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

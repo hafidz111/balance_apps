@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:balance/service/premium_service.dart';
+import 'package:starvy/service/premium_service.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 class PurchaseService {

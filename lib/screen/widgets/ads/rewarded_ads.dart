@@ -1,4 +1,4 @@
-import 'package:balance/screen/widgets/custom_snack_bar.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';

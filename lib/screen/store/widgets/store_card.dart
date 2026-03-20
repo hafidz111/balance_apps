@@ -1,5 +1,5 @@
-import 'package:balance/screen/widgets/custom_snack_bar.dart';
-import 'package:balance/utils/date_format.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
+import 'package:starvy/utils/date_format.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/custom_text_field.dart';

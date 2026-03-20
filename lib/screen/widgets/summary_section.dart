@@ -1,4 +1,4 @@
-import 'package:balance/screen/widgets/summary_row.dart';
+import 'package:starvy/screen/widgets/summary_row.dart';
 import 'package:flutter/material.dart';
 
 class SummarySection extends StatelessWidget {

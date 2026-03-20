@@ -1,4 +1,4 @@
-import 'package:balance/screen/barcode/choose_barcode_screen.dart';
+import 'package:starvy/screen/barcode/choose_barcode_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 

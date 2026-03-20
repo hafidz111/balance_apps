@@ -1,9 +1,9 @@
-name: balance
+name: starvy
 description: "A new Flutter project."
 
 publish_to: "none"
 
-version: 1.0.0+3
+version: 1.0.0+5
 
 environment:
   sdk: ^3.10.7
@@ -44,8 +44,8 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/balance.png"
-  adaptive_icon_foreground: "assets/images/balance.png"
+  image_path: "assets/images/starvy.png"
+  adaptive_icon_foreground: "assets/images/starvy.png"
   min_sdk_android: 21
 
 flutter:

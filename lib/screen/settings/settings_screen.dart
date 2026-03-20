@@ -1,8 +1,8 @@
-import 'package:balance/screen/login/login_screen.dart';
-import 'package:balance/screen/main/main_screen.dart';
-import 'package:balance/screen/widgets/ads/rewarded_ads.dart';
-import 'package:balance/screen/widgets/custom_text_field.dart';
-import 'package:balance/service/barcode_firebase_service.dart';
+import 'package:starvy/screen/login/login_screen.dart';
+import 'package:starvy/screen/main/main_screen.dart';
+import 'package:starvy/screen/widgets/ads/rewarded_ads.dart';
+import 'package:starvy/screen/widgets/custom_text_field.dart';
+import 'package:starvy/service/barcode_firebase_service.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
