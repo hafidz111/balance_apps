@@ -383,12 +383,23 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
     provider.setSaved(true);
     await Future.delayed(const Duration(milliseconds: 50));
 
+    if (!mounted) {
+      provider.setSaved(false);
+      return;
+    }
+
     final Uint8List? image = await screenshotController.capture(
       pixelRatio: 3.0,
     );
 
-    if (image == null) return;
-    if (!mounted) return;
+    if (image == null) {
+      if (mounted) provider.setSaved(false);
+      return;
+    }
+    if (!mounted) {
+      provider.setSaved(false);
+      return;
+    }
 
     FirebaseAnalytics.instance.logEvent(
       name: "grid_layout_completed",
@@ -401,6 +412,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         builder: (_) => GridBackgroundPhotoScreen(capturedImage: image),
       ),
     ).then((_) {
+      if (!context.mounted) return;
       context.read<GridChoosePhotoProvider>().setSaved(false);
     });
   }

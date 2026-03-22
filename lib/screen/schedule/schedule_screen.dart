@@ -403,6 +403,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     try {
       final hasPermission = await _requestGalleryPermission();
       if (!hasPermission) {
+        if (!mounted) return;
         CustomSnackBar.show(
           context,
           message: "Izin storage diperlukan",
@@ -410,6 +411,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         );
         return;
       }
+
+      if (!mounted) return;
 
       final Uint8List? image = await _screenshotController.captureFromWidget(
         Directionality(
@@ -420,6 +423,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
 
       if (image == null) return;
+      if (!mounted) return;
 
       Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
 
@@ -435,6 +439,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
       await _scanFile(file.path);
 
+      if (!mounted) return;
+
       CustomSnackBar.show(
         context,
         message: "Berhasil disimpan ke Gallery",
@@ -442,6 +448,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
     } catch (e) {
       debugPrint("Save error: $e");
+      if (!mounted) return;
       CustomSnackBar.show(
         context,
         message: "Gagal menyimpan gambar",

@@ -57,6 +57,7 @@ class _RewardedAdsState extends State<RewardedAds> {
     super.initState();
 
     _checkPremium().then((_) {
+      if (!mounted) return;
       if (!_isPremium) {
         _loadAd();
         _loadInterstitial();
@@ -71,11 +72,16 @@ class _RewardedAdsState extends State<RewardedAds> {
   }
 
   void _loadAd() {
+    if (!mounted) return;
     RewardedAd.load(
       adUnitId: widget.adUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
           _rewardedAd = ad;
           ad.onPaidEvent =
               (
@@ -84,6 +90,7 @@ class _RewardedAdsState extends State<RewardedAds> {
                 PrecisionType precision,
                 String currencyCode,
               ) {
+                if (!mounted) return;
                 final revenue = valueMicros / 1000000;
 
                 _analytics.logEvent(
@@ -105,6 +112,7 @@ class _RewardedAdsState extends State<RewardedAds> {
           _refresh();
         },
         onAdFailedToLoad: (error) {
+          if (!mounted) return;
           _analytics.logEvent(
             name: "rewarded_ad_failed",
             parameters: {"error": error.code},
@@ -113,6 +121,7 @@ class _RewardedAdsState extends State<RewardedAds> {
           _refresh();
 
           Future.delayed(const Duration(seconds: 5), () {
+            if (!mounted) return;
             _loadAd();
           });
         },
@@ -250,6 +259,7 @@ class _RewardedAdsState extends State<RewardedAds> {
 
     _rewardedAd!.show(
       onUserEarnedReward: (ad, reward) async {
+        if (!mounted) return;
         _analytics.logEvent(
           name: "rewarded_ad_completed",
           parameters: {
@@ -264,11 +274,16 @@ class _RewardedAdsState extends State<RewardedAds> {
   }
 
   void _loadInterstitial() {
+    if (!mounted) return;
     InterstitialAd.load(
       adUnitId: widget.interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
           _interstitialAd = ad;
           _isInterstitialReady = true;
 
@@ -278,6 +293,7 @@ class _RewardedAdsState extends State<RewardedAds> {
           );
         },
         onAdFailedToLoad: (error) {
+          if (!mounted) return;
           _isInterstitialReady = false;
 
           _analytics.logEvent(
@@ -362,7 +378,11 @@ class _RewardedAdsState extends State<RewardedAds> {
   @override
   void dispose() {
     _rewardedAd?.dispose();
+    _rewardedAd = null;
+    _isReady = false;
     _interstitialAd?.dispose();
+    _interstitialAd = null;
+    _isInterstitialReady = false;
     _renderTick.dispose();
     super.dispose();
   }

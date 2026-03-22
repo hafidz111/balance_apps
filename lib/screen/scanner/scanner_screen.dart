@@ -35,33 +35,31 @@ class _ScannerScreenState extends State<ScannerScreen>
     _checkPermission();
   }
 
-  void didPopNext() {
-    context.read<ScannerProvider>().resetScan();
-  }
-
   Future<void> _checkPermission() async {
     var status = await Permission.camera.status;
 
     if (status.isGranted) {
       if (!mounted) return;
       context.read<ScannerProvider>().setPermission(true);
+      FirebaseAnalytics.instance.logEvent(name: "camera_permission_granted");
     } else {
       var result = await Permission.camera.request();
       if (result.isGranted) {
         if (!mounted) return;
         context.read<ScannerProvider>().setPermission(true);
+        FirebaseAnalytics.instance.logEvent(name: "camera_permission_granted");
       } else if (result.isPermanentlyDenied) {
         if (mounted) {
           _showPermissionDialog();
         }
       }
     }
-
-    FirebaseAnalytics.instance.logEvent(name: "camera_permission_granted");
   }
 
   Future<void> _handleScanResult(String code) async {
     final list = await SharedPreferencesService().getBarcodes();
+
+    if (!mounted) return;
 
     BarcodeData? found;
 
@@ -81,14 +79,11 @@ class _ScannerScreenState extends State<ScannerScreen>
       parameters: {"found": found != null},
     );
     if (found != null) {
-      final result = await Navigator.push(
+      final result = await Navigator.push<bool?>(
         context,
         MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
       );
-
-      if (result == true) {
-        Navigator.pop(context, true);
-      }
+      await _afterSubRoutePop(result, popScannerIf: (r) => r == true);
     } else {
       final result = await Navigator.push(
         context,
@@ -96,11 +91,31 @@ class _ScannerScreenState extends State<ScannerScreen>
           builder: (_) => BarcodeForm(type: 'code128', initialCode: code),
         ),
       );
-
-      if (result != null) {
-        Navigator.pop(context, true);
-      }
+      await _afterSubRoutePop(result, popScannerIf: (r) => r != null);
     }
+  }
+
+  /// Setelah sub-route (detail / form) di-pop: tutup scanner dengan `true` atau hidupkan lagi kamera.
+  Future<void> _afterSubRoutePop(
+    Object? result, {
+    required bool Function(Object? result) popScannerIf,
+  }) async {
+    if (!mounted) return;
+    if (popScannerIf(result)) {
+      Navigator.pop(context, true);
+    } else {
+      await _resumeScannerAfterSubScreen();
+    }
+  }
+
+  /// Setelah [MobileScannerController.stop] sebelum push, hidupkan lagi scan + kamera
+  /// saat route detail/form selesai (Future [Navigator.push] selesai).
+  Future<void> _resumeScannerAfterSubScreen() async {
+    if (!mounted) return;
+    context.read<ScannerProvider>().resetScan();
+    try {
+      await cameraController.start();
+    } catch (_) {}
   }
 
   void _showPermissionDialog() {
@@ -129,12 +144,6 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    context.read<ScannerProvider>().resetScan();
-  }
-
-  @override
   void dispose() {
     _animationController.dispose();
     cameraController.dispose();
@@ -157,13 +166,24 @@ class _ScannerScreenState extends State<ScannerScreen>
                   onDetect: (capture) async {
                     final List<Barcode> barcodes = capture.barcodes;
 
-                    if (barcodes.isNotEmpty && !scannerProvider.isScanned) {
-                      context.read<ScannerProvider>().markScanned();
+                    if (barcodes.isEmpty) return;
 
-                      final String code = barcodes.first.rawValue ?? "";
+                    final scanner = context.read<ScannerProvider>();
+                    if (scanner.isScanned) return;
 
-                      await _handleScanResult(code);
-                    }
+                    final String code = barcodes.first.rawValue ?? "";
+                    if (code.isEmpty) return;
+
+                    scanner.markScanned();
+
+                    // Lepas kamera / GL sebelum navigasi async (kurangi race di driver GPU).
+                    try {
+                      await cameraController.stop();
+                    } catch (_) {}
+
+                    if (!context.mounted) return;
+
+                    await _handleScanResult(code);
                   },
                 ),
 
@@ -234,22 +254,6 @@ class _ScannerScreenState extends State<ScannerScreen>
     final size = MediaQuery.of(context).size.width * 0.7;
     return Stack(
       children: [
-        Align(
-          alignment: Alignment.center,
-          child: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return CustomPaint(
-                size: Size(size, size),
-                painter: ScannerLEDCornerPainter(
-                  animationValue: _animationController.value,
-                  baseColor: const Color(0xFF009688),
-                  ledColor: Colors.white,
-                ),
-              );
-            },
-          ),
-        ),
         Align(
           alignment: Alignment.center,
           child: AnimatedBuilder(

@@ -156,6 +156,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       );
 
       if (image == null) return;
+      if (!mounted) return;
 
       Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
 
@@ -168,6 +169,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
       File file = File(filePath);
       await file.writeAsBytes(image);
+      if (!mounted) return;
+
       await _scanFile(file.path);
 
       if (!mounted) return;

@@ -47,6 +47,7 @@ class _BannerAdsState extends State<BannerAds> {
       MediaQuery.of(context).size.width.truncate(),
     );
 
+    if (!mounted) return;
     if (size == null) return;
 
     final banner = BannerAd(
@@ -79,6 +80,7 @@ class _BannerAdsState extends State<BannerAds> {
               PrecisionType precision,
               String currencyCode,
             ) {
+              if (!mounted) return;
               final revenue = valueMicros / 1000000;
 
               _analytics.logEvent(
@@ -94,6 +96,10 @@ class _BannerAdsState extends State<BannerAds> {
       ),
     );
 
+    if (!mounted) {
+      banner.dispose();
+      return;
+    }
     banner.load();
   }
 
