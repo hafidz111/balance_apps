@@ -156,8 +156,10 @@ class _ScannerScreenState extends State<ScannerScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       body: !scannerProvider.hasPermission
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF009688)),
+          ? const SafeArea(
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFF009688)),
+              ),
             )
           : Stack(
               children: [
@@ -270,14 +272,21 @@ class _ScannerScreenState extends State<ScannerScreen>
             },
           ),
         ),
-        const Align(
-          alignment: Alignment(0, 0.4),
-          child: Text(
-            "Posisikan barcode di dalam kotak",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+        SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          bottom: true,
+          minimum: EdgeInsets.zero,
+          child: const Align(
+            alignment: Alignment(0, 0.4),
+            child: Text(
+              "Posisikan barcode di dalam kotak",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),

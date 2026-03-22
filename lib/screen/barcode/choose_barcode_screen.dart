@@ -9,30 +9,32 @@ class ChooseBarcodeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Choose Barcode")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildBarcodeCard(
-              context: context,
-              title: "Code128",
-              subtitle: "Hingga 80 karakter ASCII (contoh: Abc 123)",
-              type: "code128",
-              icon: Icons.onetwothree,
-              iconColor: Colors.blue[700]!,
-              bgColor: Colors.blue[50]!,
-            ),
-            const SizedBox(height: 16),
-            _buildBarcodeCard(
-              context: context,
-              title: "QR Code",
-              subtitle: "Hingga 1K karakter UTF-8 (contoh: Abc 123)",
-              type: "qrcode",
-              icon: Icons.qr_code_2,
-              iconColor: Colors.teal[700]!,
-              bgColor: Colors.teal[50]!,
-            ),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildBarcodeCard(
+                context: context,
+                title: "Code128",
+                subtitle: "Hingga 80 karakter ASCII (contoh: Abc 123)",
+                type: "code128",
+                icon: Icons.onetwothree,
+                iconColor: Colors.blue[700]!,
+                bgColor: Colors.blue[50]!,
+              ),
+              const SizedBox(height: 16),
+              _buildBarcodeCard(
+                context: context,
+                title: "QR Code",
+                subtitle: "Hingga 1K karakter UTF-8 (contoh: Abc 123)",
+                type: "qrcode",
+                icon: Icons.qr_code_2,
+                iconColor: Colors.teal[700]!,
+                bgColor: Colors.teal[50]!,
+              ),
+            ],
+          ),
         ),
       ),
     );

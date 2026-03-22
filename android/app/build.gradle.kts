@@ -61,3 +61,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // WindowCompat (edge-to-edge Android 15); selaras dengan embedding Flutter.
+    implementation("androidx.core:core-ktx:1.15.0")
+}

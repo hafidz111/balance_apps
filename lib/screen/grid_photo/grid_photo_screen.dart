@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import 'grid_choose_photo_screen.dart';
 
@@ -134,38 +134,40 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return GridView.builder(
-                    itemCount: _gridOptions.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.8,
-                        ),
-                    itemBuilder: (context, index) {
-                      final grid = _gridOptions[index];
-                      return _buildMenuItem(
-                        index: index,
-                        title: grid['title'],
-                        icon: grid['icon'],
-                        rows: grid['rows'],
-                        cols: grid['cols'],
-                      );
-                    },
-                  );
-                },
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return GridView.builder(
+                      itemCount: _gridOptions.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.8,
+                          ),
+                      itemBuilder: (context, index) {
+                        final grid = _gridOptions[index];
+                        return _buildMenuItem(
+                          index: index,
+                          title: grid['title'],
+                          icon: grid['icon'],
+                          rows: grid['rows'],
+                          cols: grid['cols'],
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

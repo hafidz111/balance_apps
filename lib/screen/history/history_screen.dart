@@ -239,90 +239,92 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final selectedMonthYear = historyProvider.selectedMonthYear;
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    _buildTabItem("Coffee", 0),
+                    _buildTabItem("Bread", 1),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  _buildTabItem("Coffee", 0),
-                  _buildTabItem("Bread", 1),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showManualInputDialog(),
-                    icon: const Icon(Icons.add),
-                    label: const Text("Tambah Data Manual"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF009688),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showManualInputDialog(),
+                      icon: const Icon(Icons.add),
+                      label: const Text("Tambah Data Manual"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF009688),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red[200]!),
-                  ),
-                  child: IconButton(
-                    onPressed: _deleteAllData,
-                    icon: const Icon(Icons.delete_forever, color: Colors.red),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: IconButton(
-                    onPressed: () async {
-                      final picked = await showMonthYearPicker(
-                        context,
-                        selectedMonthYear,
-                      );
-                      if (picked != null) {
-                        await context
-                            .read<HistoryProvider>()
-                            .setSelectedMonthYear(picked);
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.calendar_month,
-                      color: Color(0xFF009688),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: IconButton(
+                      onPressed: _deleteAllData,
+                      icon: const Icon(Icons.delete_forever, color: Colors.red),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
 
-            Expanded(
-              child: activeTab == 0
-                  ? _buildPointCoffeeHistory()
-                  : _buildSayBreadHistory(),
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: IconButton(
+                      onPressed: () async {
+                        final picked = await showMonthYearPicker(
+                          context,
+                          selectedMonthYear,
+                        );
+                        if (picked != null) {
+                          await context
+                              .read<HistoryProvider>()
+                              .setSelectedMonthYear(picked);
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.calendar_month,
+                        color: Color(0xFF009688),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Expanded(
+                child: activeTab == 0
+                    ? _buildPointCoffeeHistory()
+                    : _buildSayBreadHistory(),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -78,28 +78,30 @@ class _StoreScreenState extends State<StoreScreen> {
     context.select<StoreProvider, int>((provider) => provider.dataVersion);
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    _buildTabItem("Coffee", 0),
+                    _buildTabItem("Bread", 1),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  _buildTabItem("Coffee", 0),
-                  _buildTabItem("Bread", 1),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            Expanded(
-              child: activeTab == 0 ? _pointCoffeeTab() : _sayBreadTab(),
-            ),
-          ],
+              Expanded(
+                child: activeTab == 0 ? _pointCoffeeTab() : _sayBreadTab(),
+              ),
+            ],
+          ),
         ),
       ),
     );
