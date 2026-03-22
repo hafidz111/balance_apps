@@ -1,15 +1,18 @@
 import 'dart:io';
 
-import 'package:starvy/screen/grid_photo/grid_background_photo_screen.dart';
-import 'package:starvy/screen/grid_photo/widgets/grid_item.dart';
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:starvy/screen/grid_photo/grid_background_photo_screen.dart';
+import 'package:starvy/screen/grid_photo/widgets/grid_item.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
+
+import '../../providers/grid_choose_photo_provider.dart';
 
 class GridChoosePhotoScreen extends StatefulWidget {
   final int rows;
@@ -31,15 +34,24 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   final ImagePicker _picker = ImagePicker();
   final ScreenshotController screenshotController = ScreenshotController();
 
-  late List<File?> images;
-  bool isSaved = false;
   File? backgroundImage;
-  int? activeDeleteIndex;
+
+  int get _slotCount {
+    if (widget.title == 'Kalibrasi') {
+      return 5; // 1 + 2 + 2
+    }
+    if (widget.title == 'Initial') {
+      return 6; // 1 + 3 + 2
+    }
+    return widget.rows * widget.cols;
+  }
 
   @override
   void initState() {
     super.initState();
-    images = List.generate(widget.rows * widget.cols, (_) => null);
+    Future.microtask(
+      () => context.read<GridChoosePhotoProvider>().initGrid(_slotCount),
+    );
   }
 
   Future<void> _pickImage(int index) async {
@@ -56,8 +68,10 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      images[index] = File(picked.path);
-      setState(() {});
+      context.read<GridChoosePhotoProvider>().setImageAt(
+        index,
+        File(picked.path),
+      );
     }
 
     FirebaseAnalytics.instance.logEvent(
@@ -84,7 +98,9 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
     final files = pickedFiles.map((e) => File(e.path)).toList();
 
-    setState(() {
+    final provider = context.read<GridChoosePhotoProvider>();
+    final images = List<File?>.from(provider.images);
+    {
       List<int> emptyIndexes = [];
 
       for (int i = 0; i < images.length; i++) {
@@ -121,14 +137,14 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
           type: SnackType.warning,
         );
       }
-    });
+      provider.setImages(images);
+    }
 
     FirebaseAnalytics.instance.logEvent(name: "grid_multi_image_added");
   }
 
   void _deleteImage(int index) {
-    images[index] = null;
-    setState(() {});
+    context.read<GridChoosePhotoProvider>().setImageAt(index, null);
   }
 
   Future<bool> _requestGalleryPermission() async {
@@ -160,6 +176,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Widget _gridBox(int index) {
+    final images = context.watch<GridChoosePhotoProvider>().images;
     if (images[index] == null) {
       return _buildItem(index);
     }
@@ -184,11 +201,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
       child: DragTarget<int>(
         onAccept: (fromIndex) {
-          setState(() {
-            final temp = images[fromIndex];
-            images[fromIndex] = images[index];
-            images[index] = temp;
-          });
+          context.read<GridChoosePhotoProvider>().swap(fromIndex, index);
         },
 
         builder: (context, candidateData, rejectedData) {
@@ -207,6 +220,10 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Widget _buildItem(int index) {
+    final provider = context.watch<GridChoosePhotoProvider>();
+    final images = provider.images;
+    final isSaved = provider.isSaved;
+    final activeDeleteIndex = provider.activeDeleteIndex;
     return GridItem(
       image: images.length > index ? images[index] : null,
       isLocked: isSaved,
@@ -216,9 +233,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       onDeleteToggle: isSaved
           ? null
           : () {
-              setState(() {
-                activeDeleteIndex = activeDeleteIndex == index ? null : index;
-              });
+              context.read<GridChoosePhotoProvider>().toggleDeleteIndex(index);
             },
     );
   }
@@ -301,6 +316,10 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Widget _buildDefaultGrid() {
+    final provider = context.watch<GridChoosePhotoProvider>();
+    final images = provider.images;
+    final isSaved = provider.isSaved;
+    final activeDeleteIndex = provider.activeDeleteIndex;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ReorderableGridView.builder(
@@ -314,12 +333,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
           childAspectRatio: 1,
         ),
         onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (newIndex > oldIndex) newIndex--;
-
-            final item = images.removeAt(oldIndex);
-            images.insert(newIndex, item);
-          });
+          context.read<GridChoosePhotoProvider>().reorder(oldIndex, newIndex);
         },
         itemBuilder: (context, index) {
           return Container(
@@ -333,11 +347,9 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
               onDeleteToggle: isSaved
                   ? null
                   : () {
-                      setState(() {
-                        activeDeleteIndex = activeDeleteIndex == index
-                            ? null
-                            : index;
-                      });
+                      context.read<GridChoosePhotoProvider>().toggleDeleteIndex(
+                        index,
+                      );
                     },
             ),
           );
@@ -357,6 +369,8 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   void _handleSave() async {
+    final provider = context.read<GridChoosePhotoProvider>();
+    final images = provider.images;
     if (images.contains(null)) {
       CustomSnackBar.show(
         context,
@@ -366,9 +380,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       return;
     }
 
-    setState(() {
-      isSaved = true;
-    });
+    provider.setSaved(true);
     await Future.delayed(const Duration(milliseconds: 50));
 
     final Uint8List? image = await screenshotController.capture(
@@ -389,9 +401,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
         builder: (_) => GridBackgroundPhotoScreen(capturedImage: image),
       ),
     ).then((_) {
-      setState(() {
-        isSaved = false;
-      });
+      context.read<GridChoosePhotoProvider>().setSaved(false);
     });
   }
 

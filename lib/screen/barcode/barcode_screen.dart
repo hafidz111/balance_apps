@@ -1,9 +1,10 @@
-import 'package:starvy/screen/barcode/choose_barcode_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:starvy/screen/barcode/choose_barcode_screen.dart';
 
 import '../../data/model/barcode_data.dart';
-import '../../service/shared_preferences_service.dart';
+import '../../providers/barcode_provider.dart';
 import '../scanner/scanner_screen.dart';
 import '../widgets/custom_snack_bar.dart';
 import 'barcode_detail_screen.dart';
@@ -28,35 +29,27 @@ class BarcodeScreen extends StatefulWidget {
 }
 
 class _BarcodeScreenState extends State<BarcodeScreen> {
-  bool isOpened = false;
-  Set<int> selectedIndexes = {};
-  bool isSelectionMode = false;
-
   void _updateSelectionState() {
-    widget.onSelectionChanged?.call(isSelectionMode, selectedIndexes.length);
+    final provider = context.read<BarcodeProvider>();
+    widget.onSelectionChanged?.call(
+      provider.isSelectionMode,
+      provider.selectedIndexes.length,
+    );
   }
 
   void _onLongPressItem(int index) {
-    setState(() {
-      isSelectionMode = true;
-      selectedIndexes.add(index);
-    });
+    context.read<BarcodeProvider>().onLongPressItem(index);
     _updateSelectionState();
   }
 
   void _onTapItem(int index) {
+    final provider = context.read<BarcodeProvider>();
+    final isSelectionMode = provider.isSelectionMode;
     if (isSelectionMode) {
-      setState(() {
-        if (selectedIndexes.contains(index)) {
-          selectedIndexes.remove(index);
-          if (selectedIndexes.isEmpty) isSelectionMode = false;
-        } else {
-          selectedIndexes.add(index);
-        }
-      });
+      provider.onTapItemSelection(index);
       _updateSelectionState();
     } else {
-      _openDetail(filteredBarcodes[index]);
+      _openDetail(provider.filteredBarcodes[index]);
     }
   }
 
@@ -65,21 +58,21 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       context,
       MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: b)),
     );
-    if (result == true) load();
+    if (result == true) {
+      await context.read<BarcodeProvider>().load();
+    }
   }
 
   void _toggleMenu() {
-    setState(() => isOpened = !isOpened);
+    context.read<BarcodeProvider>().toggleMenu();
   }
 
-  List<BarcodeData> barcodes = [];
   final TextEditingController _searchController = TextEditingController();
-  List<BarcodeData> filteredBarcodes = [];
 
   @override
   void initState() {
     super.initState();
-    load();
+    Future.microtask(() => context.read<BarcodeProvider>().load());
 
     widget.onRegisterActions?.call(
       _deleteSelected,
@@ -89,29 +82,12 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   void _exitSelectionMode() {
-    setState(() {
-      isSelectionMode = false;
-      selectedIndexes.clear();
-    });
+    context.read<BarcodeProvider>().exitSelectionMode();
     _updateSelectionState();
   }
 
-  void load() async {
-    barcodes = await SharedPreferencesService().getBarcodes();
-    filteredBarcodes = List.from(barcodes);
-    if (mounted) setState(() {});
-  }
-
   void _filterBarcodes(String query) {
-    final lowerQuery = query.toLowerCase();
-
-    setState(() {
-      filteredBarcodes = barcodes.where((b) {
-        final codeMatch = b.code.toLowerCase().contains(lowerQuery);
-        final descMatch = b.description.toLowerCase().contains(lowerQuery);
-        return codeMatch || descMatch;
-      }).toList();
-    });
+    context.read<BarcodeProvider>().setSearchQuery(query);
 
     FirebaseAnalytics.instance.logEvent(
       name: "barcode_search",
@@ -126,41 +102,30 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   void _deleteSelected() async {
-    final selectedItems = selectedIndexes
-        .map((i) => filteredBarcodes[i])
-        .toList();
-
-    barcodes.removeWhere((b) => selectedItems.contains(b));
-
-    await SharedPreferencesService().saveBarcodes(barcodes);
-
-    setState(() {
-      isSelectionMode = false;
-      selectedIndexes.clear();
-      filteredBarcodes = barcodes;
-    });
+    final deletedCount = await context.read<BarcodeProvider>().deleteSelected();
 
     _updateSelectionState();
 
     CustomSnackBar.show(
       context,
-      message: "${selectedItems.length} barcode dihapus",
+      message: "$deletedCount barcode dihapus",
       type: SnackType.success,
     );
   }
 
   void _selectAll() {
-    setState(() {
-      selectedIndexes = List.generate(
-        filteredBarcodes.length,
-        (i) => i,
-      ).toSet();
-    });
+    context.read<BarcodeProvider>().selectAll();
     _updateSelectionState();
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<BarcodeProvider>();
+    final isSelectionMode = provider.isSelectionMode;
+    final selectedIndexes = provider.selectedIndexes;
+    final barcodes = provider.barcodes;
+    final filteredBarcodes = provider.filteredBarcodes;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -321,6 +286,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   Widget _buildExpandableFabMenu() {
+    final isOpened = context.watch<BarcodeProvider>().isOpened;
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -365,7 +331,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 MaterialPageRoute(builder: (_) => const ChooseBarcodeScreen()),
               );
 
-              if (result != null) load();
+              if (result != null) {
+                await context.read<BarcodeProvider>().load();
+              }
             },
           ),
         ),

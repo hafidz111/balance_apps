@@ -16,6 +16,11 @@ class _BannerAdsState extends State<BannerAds> {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   BannerAd? _bannerAd;
   bool _isPremium = false;
+  final ValueNotifier<int> _renderTick = ValueNotifier<int>(0);
+
+  void _refresh() {
+    _renderTick.value++;
+  }
 
   @override
   void initState() {
@@ -34,7 +39,7 @@ class _BannerAdsState extends State<BannerAds> {
       });
     }
 
-    if (mounted) setState(() {});
+    if (mounted) _refresh();
   }
 
   Future<void> _loadAd() async {
@@ -56,9 +61,8 @@ class _BannerAdsState extends State<BannerAds> {
             return;
           }
 
-          setState(() {
-            _bannerAd = ad as BannerAd;
-          });
+          _bannerAd = ad as BannerAd;
+          _refresh();
         },
         onAdFailedToLoad: (ad, error) {
           _analytics.logEvent(
@@ -95,23 +99,29 @@ class _BannerAdsState extends State<BannerAds> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isPremium || _bannerAd == null) {
-      return const SizedBox();
-    }
+    return ValueListenableBuilder<int>(
+      valueListenable: _renderTick,
+      builder: (_, __, ___) {
+        if (_isPremium || _bannerAd == null) {
+          return const SizedBox();
+        }
 
-    return Align(
-      alignment: Alignment.center,
-      child: SizedBox(
-        width: _bannerAd!.size.width.toDouble(),
-        height: _bannerAd!.size.height.toDouble(),
-        child: AdWidget(ad: _bannerAd!),
-      ),
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: _bannerAd!.size.width.toDouble(),
+            height: _bannerAd!.size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
+          ),
+        );
+      },
     );
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _renderTick.dispose();
     super.dispose();
   }
 }

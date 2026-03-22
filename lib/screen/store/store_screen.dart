@@ -1,8 +1,10 @@
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import '../../data/model/store_data.dart';
+import '../../providers/store_provider.dart';
 import '../../service/shared_preferences_service.dart';
 import 'widgets/store_card.dart';
 
@@ -14,8 +16,6 @@ class StoreScreen extends StatefulWidget {
 }
 
 class _StoreScreenState extends State<StoreScreen> {
-  int activeTab = 0;
-
   final pcTitle = TextEditingController();
   final pcNama = TextEditingController();
   final pcKode = TextEditingController();
@@ -35,6 +35,7 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   Future<void> _loadStoreData() async {
+    final storeProvider = context.read<StoreProvider>();
     final service = SharedPreferencesService();
 
     final pc = await service.getPointCoffeeStore();
@@ -66,11 +67,16 @@ class _StoreScreenState extends State<StoreScreen> {
       sbTgl.clear();
       sbArea.clear();
     }
-    setState(() {});
+    storeProvider.markDataLoaded();
   }
 
   @override
   Widget build(BuildContext context) {
+    final activeTab = context.select<StoreProvider, int>(
+      (provider) => provider.activeTab,
+    );
+    context.select<StoreProvider, int>((provider) => provider.dataVersion);
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -83,8 +89,8 @@ class _StoreScreenState extends State<StoreScreen> {
               ),
               child: Row(
                 children: [
-                  _buildTabItem("Point Coffee", 0),
-                  _buildTabItem("Say Bread", 1),
+                  _buildTabItem("Coffee", 0),
+                  _buildTabItem("Bread", 1),
                 ],
               ),
             ),
@@ -100,6 +106,9 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   Widget _buildTabItem(String title, int index) {
+    final activeTab = context.select<StoreProvider, int>(
+      (provider) => provider.activeTab,
+    );
     bool isActive = activeTab == index;
     return Expanded(
       child: GestureDetector(
@@ -110,7 +119,8 @@ class _StoreScreenState extends State<StoreScreen> {
           );
           if (activeTab != index) {
             await _loadStoreData();
-            setState(() => activeTab = index);
+            if (!context.mounted) return;
+            context.read<StoreProvider>().setActiveTab(index);
           }
         },
         child: Container(
@@ -152,7 +162,7 @@ class _StoreScreenState extends State<StoreScreen> {
           kodeController: pcKode,
           tglController: pcTgl,
           areaController: pcArea,
-          onSave: () => _handleSave("Point Coffee"),
+          onSave: () => _handleSave("Coffee"),
         ),
       ],
     );
@@ -169,7 +179,7 @@ class _StoreScreenState extends State<StoreScreen> {
           kodeController: sbKode,
           tglController: sbTgl,
           areaController: sbArea,
-          onSave: () => _handleSave("Say Bread"),
+          onSave: () => _handleSave("Bread"),
         ),
       ],
     );
@@ -178,7 +188,7 @@ class _StoreScreenState extends State<StoreScreen> {
   void _handleSave(String category) async {
     final service = SharedPreferencesService();
 
-    if (category == "Point Coffee") {
+    if (category == "Coffee") {
       await service.savePointCoffeeStore(
         StoreData(
           title: pcTitle.text,

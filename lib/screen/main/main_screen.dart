@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:starvy/screen/barcode/barcode_screen.dart';
 import 'package:starvy/screen/history/history_screen.dart';
 import 'package:starvy/screen/point_coffee/point_coffee_screen.dart';
@@ -9,12 +13,9 @@ import 'package:starvy/screen/schedule/schedule_screen.dart';
 import 'package:starvy/screen/settings/settings_screen.dart';
 import 'package:starvy/screen/store/store_screen.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
+import '../../providers/main_screen_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
@@ -33,43 +34,15 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
-  int _selectedIndex = 1;
-  int _barcodeRefreshKey = 0;
   DateTime? _screenStartTime;
-  bool isBarcodeSelectionMode = false;
-  int selectedBarcodeCount = 0;
   VoidCallback? deleteSelectedBarcodes;
   VoidCallback? selectAllBarcodes;
   VoidCallback? exitSelectionMode;
 
-  List<Widget> get _widgetOptions => [
-    const StoreScreen(),
-    const PointCoffeeScreen(),
-    const SayBreadScreen(),
-    const HistoryScreen(),
-    BarcodeScreen(
-      key: ValueKey(_barcodeRefreshKey),
-      onSelectionChanged: (isSelecting, count) {
-        setState(() {
-          isBarcodeSelectionMode = isSelecting;
-          selectedBarcodeCount = count;
-        });
-      },
-      onRegisterActions: (delete, selectAll, exit) {
-        deleteSelectedBarcodes = delete;
-        selectAllBarcodes = selectAll;
-        exitSelectionMode = exit;
-      },
-    ),
-    const GridPhotoScreen(),
-    const ScheduleScreen(),
-    const SettingsScreen(),
-  ];
-
   static const List<String> _titles = [
     "Store",
-    "Point Coffee",
-    "Say Bread",
+    "Coffee",
+    "Bread",
     "History",
     "Barcode",
     "Space",
@@ -112,17 +85,16 @@ class _MainScreenState extends State<MainScreen> {
         sb.kode.isEmpty ||
         sb.tgl.isEmpty ||
         sb.area.isEmpty) {
-      setState(() {
-        _selectedIndex = 0;
-      });
+      if (!mounted) return;
+      context.read<MainScreenProvider>().setInitialIndex(0);
     } else {
-      setState(() {
-        _selectedIndex = 1;
-      });
+      if (!mounted) return;
+      context.read<MainScreenProvider>().setInitialIndex(1);
     }
   }
 
   void _onItemTapped(int index) {
+    final selectedIndex = context.read<MainScreenProvider>().selectedIndex;
     final now = DateTime.now();
 
     if (_screenStartTime != null) {
@@ -131,7 +103,7 @@ class _MainScreenState extends State<MainScreen> {
       _analytics.logEvent(
         name: "screen_duration",
         parameters: {
-          "screen_name": _titles[_selectedIndex],
+          "screen_name": _titles[selectedIndex],
           "duration_seconds": duration,
         },
       );
@@ -139,9 +111,7 @@ class _MainScreenState extends State<MainScreen> {
 
     _screenStartTime = now;
 
-    setState(() {
-      _selectedIndex = index;
-    });
+    context.read<MainScreenProvider>().setSelectedIndex(index);
 
     _analytics.logScreenView(
       screenName: _titles[index],
@@ -210,10 +180,7 @@ class _MainScreenState extends State<MainScreen> {
     await SharedPreferencesService().importBarcodesFromJson(content);
 
     if (!mounted) return;
-    setState(() {
-      _barcodeRefreshKey++;
-      _selectedIndex = 4;
-    });
+    context.read<MainScreenProvider>().refreshBarcodeAndOpenTab();
 
     _analytics.logEvent(name: "barcode_import_success");
 
@@ -228,20 +195,49 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<FirebaseAuthProvider>();
     final isLogin = context.watch<SharedPreferenceProvider>().isLogin;
+    final mainProvider = context.watch<MainScreenProvider>();
+    final selectedIndex = mainProvider.selectedIndex;
+    final isBarcodeSelectionMode = mainProvider.isBarcodeSelectionMode;
+    final selectedBarcodeCount = mainProvider.selectedBarcodeCount;
+
+    final widgetOptions = [
+      const StoreScreen(),
+      const PointCoffeeScreen(),
+      const SayBreadScreen(),
+      const HistoryScreen(),
+      BarcodeScreen(
+        key: ValueKey(mainProvider.barcodeRefreshKey),
+        onSelectionChanged: (isSelecting, count) {
+          context.read<MainScreenProvider>().setBarcodeSelection(
+            isSelecting,
+            count,
+          );
+        },
+        onRegisterActions: (delete, selectAll, exit) {
+          deleteSelectedBarcodes = delete;
+          selectAllBarcodes = selectAll;
+          exitSelectionMode = exit;
+        },
+      ),
+      const GridPhotoScreen(),
+      const ScheduleScreen(),
+      const SettingsScreen(),
+    ];
+
     final user = authProvider.profile;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF009688),
-        title: isBarcodeSelectionMode && _selectedIndex == 4
+        title: isBarcodeSelectionMode && selectedIndex == 4
             ? Text(
                 "$selectedBarcodeCount dipilih",
                 style: const TextStyle(color: Colors.white),
               )
             : Text(
-                _titles[_selectedIndex],
+                _titles[selectedIndex],
                 style: const TextStyle(color: Colors.white),
               ),
-        leading: isBarcodeSelectionMode && _selectedIndex == 4
+        leading: isBarcodeSelectionMode && selectedIndex == 4
             ? IconButton(
                 icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: exitSelectionMode,
@@ -253,7 +249,7 @@ class _MainScreenState extends State<MainScreen> {
                   color: Colors.white,
                 ),
               ),
-        actions: isBarcodeSelectionMode && _selectedIndex == 4
+        actions: isBarcodeSelectionMode && selectedIndex == 4
             ? [
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.white),
@@ -264,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
                   onPressed: selectAllBarcodes,
                 ),
               ]
-            : (_selectedIndex == 4
+            : (selectedIndex == 4
                   ? [
                       PremiumService.cachedPremium
                           ? IconButton(
@@ -304,7 +300,7 @@ class _MainScreenState extends State<MainScreen> {
                     ]
                   : []),
       ),
-      body: _widgetOptions[_selectedIndex],
+      body: widgetOptions[selectedIndex],
       drawer: Drawer(
         child: Column(
           children: [
@@ -315,7 +311,7 @@ class _MainScreenState extends State<MainScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Balance App',
+                      'Starvy',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -391,22 +387,22 @@ class _MainScreenState extends State<MainScreen> {
                     ListTile(
                       leading: Icon(
                         _icons[i],
-                        color: _selectedIndex == i
+                        color: selectedIndex == i
                             ? const Color(0xFF009688)
                             : Colors.grey,
                       ),
                       title: Text(
                         _titles[i],
                         style: TextStyle(
-                          color: _selectedIndex == i
+                          color: selectedIndex == i
                               ? const Color(0xFF009688)
                               : Colors.black87,
-                          fontWeight: _selectedIndex == i
+                          fontWeight: selectedIndex == i
                               ? FontWeight.bold
                               : FontWeight.normal,
                         ),
                       ),
-                      selected: _selectedIndex == i,
+                      selected: selectedIndex == i,
                       onTap: () {
                         _onItemTapped(i);
                         Navigator.pop(context);

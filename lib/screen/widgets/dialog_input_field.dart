@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class DialogInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool readOnly;
   final VoidCallback? onTap;
+  final List<TextInputFormatter>? inputFormatters;
 
   const DialogInputField({
     super.key,
@@ -12,6 +14,7 @@ class DialogInputField extends StatelessWidget {
     required this.controller,
     this.readOnly = false,
     this.onTap,
+    this.inputFormatters,
   });
 
   @override
@@ -31,6 +34,7 @@ class DialogInputField extends StatelessWidget {
             readOnly: readOnly,
             onTap: onTap,
             keyboardType: TextInputType.number,
+            inputFormatters: inputFormatters,
             decoration: InputDecoration(
               isDense: true,
               filled: true,

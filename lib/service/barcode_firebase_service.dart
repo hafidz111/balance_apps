@@ -165,13 +165,13 @@ class BarcodeFirebaseService {
         .get();
 
     if (!snapshot.exists) {
-      throw Exception("Belum ada data Point Coffee di server");
+      throw Exception("Belum ada data Coffee di server");
     }
 
     final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
-      throw Exception("Data Point Coffee kosong di server");
+      throw Exception("Data Coffee kosong di server");
     }
 
     final firebaseData = data
@@ -207,13 +207,13 @@ class BarcodeFirebaseService {
         .get();
 
     if (!snapshot.exists) {
-      throw Exception("Belum ada data Say Bread di server");
+      throw Exception("Belum ada data Bread di server");
     }
 
     final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
-      throw Exception("Data Say Bread kosong di server");
+      throw Exception("Data Bread kosong di server");
     }
 
     final firebaseData = data

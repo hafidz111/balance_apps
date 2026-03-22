@@ -1,6 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/utils/date_format.dart';
-import 'package:flutter/material.dart';
 
 import '../../widgets/custom_text_field.dart';
 
@@ -28,7 +28,7 @@ class StoreCard extends StatefulWidget {
 
 class _StoreCardState extends State<StoreCard> {
   late Map<TextEditingController, String> _initialValues;
-  bool _isChanged = false;
+  final ValueNotifier<bool> _isChanged = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -49,9 +49,8 @@ class _StoreCardState extends State<StoreCard> {
 
   void _checkChanges() {
     final changed = _initialValues.entries.any((e) => e.key.text != e.value);
-
-    if (changed != _isChanged) {
-      setState(() => _isChanged = changed);
+    if (changed != _isChanged.value) {
+      _isChanged.value = changed;
     }
   }
 
@@ -60,6 +59,7 @@ class _StoreCardState extends State<StoreCard> {
     for (final controller in _initialValues.keys) {
       controller.removeListener(_checkChanges);
     }
+    _isChanged.dispose();
     super.dispose();
   }
 
@@ -85,7 +85,7 @@ class _StoreCardState extends State<StoreCard> {
         widget.areaController: widget.areaController.text,
       };
 
-      _isChanged = false;
+      _isChanged.value = false;
     }
   }
 
@@ -113,7 +113,7 @@ class _StoreCardState extends State<StoreCard> {
       _initialValues[e.key] = e.key.text;
     }
 
-    setState(() => _isChanged = false);
+    _isChanged.value = false;
   }
 
   @override
@@ -133,23 +133,28 @@ class _StoreCardState extends State<StoreCard> {
             _buildFieldWrapper(context, "GO Date", widget.tglController),
             _buildFieldWrapper(context, "Store Area", widget.areaController),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 45,
-              child: ElevatedButton(
-                onPressed: _isChanged ? _onSavePressed : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF009688),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isChanged,
+              builder: (context, isChanged, _) {
+                return SizedBox(
+                  width: double.infinity,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: isChanged ? _onSavePressed : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF009688),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      "Simpan Data",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  "Simpan Data",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),

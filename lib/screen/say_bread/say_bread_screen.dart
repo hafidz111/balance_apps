@@ -1,11 +1,12 @@
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
-import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
+import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/model/say_bread_history.dart';
+import '../../providers/say_bread_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
@@ -27,7 +28,6 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   late List<TextEditingController> qtyControllers;
 
   static const int maxShift = 4;
-  int shiftCount = 2; // DEFAULT 2
   final akmLastMonth = TextEditingController();
 
   @override
@@ -51,17 +51,16 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     super.didChangeDependencies();
 
     final pref = context.watch<SharedPreferenceProvider>();
+    final formProvider = context.read<SayBreadProvider>();
 
     final shift = pref.shiftCount ?? 2;
-
-    if (shiftCount != shift) {
-      setState(() {
-        shiftCount = shift.clamp(1, maxShift);
-        FirebaseAnalytics.instance.logEvent(
-          name: "say_bread_shift_changed",
-          parameters: {"shift_count": shiftCount},
-        );
-      });
+    final next = shift.clamp(1, maxShift);
+    if (formProvider.shiftCount != next) {
+      formProvider.setShiftCount(next);
+      FirebaseAnalytics.instance.logEvent(
+        name: "say_bread_shift_changed",
+        parameters: {"shift_count": next},
+      );
     }
   }
 
@@ -71,6 +70,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   }
 
   int get totalSales {
+    final shiftCount = context.read<SayBreadProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(salesControllers[i]);
@@ -79,6 +79,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   }
 
   int get totalQty {
+    final shiftCount = context.read<SayBreadProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(qtyControllers[i]);
@@ -119,7 +120,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
 
   void _updateSummary() {
     _saveDraft();
-    setState(() {});
+    context.read<SayBreadProvider>().markFormChanged();
   }
 
   Future<String> _buildWhatsAppMessage() async {
@@ -132,7 +133,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     final store = await service.getSayBreadStore();
     final historyText = await _buildMonthlyHistory();
 
-    final sbtitle = store?.title ?? "LAPORAN SAY BREAD";
+    final sbtitle = store?.title ?? "LAPORAN BREAD";
     final sbnama = store?.nama ?? "-";
     final sbcode = store?.kode ?? "-";
     final sbtgl = store?.tgl ?? "-";
@@ -143,6 +144,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     final akmSales = history.fold(0, (sum, e) => sum + e.sales);
 
     String shiftText = "";
+    final shiftCount = context.read<SayBreadProvider>().shiftCount;
 
     for (int i = 0; i < shiftCount; i++) {
       shiftText +=
@@ -225,7 +227,7 @@ $historyText```
     // ignore: use_build_context_synchronously
     CustomSnackBar.show(
       context,
-      message: "Data Say Bread tersimpan",
+      message: "Data Bread tersimpan",
       type: SnackType.success,
     );
   }
@@ -235,7 +237,7 @@ $historyText```
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
     final data = {
-      "shiftCount": shiftCount,
+      "shiftCount": context.read<SayBreadProvider>().shiftCount,
       "sales": salesControllers.map((e) => e.text).toList(),
       "qty": qtyControllers.map((e) => e.text).toList(),
       "akmLastMonth": akmLastMonth.text,
@@ -253,7 +255,9 @@ $historyText```
 
     if (draft == null) return;
 
-    shiftCount = draft["shiftCount"] ?? shiftCount;
+    final currentShift = context.read<SayBreadProvider>().shiftCount;
+    final shiftCount = draft["shiftCount"] ?? currentShift;
+    context.read<SayBreadProvider>().setShiftCount(shiftCount);
     final sales = List<String>.from(draft["sales"] ?? []);
     final qty = List<String>.from(draft["qty"] ?? []);
 
@@ -264,11 +268,15 @@ $historyText```
 
     akmLastMonth.text = draft["akmLastMonth"] ?? "";
 
-    setState(() {});
+    context.read<SayBreadProvider>().markFormChanged();
   }
 
   @override
   Widget build(BuildContext context) {
+    final shiftCount = context.select<SayBreadProvider, int>(
+      (provider) => provider.shiftCount,
+    );
+    context.select<SayBreadProvider, int>((provider) => provider.formVersion);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(

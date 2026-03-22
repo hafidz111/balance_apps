@@ -1,9 +1,11 @@
-import 'package:starvy/screen/widgets/ads/banner_ads.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:starvy/screen/widgets/ads/banner_ads.dart';
 
 import '../../data/model/barcode_data.dart';
+import '../../providers/barcode_detail_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import 'widgets/barcode_form.dart';
@@ -18,13 +20,12 @@ class BarcodeDetailScreen extends StatefulWidget {
 }
 
 class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
-  late BarcodeData _current;
   final Color primaryTeal = const Color(0xFF009688);
 
   @override
   void initState() {
     super.initState();
-    _current = widget.barcode;
+    context.read<BarcodeDetailProvider>().init(widget.barcode);
   }
 
   void _delete() async {
@@ -56,24 +57,23 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
   }
 
   void _edit() async {
+    final current = context.read<BarcodeDetailProvider>().current;
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BarcodeForm(type: _current.type, barcode: _current),
+        builder: (_) => BarcodeForm(type: current.type, barcode: current),
       ),
     );
 
     if (result is BarcodeData) {
-      setState(() {
-        _current = result;
-      });
+      context.read<BarcodeDetailProvider>().setCurrent(result);
       Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final b = _current;
+    final b = context.watch<BarcodeDetailProvider>().current;
     final String displayType = b.type == 'qrcode' ? 'QR Code' : 'Code 128';
 
     return Scaffold(

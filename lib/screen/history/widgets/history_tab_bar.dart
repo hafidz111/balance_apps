@@ -20,8 +20,8 @@ class HistoryTabBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _buildTab(title: "Point Coffee", index: 0),
-          _buildTab(title: "Say Bread", index: 1),
+          _buildTab(title: "Coffee", index: 0),
+          _buildTab(title: "Bread", index: 1),
         ],
       ),
     );

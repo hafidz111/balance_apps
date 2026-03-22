@@ -1,8 +1,9 @@
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import '../../../data/model/say_bread_history.dart';
 import '../../../service/shared_preferences_service.dart';
+import '../../../utils/number_format.dart';
 import '../../widgets/dialog_input_field.dart';
 
 class SayBreadDialog extends StatefulWidget {
@@ -62,7 +63,7 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
       return;
     }
 
-    final sales = int.tryParse(salesCtrl.text);
+    final sales = int.tryParse(salesCtrl.text.replaceAll('.', ''));
     if (sales == null) {
       CustomSnackBar.show(
         context,
@@ -81,7 +82,7 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
       return;
     }
 
-    final qty = int.tryParse(qtyCtrl.text);
+    final qty = int.tryParse(qtyCtrl.text.replaceAll('.', ''));
     if (qty == null) {
       CustomSnackBar.show(
         context,
@@ -130,8 +131,8 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
           "${selectedDate!.month.toString().padLeft(2, '0')}-"
           "${selectedDate!.year}";
 
-      salesCtrl.text = d.sales.toString();
-      qtyCtrl.text = d.qty.toString();
+      salesCtrl.text = formatRupiah(d.sales.toString());
+      qtyCtrl.text = formatRupiah(d.qty.toString());
     }
   }
 
@@ -147,9 +148,7 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
           Align(
             alignment: Alignment.center,
             child: Text(
-              widget.editData == null
-                  ? "Tambah Data Say Bread"
-                  : "Edit Data Say Bread",
+              widget.editData == null ? "Tambah Data Bread" : "Edit Data Bread",
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -178,8 +177,16 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
                 readOnly: true,
                 onTap: _pickDate,
               ),
-              DialogInputField(label: "Total Sales", controller: salesCtrl),
-              DialogInputField(label: "Qty", controller: qtyCtrl),
+              DialogInputField(
+                label: "Total Sales",
+                controller: salesCtrl,
+                inputFormatters: [RupiahInputFormatter()],
+              ),
+              DialogInputField(
+                label: "Qty",
+                controller: qtyCtrl,
+                inputFormatters: [RupiahInputFormatter()],
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,

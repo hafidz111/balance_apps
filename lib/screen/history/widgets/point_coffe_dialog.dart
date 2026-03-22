@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/model/point_coffe_history.dart';
 import '../../../service/shared_preferences_service.dart';
+import '../../../utils/number_format.dart';
 import '../../widgets/custom_snack_bar.dart';
 import '../../widgets/dialog_input_field.dart';
 
@@ -61,8 +62,8 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
       return;
     }
 
-    final spd = int.tryParse(spdCtrl.text);
-    final cup = int.tryParse(cupCtrl.text);
+    final spd = int.tryParse(spdCtrl.text.replaceAll('.', ''));
+    final cup = int.tryParse(cupCtrl.text.replaceAll('.', ''));
 
     if (spd == null || cup == null) {
       CustomSnackBar.show(
@@ -105,8 +106,8 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
           "${selectedDate!.month.toString().padLeft(2, '0')}-"
           "${selectedDate!.year}";
 
-      spdCtrl.text = d.spd.toString();
-      cupCtrl.text = d.cup.toString();
+      spdCtrl.text = formatRupiah(d.spd.toString());
+      cupCtrl.text = formatRupiah(d.cup.toString());
     }
   }
 
@@ -123,8 +124,8 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
             alignment: Alignment.center,
             child: Text(
               widget.editData == null
-                  ? "Tambah Data Point Coffee"
-                  : "Edit Data Point Coffee",
+                  ? "Tambah Data Coffee"
+                  : "Edit Data Coffee",
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -152,8 +153,16 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
                 readOnly: true,
                 onTap: _pickDate,
               ),
-              DialogInputField(label: "SPD", controller: spdCtrl),
-              DialogInputField(label: "CUP", controller: cupCtrl),
+              DialogInputField(
+                label: "SPD",
+                controller: spdCtrl,
+                inputFormatters: [RupiahInputFormatter()],
+              ),
+              DialogInputField(
+                label: "CUP",
+                controller: cupCtrl,
+                inputFormatters: [RupiahInputFormatter()],
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,

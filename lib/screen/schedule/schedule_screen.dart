@@ -1,14 +1,16 @@
 import 'dart:io';
 
-import 'package:starvy/utils/ads_helper.dart';
 import 'package:excel/excel.dart' as ex;
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:starvy/utils/ads_helper.dart';
 
+import '../../providers/schedule_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../widgets/ads/rewarded_ads.dart';
@@ -23,17 +25,19 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   final _prefsService = SharedPreferencesService();
-  Map<String, String> _schedules = {};
-  int _shiftCount = 2;
 
-  bool _isLoading = false;
+  Map<String, String> get _schedules =>
+      context.read<ScheduleProvider>().schedules;
 
-  DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  int get _shiftCount => context.read<ScheduleProvider>().shiftCount;
+
+  DateTime get _currentMonth => context.read<ScheduleProvider>().currentMonth;
   final int _activeYear = DateTime.now().year;
 
   final ScreenshotController _screenshotController = ScreenshotController();
   static const platform = MethodChannel('gallery_saver');
-  String _storeCode = "FBVO";
+
+  String get _storeCode => context.read<ScheduleProvider>().storeCode;
 
   @override
   void initState() {
@@ -42,13 +46,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _loadSchedules() async {
-    _schedules = await _prefsService.getSchedules();
-    _shiftCount = _prefsService.getShiftCount() ?? 2;
+    final provider = context.read<ScheduleProvider>();
+    provider.setSchedules(await _prefsService.getSchedules());
+    provider.setShiftCount(_prefsService.getShiftCount() ?? 2);
 
     final store = await _prefsService.getPointCoffeeStore();
-    _storeCode = store?.kode.isNotEmpty == true ? store!.kode : "FBVO";
-
-    setState(() {});
+    provider.setStoreCode(
+      store?.kode.isNotEmpty == true ? store!.kode : "FBVO",
+    );
   }
 
   Future<void> _setSchedule(String name, String date, String shift) async {
@@ -188,9 +193,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (newMonth.year != _activeYear) return;
 
-    setState(() {
-      _currentMonth = newMonth;
-    });
+    context.read<ScheduleProvider>().setCurrentMonth(newMonth);
   }
 
   String get _formattedMonth {
@@ -241,7 +244,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _importExcel() async {
-    setState(() => _isLoading = true);
+    context.read<ScheduleProvider>().setLoading(true);
 
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -250,7 +253,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
 
       if (result == null) {
-        setState(() => _isLoading = false);
+        context.read<ScheduleProvider>().setLoading(false);
         return;
       }
 
@@ -260,7 +263,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (bytes == null) {
         final path = file.path;
         if (path == null) {
-          setState(() => _isLoading = false);
+          context.read<ScheduleProvider>().setLoading(false);
           return;
         }
         bytes = await File(path).readAsBytes();
@@ -344,7 +347,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        context.read<ScheduleProvider>().setLoading(false);
       }
     }
   }
@@ -603,9 +606,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.select<ScheduleProvider, bool>(
+      (provider) => provider.isLoading,
+    );
+    context.select<ScheduleProvider, DateTime>(
+      (provider) => provider.currentMonth,
+    );
+    context.select<ScheduleProvider, int>((provider) => provider.shiftCount);
+    context.select<ScheduleProvider, String>((provider) => provider.storeCode);
+    context.select<ScheduleProvider, Map<String, String>>(
+      (provider) => provider.schedules,
+    );
+
     return Stack(
       children: [
-        if (_isLoading)
+        if (isLoading)
           Container(
             color: Colors.black.withValues(alpha: 0.3),
             child: const Center(child: CircularProgressIndicator()),

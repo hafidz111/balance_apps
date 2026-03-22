@@ -21,24 +21,63 @@ class CustomInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: enabled
+                ? colorScheme.onSurface.withOpacity(0.9)
+                : colorScheme.onSurface.withOpacity(0.45),
+          ),
+        ),
+        const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           enabled: enabled,
           inputFormatters: inputFormatters,
+          cursorColor: colorScheme.primary,
           decoration: InputDecoration(
             hintText: hintText,
-            isDense: true,
+            hintStyle: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface.withOpacity(0.45),
+            ),
+            isDense: false,
             filled: true,
-            fillColor: Colors.grey[200],
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            fillColor: enabled
+                ? colorScheme.surfaceVariant.withOpacity(0.35)
+                : colorScheme.surfaceVariant.withOpacity(0.2),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+            border: baseBorder,
+            enabledBorder: baseBorder,
+            disabledBorder: baseBorder.copyWith(
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            focusedBorder: baseBorder.copyWith(
+              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+            ),
           ),
-          style: TextStyle(color: enabled ? Colors.black : Colors.grey[600]),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: enabled
+                ? colorScheme.onSurface
+                : colorScheme.onSurface.withOpacity(0.55),
+          ),
         ),
       ],
     );

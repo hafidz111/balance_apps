@@ -1,14 +1,15 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:starvy/screen/login/login_screen.dart';
 import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/screen/widgets/ads/rewarded_ads.dart';
 import 'package:starvy/screen/widgets/custom_text_field.dart';
 import 'package:starvy/service/barcode_firebase_service.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../providers/firebase_auth_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/purchase_service.dart';
@@ -26,20 +27,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isSyncing = false;
-  bool _isBackingUp = false;
-
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   String? _originalName;
-
-  int _selectedShift = 2;
-  bool _isEditingProfile = false;
-  bool _isEditingSettings = false;
-  bool _isLoaded = false;
-  DateTime? _syncCooldownUntil;
-  DateTime? _lastBackupTime;
-  DateTime? _lastSyncTime;
 
   bool get _isNameChanged {
     return _nameController.text.trim() != (_originalName ?? "");
@@ -54,13 +44,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     _nameController.addListener(() {
-      if (_isEditingProfile) {
-        setState(() {});
+      if (context.read<SettingsProvider>().isEditingProfile) {
+        context.read<SettingsProvider>().markChanged();
       }
     });
   }
 
   Future<void> _loadLastBackupTime() async {
+    final settings = context.read<SettingsProvider>();
     final user = context.read<FirebaseAuthProvider>().profile;
     if (user == null) return;
 
@@ -69,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final cache = await shared.getLastBackupTimeCache();
     if (mounted && cache != null) {
-      setState(() => _lastBackupTime = cache);
+      settings.setLastBackupTime(cache);
     }
 
     try {
@@ -79,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await shared.saveLastBackupTime(serverTime);
 
         if (mounted) {
-          setState(() => _lastBackupTime = serverTime);
+          settings.setLastBackupTime(serverTime);
         }
       }
     } on FirebaseException catch (e) {
@@ -96,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadLastSyncTime() async {
+    final settings = context.read<SettingsProvider>();
     final user = context.read<FirebaseAuthProvider>().profile;
     if (user == null) return;
 
@@ -105,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cache = await shared.getLastSyncTimeCache();
 
     if (mounted && cache != null) {
-      setState(() => _lastSyncTime = cache);
+      settings.setLastSyncTime(cache);
     }
 
     try {
@@ -115,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await shared.saveLastSyncTime(serverTime);
 
         if (mounted) {
-          setState(() => _lastSyncTime = serverTime);
+          settings.setLastSyncTime(serverTime);
         }
       }
     } on FirebaseException catch (e) {
@@ -136,27 +128,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final settings = context.read<SettingsProvider>();
 
-    if (_isLoaded) return;
+    if (settings.isLoaded) return;
 
     final auth = context.read<FirebaseAuthProvider>();
     final pref = context.read<SharedPreferenceProvider>();
 
     _phoneController.text = pref.phoneNumber ?? "";
-    _selectedShift = pref.shiftCount ?? 2;
+    settings.setSelectedShift(pref.shiftCount ?? 2);
     _nameController.text = auth.profile?.name ?? "";
     _originalName = auth.profile?.name ?? "";
 
-    _isLoaded = true;
+    settings.setLoaded(true);
     _loadLastBackupTime();
     _loadLastSyncTime();
   }
 
   Future<void> _saveSettings() async {
-    if (!_isEditingSettings) {
-      setState(() {
-        _isEditingSettings = true;
-      });
+    final settings = context.read<SettingsProvider>();
+    if (!settings.isEditingSettings) {
+      settings.setEditingSettings(true);
       return;
     }
 
@@ -200,11 +192,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     await pref.savePhoneNumber(_phoneController.text);
-    await pref.saveShiftCount(_selectedShift);
+    await pref.saveShiftCount(settings.selectedShift);
 
-    setState(() {
-      _isEditingSettings = false;
-    });
+    settings.setEditingSettings(false);
 
     FirebaseAnalytics.instance.logEvent(name: "settings_saved");
 
@@ -222,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await purchaseService.buyRemoveAds();
       await PremiumService.isPremium();
 
-      if (mounted) setState(() {});
+      if (mounted) context.read<SettingsProvider>().markChanged();
     } catch (e) {
       CustomSnackBar.show(
         context,
@@ -236,6 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     const Color primaryTeal = Color(0xFF009688);
     final authProvider = context.watch<FirebaseAuthProvider>();
+    final settings = context.watch<SettingsProvider>();
     final user = authProvider.profile;
     final barcodeService = BarcodeFirebaseService();
 
@@ -341,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _isEditingProfile
+                              settings.isEditingProfile
                                   ? SizedBox(
                                       width: double.infinity,
                                       child: TextField(
@@ -389,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (isLoggedIn)
                           IconButton(
                             icon: Icon(
-                              !_isEditingProfile
+                              !settings.isEditingProfile
                                   ? Icons.edit
                                   : _isNameChanged
                                   ? Icons.check
@@ -398,19 +389,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               size: 20,
                             ),
                             onPressed: () async {
-                              if (!_isEditingProfile) {
-                                setState(() {
-                                  _isEditingProfile = true;
-                                });
+                              if (!settings.isEditingProfile) {
+                                settings.setEditingProfile(true);
                                 return;
                               }
 
                               if (!_isNameChanged) {
-                                setState(() {
-                                  _isEditingProfile = false;
-                                  _nameController.text = _originalName ?? "";
-                                  FocusScope.of(context).unfocus();
-                                });
+                                settings.setEditingProfile(false);
+                                _nameController.text = _originalName ?? "";
+                                FocusScope.of(context).unfocus();
                                 return;
                               }
 
@@ -429,10 +416,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   .read<FirebaseAuthProvider>()
                                   .updateUserName(newName);
 
-                              setState(() {
-                                _isEditingProfile = false;
-                                _originalName = newName;
-                              });
+                              settings.setEditingProfile(false);
+                              _originalName = newName;
 
                               CustomSnackBar.show(
                                 context,
@@ -466,7 +451,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CustomInputField(
                       label: "Nomor HP",
                       controller: _phoneController,
-                      enabled: _isEditingSettings,
+                      enabled: settings.isEditingSettings,
                       keyboardType: TextInputType.phone,
                       hintText: "Masukkan nomor HP",
                     ),
@@ -476,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Text("Jumlah Shift"),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<int>(
-                      initialValue: _selectedShift,
+                      initialValue: settings.selectedShift,
                       items: [1, 2, 3, 4]
                           .map(
                             (shift) => DropdownMenuItem(
@@ -485,19 +470,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           )
                           .toList(),
-                      onChanged: _isEditingSettings
+                      onChanged: settings.isEditingSettings
                           ? (value) {
-                              setState(() {
-                                _selectedShift = value!;
-                              });
+                              settings.setSelectedShift(value!);
                             }
                           : null,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        filled: !_isEditingSettings,
-                        fillColor: !_isEditingSettings
+                        filled: !settings.isEditingSettings,
+                        fillColor: !settings.isEditingSettings
                             ? Colors.grey.shade100
                             : null,
                       ),
@@ -506,8 +489,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 20),
 
                     _buildButton(
-                      label: _isEditingSettings ? "Simpan" : "Edit",
-                      icon: _isEditingSettings ? Icons.save : Icons.edit,
+                      label: settings.isEditingSettings ? "Simpan" : "Edit",
+                      icon: settings.isEditingSettings
+                          ? Icons.save
+                          : Icons.edit,
                       color: Colors.teal,
                       onPressed: _saveSettings,
                     ),
@@ -560,13 +545,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: Colors.blue[700]!,
                         enabled:
                             isLoggedIn &&
-                            !_isSyncing &&
-                            (_syncCooldownUntil == null ||
-                                DateTime.now().isAfter(_syncCooldownUntil!)),
+                            !settings.isSyncing &&
+                            (settings.syncCooldownUntil == null ||
+                                DateTime.now().isAfter(
+                                  settings.syncCooldownUntil!,
+                                )),
                         onRewarded: () async {
-                          if (_isSyncing) return;
+                          if (settings.isSyncing) return;
 
-                          setState(() => _isSyncing = true);
+                          settings.setSyncing(true);
 
                           try {
                             await barcodeService.syncBarcodes(user!.uid!);
@@ -592,11 +579,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   "Belum ada backup di server",
                                 ) ||
                                 message.contains("Data kosong di server")) {
-                              setState(() {
-                                _syncCooldownUntil = DateTime.now().add(
-                                  const Duration(minutes: 10),
-                                );
-                              });
+                              settings.setSyncCooldownUntil(
+                                DateTime.now().add(const Duration(minutes: 10)),
+                              );
 
                               CustomSnackBar.show(
                                 context,
@@ -613,16 +598,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           } finally {
                             if (mounted) {
-                              setState(() => _isSyncing = false);
+                              settings.setSyncing(false);
                             }
                           }
                         },
                       ),
-                    if (_lastSyncTime != null) ...[
+                    if (settings.lastSyncTime != null) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          "Sync terakhir: ${formatDates(_lastSyncTime!)}",
+                          "Sync terakhir: ${formatDates(settings.lastSyncTime!)}",
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -672,7 +657,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             return;
                           }
 
-                          setState(() => _isBackingUp = true);
+                          settings.setBackingUp(true);
 
                           try {
                             await barcodeService.backupAll(
@@ -701,7 +686,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               type: SnackType.error,
                             );
                           } finally {
-                            setState(() => _isBackingUp = false);
+                            settings.setBackingUp(false);
                           }
                         },
                       )
@@ -715,7 +700,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         loadingLabel: "Sedang Backup...",
                         icon: Icons.cloud_upload_outlined,
                         color: Colors.purple[700]!,
-                        enabled: isLoggedIn && !_isBackingUp,
+                        enabled: isLoggedIn && !settings.isBackingUp,
                         onRewarded: () async {
                           final barcodes = await SharedPreferencesService()
                               .getBarcodes();
@@ -727,14 +712,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               type: SnackType.error,
                             );
 
-                            setState(() {
-                              _isBackingUp = false;
-                            });
+                            settings.setBackingUp(false);
 
                             return;
                           }
 
-                          setState(() => _isBackingUp = true);
+                          settings.setBackingUp(true);
 
                           try {
                             await barcodeService.backupAll(
@@ -763,15 +746,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               type: SnackType.error,
                             );
                           } finally {
-                            setState(() => _isBackingUp = false);
+                            settings.setBackingUp(false);
                           }
                         },
                       ),
-                    if (_lastBackupTime != null) ...[
+                    if (settings.lastBackupTime != null) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          "Backup terakhir: ${formatDates(_lastBackupTime!)}",
+                          "Backup terakhir: ${formatDates(settings.lastBackupTime!)}",
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,

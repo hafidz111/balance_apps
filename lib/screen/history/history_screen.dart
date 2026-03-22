@@ -1,5 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:starvy/providers/history_provider.dart';
 
 import '../../data/model/point_coffe_history.dart';
 import '../../data/model/say_bread_history.dart';
@@ -18,20 +20,14 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  int activeTab = 0;
-
   final _prefsService = SharedPreferencesService();
-
-  List<PointCoffeeHistory> pcHistory = [];
-  List<SayBreadHistory> sbHistory = [];
-  DateTime selectedMonthYear = DateTime.now();
   final _firebaseService = BarcodeFirebaseService();
 
   @override
   void initState() {
     super.initState();
     _checkMonthChange();
-    _loadHistory();
+    Future.microtask(() => context.read<HistoryProvider>().loadHistory());
   }
 
   Future<void> _checkMonthChange() async {
@@ -110,31 +106,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadHistory() async {
-    final pc = await _prefsService.getPointCoffee();
-    final sb = await _prefsService.getSayBread();
-
-    final thisMonth = selectedMonthYear.month;
-    final thisYear = selectedMonthYear.year;
-
-    setState(() {
-      pcHistory = pc.where((e) {
-        final year = e.tgl ~/ 10000;
-        final month = (e.tgl % 10000) ~/ 100;
-
-        bool monthMatch = (thisMonth == 0) ? true : (month == thisMonth);
-
-        return year == thisYear && monthMatch;
-      }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
-
-      sbHistory = sb.where((e) {
-        final year = e.tgl ~/ 10000;
-        final month = (e.tgl % 10000) ~/ 100;
-
-        bool monthMatch = (thisMonth == 0) ? true : (month == thisMonth);
-
-        return year == thisYear && monthMatch;
-      }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
-    });
+    await context.read<HistoryProvider>().loadHistory();
   }
 
   Future<void> _deletePointCoffee(PointCoffeeHistory data) async {
@@ -216,14 +188,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _deleteAllData() async {
+    final historyProvider = context.read<HistoryProvider>();
+    final activeTab = historyProvider.activeTab;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Hapus Semua Data"),
         content: Text(
           activeTab == 0
-              ? "Yakin ingin menghapus semua data Point Coffee?"
-              : "Yakin ingin menghapus semua data Say Bread?",
+              ? "Yakin ingin menghapus semua data Coffee?"
+              : "Yakin ingin menghapus semua data Bread?",
         ),
         actions: [
           TextButton(
@@ -249,7 +223,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         await _prefsService.clearSayBread();
       }
 
-      _loadHistory();
+      await historyProvider.loadHistory();
     }
 
     FirebaseAnalytics.instance.logEvent(
@@ -260,6 +234,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final historyProvider = context.watch<HistoryProvider>();
+    final activeTab = historyProvider.activeTab;
+    final selectedMonthYear = historyProvider.selectedMonthYear;
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -272,8 +250,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               child: Row(
                 children: [
-                  _buildTabItem("Point Coffee", 0),
-                  _buildTabItem("Say Bread", 1),
+                  _buildTabItem("Coffee", 0),
+                  _buildTabItem("Bread", 1),
                 ],
               ),
             ),
@@ -324,8 +302,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         selectedMonthYear,
                       );
                       if (picked != null) {
-                        setState(() => selectedMonthYear = picked);
-                        _loadHistory();
+                        await context
+                            .read<HistoryProvider>()
+                            .setSelectedMonthYear(picked);
                       }
                     },
                     icon: const Icon(
@@ -350,6 +329,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildTabItem(String title, int index) {
+    final activeTab = context.select<HistoryProvider, int>(
+      (provider) => provider.activeTab,
+    );
     bool isActive = activeTab == index;
     FirebaseAnalytics.instance.logEvent(
       name: "history_tab_changed",
@@ -358,7 +340,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => activeTab = index),
+        onTap: () => context.read<HistoryProvider>().setActiveTab(index),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
@@ -647,6 +629,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _showManualInputDialog() async {
+    final activeTab = context.read<HistoryProvider>().activeTab;
     FirebaseAnalytics.instance.logEvent(
       name: "history_manual_input_opened",
       parameters: {"tab": activeTab == 0 ? "point_coffee" : "say_bread"},
@@ -668,6 +651,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildPointCoffeeHistory() {
+    final pcHistory = context.select<HistoryProvider, List<PointCoffeeHistory>>(
+      (provider) => provider.pcHistory,
+    );
     if (pcHistory.isEmpty) {
       return _emptyView();
     }
@@ -712,7 +698,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 _row("SPD", data.spd.toMillion()),
                 _row("CUP", data.cup.toString()),
                 _row("AKM CUP", data.akmCup.toString()),
-                _row("CPD", data.cpd.toString()),
+                _row("CPD", _truncateToTwoDecimals(data.cpd)),
               ],
             ),
           ),
@@ -722,6 +708,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildSayBreadHistory() {
+    final sbHistory = context.select<HistoryProvider, List<SayBreadHistory>>(
+      (provider) => provider.sbHistory,
+    );
     if (sbHistory.isEmpty) {
       return _emptyView();
     }
@@ -787,6 +776,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
     );
+  }
+
+  String _truncateToTwoDecimals(num value) {
+    final truncated = value >= 0
+        ? (value * 100).floor() / 100
+        : (value * 100).ceil() / 100;
+    return truncated.toStringAsFixed(2);
   }
 
   Widget _emptyView() {

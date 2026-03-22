@@ -4,8 +4,10 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/model/barcode_data.dart';
+import '../../providers/scanner_provider.dart';
 import '../../service/shared_preferences_service.dart';
 import '../barcode/barcode_detail_screen.dart';
 import '../barcode/widgets/barcode_form.dart';
@@ -20,8 +22,6 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen>
     with SingleTickerProviderStateMixin {
   final MobileScannerController cameraController = MobileScannerController();
-  bool isScanned = false;
-  bool hasPermission = false;
   late AnimationController _animationController;
 
   @override
@@ -36,18 +36,20 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   void didPopNext() {
-    isScanned = false;
+    context.read<ScannerProvider>().resetScan();
   }
 
   Future<void> _checkPermission() async {
     var status = await Permission.camera.status;
 
     if (status.isGranted) {
-      setState(() => hasPermission = true);
+      if (!mounted) return;
+      context.read<ScannerProvider>().setPermission(true);
     } else {
       var result = await Permission.camera.request();
       if (result.isGranted) {
-        setState(() => hasPermission = true);
+        if (!mounted) return;
+        context.read<ScannerProvider>().setPermission(true);
       } else if (result.isPermanentlyDenied) {
         if (mounted) {
           _showPermissionDialog();
@@ -129,7 +131,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    isScanned = false;
+    context.read<ScannerProvider>().resetScan();
   }
 
   @override
@@ -141,9 +143,10 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final scannerProvider = context.watch<ScannerProvider>();
     return Scaffold(
       backgroundColor: Colors.black,
-      body: !hasPermission
+      body: !scannerProvider.hasPermission
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF009688)),
             )
@@ -154,8 +157,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                   onDetect: (capture) async {
                     final List<Barcode> barcodes = capture.barcodes;
 
-                    if (barcodes.isNotEmpty && !isScanned) {
-                      isScanned = true;
+                    if (barcodes.isNotEmpty && !scannerProvider.isScanned) {
+                      context.read<ScannerProvider>().markScanned();
 
                       final String code = barcodes.first.rawValue ?? "";
 

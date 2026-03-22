@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:starvy/providers/grid_background_photo_provider.dart';
 
 import '../../service/shared_preferences_service.dart';
 import '../main/main_screen.dart';
 import '../widgets/custom_snack_bar.dart';
-
-enum BackgroundMode { defaultBg, custom, none }
 
 class GridBackgroundPhotoScreen extends StatefulWidget {
   final Uint8List capturedImage;
@@ -24,56 +24,22 @@ class GridBackgroundPhotoScreen extends StatefulWidget {
       _GridBackgroundPhotoScreenState();
 }
 
-class TextItem {
-  String text;
-  Offset offset;
-  double fontSize;
-  bool isBold;
-  Color color;
-
-  TextItem({
-    required this.text,
-    required this.offset,
-    required this.fontSize,
-    required this.isBold,
-    required this.color,
-  });
-}
-
 class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
-  Offset imageOffset = Offset.zero;
-  double imageScale = 1.0;
-  double baseScale = 1.0;
-
-  double canvasRatio = 1.0;
-
-  File? backgroundImage;
-  BackgroundMode bgMode = BackgroundMode.defaultBg;
-
   final ScreenshotController screenshotController = ScreenshotController();
   final ImagePicker _picker = ImagePicker();
 
   static const platform = MethodChannel('gallery_saver');
 
-  double fontSize = 28;
-  bool isBold = false;
-
-  Offset initialFocalPoint = Offset.zero;
-  Offset initialTextOffset = Offset.zero;
-
-  List<TextItem> texts = [];
-  int? selectedTextIndex;
-
-  String? selectedAssetBg;
-  String defaultBg = "assets/images/bg-grid-default.jpeg";
+  final String defaultBg = "assets/images/bg-grid-default.jpeg";
 
   @override
   void initState() {
     super.initState();
-    _loadSavedBackground();
+    Future.microtask(_loadSavedBackground);
   }
 
   Future<void> _loadSavedBackground() async {
+    final provider = context.read<GridBackgroundPhotoProvider>();
     final path = SharedPreferencesService().getCustomBackground();
 
     if (path != null) {
@@ -81,30 +47,19 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
       if (file.existsSync()) {
         final ratio = await _getImageRatio(file);
-
-        setState(() {
-          backgroundImage = file;
-          bgMode = BackgroundMode.custom;
-          canvasRatio = ratio;
-        });
+        provider.setCustomBackground(file, ratio);
       } else {
-        setState(() {
-          bgMode = BackgroundMode.defaultBg;
-        });
+        final ratio = await _getAssetImageRatio(defaultBg);
+        provider.setDefaultBackground(ratio);
       }
     }
 
     final ratio = await _getAssetImageRatio(defaultBg);
 
     if (!mounted) return;
-
-    setState(() {
-      bgMode = BackgroundMode.defaultBg;
-      canvasRatio = ratio;
-    });
+    provider.setDefaultBackground(ratio);
   }
 
-  bool showTextEditor = false;
   final TextEditingController textController = TextEditingController();
   final TextEditingController colorController = TextEditingController(
     text: "#038343",
@@ -127,11 +82,11 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
       await SharedPreferencesService().saveCustomBackground(file.path);
 
-      setState(() {
-        backgroundImage = file;
-        canvasRatio = ratio;
-        bgMode = BackgroundMode.custom;
-      });
+      if (!mounted) return;
+      context.read<GridBackgroundPhotoProvider>().setCustomBackground(
+        file,
+        ratio,
+      );
       FirebaseAnalytics.instance.logEvent(name: "grid_background_added");
     }
   }
@@ -245,13 +200,11 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   Widget _colorCircle(Color color) {
     return GestureDetector(
       onTap: () {
-        if (selectedTextIndex != null) {
-          setState(() {
-            texts[selectedTextIndex!].color = color;
-            colorController.text =
-                "#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}";
-          });
-        }
+        final provider = context.read<GridBackgroundPhotoProvider>();
+        if (provider.selectedTextIndex == null) return;
+        provider.updateSelectedColor(color);
+        colorController.text =
+            "#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}";
       },
       child: Container(
         width: 36,
@@ -266,6 +219,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   }
 
   void _openTextEditor() {
+    final provider = context.read<GridBackgroundPhotoProvider>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -294,11 +248,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (value) {
-                        if (selectedTextIndex != null) {
-                          setState(() {
-                            texts[selectedTextIndex!].text = value;
-                          });
-                        }
+                        provider.updateSelectedText(value);
                       },
                     ),
 
@@ -312,15 +262,11 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                     Slider(
                       min: 12,
                       max: 80,
-                      value: selectedTextIndex != null
-                          ? texts[selectedTextIndex!].fontSize
+                      value: provider.selectedTextIndex != null
+                          ? provider.texts[provider.selectedTextIndex!].fontSize
                           : 28,
                       onChanged: (value) {
-                        if (selectedTextIndex != null) {
-                          setState(() {
-                            texts[selectedTextIndex!].fontSize = value;
-                          });
-                        }
+                        provider.updateSelectedFontSize(value);
                       },
                     ),
 
@@ -357,14 +303,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (value) {
-                        if (selectedTextIndex != null) {
-                          try {
-                            final color = hexToColor(value);
-                            setState(() {
-                              texts[selectedTextIndex!].color = color;
-                            });
-                          } catch (_) {}
-                        }
+                        try {
+                          final color = hexToColor(value);
+                          provider.updateSelectedColor(color);
+                        } catch (_) {}
                       },
                     ),
 
@@ -377,27 +319,22 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                           inactiveTrackColor: Colors.white,
                           inactiveThumbColor: Colors.black,
                           activeThumbColor: const Color(0xFF038343),
-                          value: selectedTextIndex != null
-                              ? texts[selectedTextIndex!].isBold
+                          value: provider.selectedTextIndex != null
+                              ? provider
+                                    .texts[provider.selectedTextIndex!]
+                                    .isBold
                               : false,
                           onChanged: (value) {
-                            if (selectedTextIndex != null) {
-                              setState(() {
-                                texts[selectedTextIndex!].isBold = value;
-                              });
-
-                              setModalState(() {});
-                            }
+                            provider.updateSelectedBold(value);
+                            setModalState(() {});
                           },
                         ),
                         const Spacer(),
-                        if (selectedTextIndex != null)
+                        if (provider.selectedTextIndex != null)
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () {
-                              setState(() {
-                                texts.removeAt(selectedTextIndex!);
-                              });
+                              provider.removeSelectedText();
                               Navigator.pop(context);
                             },
                           ),
@@ -416,27 +353,25 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   }
 
   Widget _buildBackground() {
-    switch (bgMode) {
+    final provider = context.watch<GridBackgroundPhotoProvider>();
+    switch (provider.bgMode) {
       case BackgroundMode.none:
-        return Container(
-          color: Colors.black,
-          child: const SizedBox()
-        );
+        return Container(color: Colors.black, child: const SizedBox());
 
       case BackgroundMode.custom:
-        if (backgroundImage != null) {
-          return Image.file(backgroundImage!, fit: BoxFit.cover);
+        if (provider.backgroundImage != null) {
+          return Image.file(provider.backgroundImage!, fit: BoxFit.cover);
         }
         return const SizedBox();
 
       case BackgroundMode.defaultBg:
-      default:
         return Image.asset(defaultBg, fit: BoxFit.cover);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<GridBackgroundPhotoProvider>();
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -444,7 +379,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
             Expanded(
               child: Center(
                 child: AspectRatio(
-                  aspectRatio: canvasRatio,
+                  aspectRatio: provider.canvasRatio,
                   child: Container(
                     margin: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -468,19 +403,15 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
                             GestureDetector(
                               onScaleStart: (details) {
-                                baseScale = imageScale;
+                                provider.onImageScaleStart();
                               },
                               onScaleUpdate: (details) {
-                                setState(() {
-                                  imageScale = (baseScale * details.scale)
-                                      .clamp(0.5, 3.0);
-                                  imageOffset += details.focalPointDelta;
-                                });
+                                provider.onImageScaleUpdate(details);
                               },
                               child: Transform.translate(
-                                offset: imageOffset,
+                                offset: provider.imageOffset,
                                 child: Transform.scale(
-                                  scale: imageScale,
+                                  scale: provider.imageScale,
                                   child: Center(
                                     child: Image.memory(widget.capturedImage),
                                   ),
@@ -488,7 +419,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                               ),
                             ),
 
-                            ...texts.asMap().entries.map((entry) {
+                            ...provider.texts.asMap().entries.map((entry) {
                               final index = entry.key;
                               final item = entry.value;
 
@@ -500,14 +431,12 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                                   children: [
                                     GestureDetector(
                                       onTap: () {
-                                        selectedTextIndex = index;
+                                        provider.selectText(index);
                                         textController.text = item.text;
                                         _openTextEditor();
                                       },
                                       onPanUpdate: (details) {
-                                        setState(() {
-                                          item.offset += details.delta;
-                                        });
+                                        provider.moveText(index, details.delta);
                                       },
                                       child: Text(
                                         item.text,
@@ -569,12 +498,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                               .clearCustomBackground();
 
                           final ratio = await _getAssetImageRatio(defaultBg);
-
-                          setState(() {
-                            backgroundImage = null;
-                            bgMode = BackgroundMode.defaultBg;
-                            canvasRatio = ratio;
-                          });
+                          if (!context.mounted) return;
+                          context
+                              .read<GridBackgroundPhotoProvider>()
+                              .setDefaultBackground(ratio);
                         },
                       ),
 
@@ -583,11 +510,9 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         label: "None",
                         color: Colors.grey,
                         onTap: () {
-                          setState(() {
-                            backgroundImage = null;
-                            bgMode = BackgroundMode.none;
-                            canvasRatio = 1.0;
-                          });
+                          context
+                              .read<GridBackgroundPhotoProvider>()
+                              .setNoneBackground();
                         },
                       ),
                     ],
@@ -600,20 +525,10 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {
-                        final newText = TextItem(
-                          text: "Teks Baru",
-                          offset: const Offset(100, 100),
-                          fontSize: 28,
-                          isBold: false,
-                          color: const Color(0xFF038343),
-                        );
-
-                        setState(() {
-                          texts.add(newText);
-                          selectedTextIndex = texts.length - 1;
-                          textController.text = newText.text;
-                          showTextEditor = true;
-                        });
+                        final newText = context
+                            .read<GridBackgroundPhotoProvider>()
+                            .addDefaultText();
+                        textController.text = newText.text;
 
                         FirebaseAnalytics.instance.logEvent(
                           name: "grid_text_added",
