@@ -2,12 +2,14 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:starvy/screen/barcode/choose_barcode_screen.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 import '../../data/model/barcode_data.dart';
 import '../../providers/barcode_provider.dart';
 import '../scanner/scanner_screen.dart';
 import '../widgets/custom_snack_bar.dart';
 import 'barcode_detail_screen.dart';
+import 'barcode_ui.dart';
 
 class BarcodeScreen extends StatefulWidget {
   final Function(bool isSelecting, int count)? onSelectionChanged;
@@ -120,6 +122,8 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final provider = context.watch<BarcodeProvider>();
     final isSelectionMode = provider.isSelectionMode;
     final selectedIndexes = provider.selectedIndexes;
@@ -127,63 +131,89 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     final filteredBarcodes = provider.filteredBarcodes;
 
     return Scaffold(
+      backgroundColor: scheme.surface,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterBarcodes,
-                decoration: InputDecoration(
-                  hintText: "Cari nama atau kode barcode...",
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterBarcodes("");
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: ListenableBuilder(
+                listenable: _searchController,
+                builder: (context, _) {
+                  return TextField(
+                    controller: _searchController,
+                    onChanged: _filterBarcodes,
+                    style: textTheme.bodyLarge,
+                    decoration: BarcodeUi.searchDecoration(
+                      context,
+                      hint: 'Cari kode atau deskripsi…',
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterBarcodes('');
+                              },
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            )
+                          : null,
+                    ),
+                  );
+                },
               ),
             ),
             Expanded(
               child: barcodes.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.qr_code_scanner_rounded,
-                            size: 100,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Belum ada barcode tersimpan",
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight.withValues(
+                                  alpha: 0.85,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.qr_code_scanner_rounded,
+                                size: 56,
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.65,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 20),
+                            Text(
+                              'Belum ada barcode',
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Pakai tombol + untuk scan atau tambah manual.',
+                              textAlign: TextAlign.center,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : filteredBarcodes.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        "Tidak ada hasil ditemukan",
-                        style: TextStyle(color: Colors.grey),
+                        'Tidak ada hasil',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -294,9 +324,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
         _buildAnimatedChild(
           visible: isOpened,
           child: _buildActionButton(
-            icon: Icons.qr_code_scanner,
-            label: "Scan Barcode",
-            color: const Color(0xFF2196F3),
+            icon: Icons.qr_code_scanner_rounded,
+            label: 'Scan barcode',
+            color: AppColors.barcodeQrBlue,
             onPressed: () async {
               _toggleMenu();
               FirebaseAnalytics.instance.logEvent(name: "barcode_scan_opened");
@@ -321,9 +351,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
         _buildAnimatedChild(
           visible: isOpened,
           child: _buildActionButton(
-            icon: Icons.add_circle_outline,
-            label: "Tambah Barcode",
-            color: const Color(0xFF009688),
+            icon: Icons.add_rounded,
+            label: 'Tambah barcode',
+            color: AppColors.primary,
             onPressed: () async {
               _toggleMenu();
               final result = await Navigator.push(
@@ -341,15 +371,16 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
         FloatingActionButton(
           onPressed: _toggleMenu,
-
-          backgroundColor: isOpened
-              ? Colors.redAccent
-              : const Color(0xFF37474F),
-          elevation: 4,
-          child: AnimatedRotation(
-            duration: const Duration(milliseconds: 300),
-            turns: isOpened ? 0.125 : 0,
-            child: const Icon(Icons.add, color: Colors.white, size: 30),
+          backgroundColor: isOpened ? Colors.red : AppColors.primary,
+          foregroundColor: isOpened ? Colors.white : AppColors.onPrimary,
+          elevation: 2,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: Icon(
+              isOpened ? Icons.close_rounded : Icons.add_rounded,
+              key: ValueKey(isOpened),
+              size: 30,
+            ),
           ),
         ),
       ],
@@ -375,21 +406,23 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
+    return FilledButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 20, color: Colors.white),
+      icon: Icon(icon, size: 22, color: AppColors.onPrimary),
       label: Text(
         label,
         style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
+          color: AppColors.onPrimary,
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
         ),
       ),
-      style: ElevatedButton.styleFrom(
+      style: FilledButton.styleFrom(
         backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        elevation: 3,
+        shadowColor: color.withValues(alpha: 0.45),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

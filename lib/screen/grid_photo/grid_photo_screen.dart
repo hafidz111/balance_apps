@@ -4,6 +4,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 import 'grid_choose_photo_screen.dart';
 
@@ -50,14 +51,8 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
     },
   ];
 
-  final List<Map<String, Color>> _menuColors = [
-    {"bg": const Color(0xFFE3F2FD), "icon": const Color(0xFF1976D2)},
-    {"bg": const Color(0xFFFFF3E0), "icon": const Color(0xFFF57C00)},
-    {"bg": const Color(0xFFE8F5E9), "icon": const Color(0xFF388E3C)},
-    {"bg": const Color(0xFFF3E5F5), "icon": const Color(0xFF7B1FA2)},
-    {"bg": const Color(0xFFFFEBEE), "icon": const Color(0xFFD32F2F)},
-    {"bg": const Color(0xFFE0F7FA), "icon": const Color(0xFF00838F)},
-  ];
+  static final List<Map<String, Color>> _menuColors =
+      AppColors.gridMenuCardColors;
 
   @override
   void initState() {

@@ -13,6 +13,7 @@ import 'package:starvy/screen/schedule/schedule_screen.dart';
 import 'package:starvy/screen/settings/settings_screen.dart';
 import 'package:starvy/screen/store/store_screen.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/main_screen_provider.dart';
@@ -20,6 +21,7 @@ import '../../providers/shared_preference_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../utils/ads_helper.dart';
+import '../../utils/user_friendly_error.dart';
 import '../grid_photo/grid_photo_screen.dart';
 import '../login/login_screen.dart';
 import '../say_bread/say_bread_screen.dart';
@@ -157,7 +159,10 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       CustomSnackBar.show(
         context,
-        message: "Export gagal: $e",
+        message: userFriendlyError(
+          e,
+          fallback: 'Export gagal. Coba lagi.',
+        ),
         type: SnackType.error,
       );
     }
@@ -227,7 +232,7 @@ class _MainScreenState extends State<MainScreen> {
     final user = authProvider.profile;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF009688),
+        backgroundColor: AppColors.primary,
         title: isBarcodeSelectionMode && selectedIndex == 4
             ? Text(
                 "$selectedBarcodeCount dipilih",
@@ -305,7 +310,7 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF009688)),
+              decoration: const BoxDecoration(color: AppColors.primary),
               child: Column(
                 children: [
                   Align(
@@ -388,14 +393,14 @@ class _MainScreenState extends State<MainScreen> {
                       leading: Icon(
                         _icons[i],
                         color: selectedIndex == i
-                            ? const Color(0xFF009688)
+                            ? AppColors.primary
                             : Colors.grey,
                       ),
                       title: Text(
                         _titles[i],
                         style: TextStyle(
                           color: selectedIndex == i
-                              ? const Color(0xFF009688)
+                              ? AppColors.primary
                               : Colors.black87,
                           fontWeight: selectedIndex == i
                               ? FontWeight.bold

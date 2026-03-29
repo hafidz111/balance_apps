@@ -13,6 +13,7 @@ import 'package:starvy/screen/grid_photo/widgets/grid_item.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import '../../providers/grid_choose_photo_provider.dart';
+import '../../theme/app_colors.dart';
 
 class GridChoosePhotoScreen extends StatefulWidget {
   final int rows;
@@ -475,7 +476,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
                     child: ElevatedButton(
                       onPressed: _handleSave,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF009688),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

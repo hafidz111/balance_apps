@@ -8,6 +8,8 @@ import '../../data/model/barcode_data.dart';
 import '../../providers/barcode_detail_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
+import '../../theme/app_colors.dart';
+import 'barcode_ui.dart';
 import 'widgets/barcode_form.dart';
 
 class BarcodeDetailScreen extends StatefulWidget {
@@ -20,8 +22,6 @@ class BarcodeDetailScreen extends StatefulWidget {
 }
 
 class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
-  final Color primaryTeal = const Color(0xFF009688);
-
   @override
   void initState() {
     super.initState();
@@ -29,24 +29,7 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
   }
 
   void _delete() async {
-    final confirm = await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Hapus Barcode"),
-        content: const Text("Yakin mau hapus barcode ini?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    final confirm = await BarcodeUi.showDeleteBarcodeDialog(context);
 
     if (confirm == true) {
       await SharedPreferencesService().deleteBarcode(widget.barcode);
@@ -74,22 +57,26 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final b = context.watch<BarcodeDetailProvider>().current;
-    final String displayType = b.type == 'qrcode' ? 'QR Code' : 'Code 128';
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final displayType = b.type == 'qrcode' ? 'QR Code' : 'Code 128';
+    final typeStyle = BarcodeUi.typeColors(b.type);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        backgroundColor: primaryTeal,
-        title: const Text(
-          "Detail Barcode",
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
+      backgroundColor: scheme.surface,
+      appBar: BarcodeUi.primaryAppBar(
+        context: context,
+        title: 'Detail barcode',
         actions: [
-          IconButton(onPressed: _edit, icon: const Icon(Icons.edit_outlined)),
+          IconButton(
+            onPressed: _edit,
+            icon: const Icon(Icons.edit_rounded),
+            tooltip: 'Edit',
+          ),
           IconButton(
             onPressed: _delete,
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: 'Hapus',
           ),
         ],
       ),
@@ -99,55 +86,72 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
           child: Column(
             children: [
               Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-                ),
+                decoration: BarcodeUi.surfaceCard(context),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
+                    DecoratedBox(
                       decoration: BoxDecoration(
-                        color: primaryTeal.withValues(alpha: 0.05),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            typeStyle.accent.withValues(alpha: 0.16),
+                            AppColors.primary.withValues(alpha: 0.05),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            b.type == 'qrcode'
-                                ? Icons.qr_code_2
-                                : Icons.onetwothree,
-                            color: primaryTeal,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            displayType,
-                            style: TextStyle(
-                              color: primaryTeal,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                b.type == 'qrcode'
+                                    ? Icons.qr_code_2_rounded
+                                    : Icons.onetwothree,
+                                color: typeStyle.accent,
+                                size: 24,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Text(
+                              displayType,
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-
                     Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Center(
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[200]!),
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
                               ),
                               child: BarcodeWidget(
                                 barcode: b.type == 'code128'
@@ -160,20 +164,21 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
-
-                          _buildInfoSection(
-                            "Kode",
-                            b.code,
-                            icon: b.type == 'qrcode'
-                                ? Icons.qr_code
-                                : Icons.onetwothree,
-                          ),
                           const SizedBox(height: 24),
-
                           _buildInfoSection(
-                            "Deskripsi",
-                            b.description.isEmpty ? "-" : b.description,
+                            context,
+                            label: 'Kode',
+                            value: b.code,
+                            icon: b.type == 'qrcode'
+                                ? Icons.qr_code_rounded
+                                : Icons.tag_rounded,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildInfoSection(
+                            context,
+                            label: 'Deskripsi',
+                            value: b.description.isEmpty ? '—' : b.description,
+                            icon: Icons.notes_rounded,
                           ),
                         ],
                       ),
@@ -181,11 +186,10 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
               if (!PremiumService.cachedPremium)
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: 8),
                   child: BannerAds(),
                 ),
             ],
@@ -195,33 +199,49 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
     );
   }
 
-  Widget _buildInfoSection(String label, String value, {IconData? icon}) {
+  Widget _buildInfoSection(
+    BuildContext context, {
+    required String label,
+    required String value,
+    IconData? icon,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+        Text(
+          label,
+          style: textTheme.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.55),
+            ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: Colors.black87),
+                Icon(icon, size: 22, color: AppColors.primary),
                 const SizedBox(width: 12),
               ],
               Expanded(
-                child: Text(
+                child: SelectableText(
                   value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
                   ),
                 ),
               ),

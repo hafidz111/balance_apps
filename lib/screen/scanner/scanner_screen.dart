@@ -9,7 +9,9 @@ import 'package:provider/provider.dart';
 import '../../data/model/barcode_data.dart';
 import '../../providers/scanner_provider.dart';
 import '../../service/shared_preferences_service.dart';
+import '../../theme/app_colors.dart';
 import '../barcode/barcode_detail_screen.dart';
+import '../barcode/barcode_ui.dart';
 import '../barcode/widgets/barcode_form.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -50,7 +52,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         FirebaseAnalytics.instance.logEvent(name: "camera_permission_granted");
       } else if (result.isPermanentlyDenied) {
         if (mounted) {
-          _showPermissionDialog();
+          BarcodeUi.showCameraPermissionDialog(context);
         }
       }
     }
@@ -95,7 +97,6 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  /// Setelah sub-route (detail / form) di-pop: tutup scanner dengan `true` atau hidupkan lagi kamera.
   Future<void> _afterSubRoutePop(
     Object? result, {
     required bool Function(Object? result) popScannerIf,
@@ -108,39 +109,12 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  /// Setelah [MobileScannerController.stop] sebelum push, hidupkan lagi scan + kamera
-  /// saat route detail/form selesai (Future [Navigator.push] selesai).
   Future<void> _resumeScannerAfterSubScreen() async {
     if (!mounted) return;
     context.read<ScannerProvider>().resetScan();
     try {
       await cameraController.start();
     } catch (_) {}
-  }
-
-  void _showPermissionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Izin Kamera Diperlukan"),
-        content: const Text(
-          "Aplikasi membutuhkan akses kamera untuk melakukan scan. Silakan aktifkan di pengaturan.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          TextButton(
-            onPressed: () {
-              openAppSettings();
-              Navigator.pop(context);
-            },
-            child: const Text("Buka Pengaturan"),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -158,7 +132,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       body: !scannerProvider.hasPermission
           ? const SafeArea(
               child: Center(
-                child: CircularProgressIndicator(color: Color(0xFF009688)),
+                child: CircularProgressIndicator(color: AppColors.primary),
               ),
             )
           : Stack(
@@ -178,7 +152,6 @@ class _ScannerScreenState extends State<ScannerScreen>
 
                     scanner.markScanned();
 
-                    // Lepas kamera / GL sebelum navigasi async (kurangi race di driver GPU).
                     try {
                       await cameraController.stop();
                     } catch (_) {}
@@ -265,7 +238,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                 size: Size(size, size),
                 painter: ScannerLEDCornerPainter(
                   animationValue: _animationController.value,
-                  baseColor: const Color(0xFF009688),
+                  baseColor: AppColors.primary,
                   ledColor: Colors.white,
                 ),
               );
@@ -278,14 +251,27 @@ class _ScannerScreenState extends State<ScannerScreen>
           right: false,
           bottom: true,
           minimum: EdgeInsets.zero,
-          child: const Align(
-            alignment: Alignment(0, 0.4),
-            child: Text(
-              "Posisikan barcode di dalam kotak",
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          child: Align(
+            alignment: const Alignment(0, 0.4),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.45),
+                ),
+              ),
+              child: const Text(
+                'Posisikan barcode di dalam kotak',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ),
@@ -345,11 +331,7 @@ class LEDBorderPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..shader = SweepGradient(
-        colors: [
-          const Color(0xFF009688),
-          Colors.white,
-          const Color(0xFF009688),
-        ],
+        colors: [AppColors.primary, Colors.white, AppColors.primary],
         stops: const [0.0, 0.5, 1.0],
         transform: GradientRotation(animationValue * 2 * math.pi),
       ).createShader(rect);

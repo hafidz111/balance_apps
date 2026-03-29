@@ -7,6 +7,15 @@ import '../data/model/point_coffe_history.dart';
 import '../data/model/say_bread_history.dart';
 import 'shared_preferences_service.dart';
 
+/// Dilempar dari [BarcodeFirebaseService.syncAll] bila barcode, point coffee,
+/// dan say bread **semuanya** tidak punya data di server.
+class SyncNoServerDataException implements Exception {
+  const SyncNoServerDataException();
+
+  @override
+  String toString() => 'Tidak ada data di server.';
+}
+
 class BarcodeFirebaseService {
   final FirebaseDatabase _database = FirebaseDatabase.instanceFor(
     app: Firebase.app(),
@@ -102,19 +111,26 @@ class BarcodeFirebaseService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<void> syncBarcodes(String uid) async {
+  /// `true` jika server punya data barcode (bukan kosong) dan berhasil di-merge.
+  Future<bool> syncBarcodes(String uid) async {
     final snapshot = await _db
         .child("users/$uid/barcode_backup/latest/barcodes")
         .get();
 
     if (!snapshot.exists) {
-      throw Exception("Belum ada backup di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_barcode_skipped_no_server",
+      );
+      return false;
     }
 
     final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
-      throw Exception("Data kosong di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_barcode_skipped_empty_server",
+      );
+      return false;
     }
 
     final firebaseBarcodes = data
@@ -139,10 +155,8 @@ class BarcodeFirebaseService {
         .child("users/$uid/barcode_backup/latest/lastSyncAt")
         .set(ServerValue.timestamp);
 
-    final now = DateTime.now();
-    await SharedPreferencesService().saveLastSyncTime(now);
-
-    FirebaseAnalytics.instance.logEvent(name: "sync_success");
+    FirebaseAnalytics.instance.logEvent(name: "sync_barcode_merged");
+    return true;
   }
 
   Future<DateTime?> getLastSyncTime(String uid) async {
@@ -157,7 +171,8 @@ class BarcodeFirebaseService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<void> syncPointCoffee(String uid) async {
+  /// `true` jika server punya data point coffee bulan ini (bukan kosong).
+  Future<bool> syncPointCoffee(String uid) async {
     final monthKey = getCurrentMonthKey();
 
     final snapshot = await _db
@@ -165,13 +180,19 @@ class BarcodeFirebaseService {
         .get();
 
     if (!snapshot.exists) {
-      throw Exception("Belum ada data Coffee di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_point_coffee_skipped_no_server",
+      );
+      return false;
     }
 
     final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
-      throw Exception("Data Coffee kosong di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_point_coffee_skipped_empty_server",
+      );
+      return false;
     }
 
     final firebaseData = data
@@ -197,9 +218,11 @@ class BarcodeFirebaseService {
     }
 
     FirebaseAnalytics.instance.logEvent(name: "sync_point_coffee_success");
+    return true;
   }
 
-  Future<void> syncSayBread(String uid) async {
+  /// `true` jika server punya data say bread bulan ini (bukan kosong).
+  Future<bool> syncSayBread(String uid) async {
     final monthKey = getCurrentMonthKey();
 
     final snapshot = await _db
@@ -207,13 +230,19 @@ class BarcodeFirebaseService {
         .get();
 
     if (!snapshot.exists) {
-      throw Exception("Belum ada data Bread di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_say_bread_skipped_no_server",
+      );
+      return false;
     }
 
     final data = snapshot.value as List?;
 
     if (data == null || data.isEmpty) {
-      throw Exception("Data Bread kosong di server");
+      FirebaseAnalytics.instance.logEvent(
+        name: "sync_say_bread_skipped_empty_server",
+      );
+      return false;
     }
 
     final firebaseData = data
@@ -239,12 +268,23 @@ class BarcodeFirebaseService {
     }
 
     FirebaseAnalytics.instance.logEvent(name: "sync_say_bread_success");
+    return true;
   }
 
+  /// Barcode + point coffee + say bread. Yang tidak ada di server **diskip**;
+  /// yang ada tetap di-sync. Hanya error jika **ketiganya** kosong.
   Future<void> syncAll(String uid) async {
-    await syncBarcodes(uid);
-    await syncPointCoffee(uid);
-    await syncSayBread(uid);
+    final hasBarcode = await syncBarcodes(uid);
+    final hasCoffee = await syncPointCoffee(uid);
+    final hasBread = await syncSayBread(uid);
+
+    if (!hasBarcode && !hasCoffee && !hasBread) {
+      FirebaseAnalytics.instance.logEvent(name: "sync_all_no_server_data");
+      throw const SyncNoServerDataException();
+    }
+
+    final now = DateTime.now();
+    await SharedPreferencesService().saveLastSyncTime(now);
 
     FirebaseAnalytics.instance.logEvent(name: "sync_all_success");
   }

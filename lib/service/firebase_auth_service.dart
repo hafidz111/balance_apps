@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../utils/auth_error_localization.dart';
+
 class FirebaseAuthService {
   final FirebaseAuth _auth;
 
@@ -18,15 +20,18 @@ class FirebaseAuthService {
     } on FirebaseAuthException catch (e) {
       final errorMessage = switch (e.code) {
         "email-already-in-use" =>
-          "There already exists an account with the given email address.",
-        "invalid-email" => "The email address is not valid.",
-        "operation-not-allowed" => "Server error, please try again later.",
-        "weak-password" => "The password is not strong enough.",
-        _ => "Register failed. Please try again.",
+          "Email sudah terdaftar. Gunakan email lain.",
+        "invalid-email" => "Format email tidak valid.",
+        "operation-not-allowed" =>
+          "Pendaftaran tidak diizinkan. Hubungi admin.",
+        "weak-password" => "Password terlalu lemah.",
+        _ => e.message?.trim().isNotEmpty == true
+            ? e.message!.trim()
+            : "Gagal mendaftar. Silakan coba lagi.",
       };
       throw Exception(errorMessage);
     } catch (e) {
-      throw Exception(e);
+      throw Exception(userFacingAuthError(e));
     }
   }
 
@@ -39,15 +44,25 @@ class FirebaseAuthService {
       return result;
     } on FirebaseAuthException catch (e) {
       final errorMessage = switch (e.code) {
-        "invalid-email" => "The email address is not valid.",
-        "user-disabled" => "User disabled.",
-        "user-not-found" => "No user found with this email.",
-        "wrong-password" => "Wrong email/password combination.",
-        _ => "Login failed. Please try again.",
+        "invalid-email" => "Format email tidak valid.",
+        "user-disabled" => "Akun ini dinonaktifkan.",
+        "user-not-found" => "Email tidak terdaftar.",
+        "wrong-password" => "Email atau password salah.",
+        // Firebase SDK baru sering memakai invalid-credential menggabungkan salah password / tidak ditemukan
+        "invalid-credential" => "Email atau password salah.",
+        "too-many-requests" =>
+          "Terlalu banyak percobaan gagal. Coba lagi nanti.",
+        "network-request-failed" =>
+          "Koneksi bermasalah. Periksa internet Anda.",
+        "operation-not-allowed" =>
+          "Login email/password tidak diizinkan. Hubungi admin.",
+        _ => e.message?.trim().isNotEmpty == true
+            ? e.message!.trim()
+            : "Login gagal. Silakan coba lagi.",
       };
       throw Exception(errorMessage);
     } catch (e) {
-      throw Exception(e);
+      throw Exception(userFacingAuthError(e));
     }
   }
 
@@ -55,7 +70,11 @@ class FirebaseAuthService {
     try {
       await _auth.signOut();
     } catch (e) {
-      throw Exception("Logout failed. Please try again.");
+      throw Exception(
+        e is FirebaseAuthException
+            ? userFacingAuthError(e)
+            : 'Gagal logout. Silakan coba lagi.',
+      );
     }
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:starvy/theme/app_colors.dart';
 
+import 'barcode_ui.dart';
 import 'widgets/barcode_form.dart';
 
 class ChooseBarcodeScreen extends StatelessWidget {
@@ -7,34 +9,45 @@ class ChooseBarcodeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Choose Barcode")),
+      backgroundColor: scheme.surface,
+      appBar: BarcodeUi.primaryAppBar(
+        context: context,
+        title: 'Pilih jenis barcode',
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildBarcodeCard(
-                context: context,
-                title: "Code128",
-                subtitle: "Hingga 80 karakter ASCII (contoh: Abc 123)",
-                type: "code128",
-                icon: Icons.onetwothree,
-                iconColor: Colors.blue[700]!,
-                bgColor: Colors.blue[50]!,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              'Pilih format sebelum mengisi kode. Keduanya bisa disimpan di daftar barcode.',
+              style: textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
               ),
-              const SizedBox(height: 16),
-              _buildBarcodeCard(
-                context: context,
-                title: "QR Code",
-                subtitle: "Hingga 1K karakter UTF-8 (contoh: Abc 123)",
-                type: "qrcode",
-                icon: Icons.qr_code_2,
-                iconColor: Colors.teal[700]!,
-                bgColor: Colors.teal[50]!,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+            _buildBarcodeCard(
+              context: context,
+              title: 'Code 128',
+              subtitle: 'Hingga 80 karakter ASCII (contoh: ABC123)',
+              type: 'code128',
+              icon: Icons.onetwothree,
+              accent: AppColors.barcodeNeutralDark,
+            ),
+            const SizedBox(height: 14),
+            _buildBarcodeCard(
+              context: context,
+              title: 'QR Code',
+              subtitle: 'Hingga ~1K karakter UTF-8 (teks panjang)',
+              type: 'qrcode',
+              icon: Icons.qr_code_2_rounded,
+              accent: AppColors.barcodeQrBlue,
+            ),
+          ],
         ),
       ),
     );
@@ -46,58 +59,72 @@ class ChooseBarcodeScreen extends StatelessWidget {
     required String subtitle,
     required String type,
     required IconData icon,
-    required Color iconColor,
-    required Color bgColor,
+    required Color accent,
   }) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => BarcodeForm(type: type)),
-        );
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-        if (result != null) {
-          Navigator.pop(context, true);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-              child: Icon(icon, size: 40, color: iconColor),
-            ),
-            const SizedBox(width: 20),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => BarcodeForm(type: type)),
+          );
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+          if (result != null && context.mounted) {
+            Navigator.pop(context, true);
+          }
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: Ink(
+          decoration: BarcodeUi.surfaceCard(context),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: accent.withValues(alpha: 0.22)),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  child: Icon(icon, size: 36, color: accent),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  size: 28,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

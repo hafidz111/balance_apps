@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,9 +14,7 @@ import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
-import '../widgets/shift_card.dart';
-import '../widgets/summary_row.dart';
-import '../widgets/summary_section.dart';
+import '../widgets/product_dashboard_widgets.dart';
 
 class SayBreadScreen extends StatefulWidget {
   const SayBreadScreen({super.key});
@@ -30,9 +30,20 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   static const int maxShift = 4;
   final akmLastMonth = TextEditingController();
 
+  List<String> _shiftLabels = List<String>.from(
+    SharedPreferencesService.defaultShiftTimeLabels,
+  );
+
+  Timer? _shiftClockTimer;
+
+  int _accumSalesRupiah = 0;
+  int _accumQty = 0;
+
   @override
   void initState() {
     super.initState();
+
+    _shiftLabels = SharedPreferencesService().getShiftTimeLabels();
 
     salesControllers = List.generate(maxShift, (_) => TextEditingController());
     qtyControllers = List.generate(maxShift, (_) => TextEditingController());
@@ -44,6 +55,25 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     akmLastMonth.addListener(_updateSummary);
 
     _loadDraft();
+    _shiftClockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshAccumulationFromHistory();
+    });
+  }
+
+  Future<void> _refreshAccumulationFromHistory() async {
+    final list = await SharedPreferencesService().getSayBread();
+    if (!mounted) return;
+
+    final salesSum = list.fold<int>(0, (a, e) => a + e.sales);
+    final qtySum = list.fold<int>(0, (a, e) => a + e.qty);
+
+    setState(() {
+      _accumSalesRupiah = salesSum;
+      _accumQty = qtySum;
+    });
   }
 
   @override
@@ -62,6 +92,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
         parameters: {"shift_count": next},
       );
     }
+    _shiftLabels = SharedPreferencesService().getShiftTimeLabels();
   }
 
   int _toInt(TextEditingController c) {
@@ -188,6 +219,7 @@ $historyText```
 
   @override
   void dispose() {
+    _shiftClockTimer?.cancel();
     for (int i = 0; i < maxShift; i++) {
       salesControllers[i].dispose();
       qtyControllers[i].dispose();
@@ -218,6 +250,7 @@ $historyText```
 
     await service.saveSayBread(data);
     await service.clearSayBreadDraft(tgl);
+    await _refreshAccumulationFromHistory();
 
     FirebaseAnalytics.instance.logEvent(
       name: "say_bread_saved",
@@ -277,68 +310,83 @@ $historyText```
       (provider) => provider.shiftCount,
     );
     context.select<SayBreadProvider, int>((provider) => provider.formVersion);
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: productDashboardBackground(context),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              ProductSummaryCard(
+                title: 'Total Akumulasi',
+                subtitle: 'Rangkuman hingga data terakhir',
+                metrics: [
+                  ProductMetricData(
+                    label: 'Sales',
+                    value: _rupiah(_accumSalesRupiah),
+                  ),
+                  ProductMetricData(label: 'Qty', value: _rupiah(_accumQty)),
+                ],
+              ),
+              const SizedBox(height: 8),
               ...List.generate(shiftCount, (index) {
-                return Column(
-                  children: [
-                    ShiftCard(
-                      title: "Shift ${index + 1}",
-                      accentColor:
-                          Colors.primaries[index % Colors.primaries.length],
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: CustomInputField(
-                              label: "Sales",
-                              controller: salesControllers[index],
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [RupiahInputFormatter()],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: CustomInputField(
-                              label: "Qty",
-                              controller: qtyControllers[index],
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [RupiahInputFormatter()],
-                            ),
-                          ),
-                        ],
-                      ),
+                final raw = index < _shiftLabels.length
+                    ? _shiftLabels[index]
+                    : '';
+                final sub = SharedPreferencesService.jamKerjaSubtitle(raw);
+                final phase = SharedPreferencesService.shiftTimePhaseAt(raw);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: ProductShiftCard(
+                    shiftIndex: index,
+                    subtitle: sub,
+                    shiftPhase: phase,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ProductShiftInputRow(
+                          label: 'Penjualan',
+                          leadingIcon: Icons.account_balance_wallet_rounded,
+                          iconColor: Colors.orange.shade700,
+                          controller: salesControllers[index],
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [RupiahInputFormatter()],
+                        ),
+                        const SizedBox(height: 10),
+                        ProductShiftInputRow(
+                          label: 'Qty',
+                          leadingIcon: Icons.bakery_dining_rounded,
+                          iconColor: Colors.deepOrange.shade400,
+                          controller: qtyControllers[index],
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [RupiahInputFormatter()],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
                 );
               }),
-
-              ShiftCard(
-                title: "Last Month",
-                accentColor: Colors.blue.shade200,
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                ),
                 child: CustomInputField(
-                  label: "AKM Qty. Last Month",
+                  label: 'AKM Qty. bulan lalu',
                   controller: akmLastMonth,
                   keyboardType: TextInputType.number,
                   inputFormatters: [RupiahInputFormatter()],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              SummarySection(
-                rows: [
-                  SummaryRow(label: "Sales:", value: _rupiah(totalSales)),
-                  SummaryRow(label: "Qty:", value: totalQty.toString()),
-                ],
-              ),
-
               const SizedBox(height: 16),
-
               ActionButtons(
                 onWhatsApp: () async {
                   final service = SharedPreferencesService();
@@ -347,7 +395,7 @@ $historyText```
                   if (phone == null || phone.trim().isEmpty) {
                     CustomSnackBar.show(
                       context,
-                      message: "Nomor WhatsApp belum diatur di Settings",
+                      message: 'Nomor WhatsApp belum diatur di Settings',
                       type: SnackType.error,
                     );
                     return;
@@ -357,19 +405,19 @@ $historyText```
                   final text = await _buildWhatsAppMessage();
 
                   final uri = Uri.parse(
-                    "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
+                    'https://wa.me/$phone?text=${Uri.encodeComponent(text)}',
                   );
 
                   try {
                     FirebaseAnalytics.instance.logEvent(
-                      name: "say_bread_whatsapp_sent",
+                      name: 'say_bread_whatsapp_sent',
                     );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     // ignore: use_build_context_synchronously
                     CustomSnackBar.show(
                       context,
-                      message: "Gagal membuka WhatsApp",
+                      message: 'Gagal membuka WhatsApp',
                       type: SnackType.error,
                     );
                   }

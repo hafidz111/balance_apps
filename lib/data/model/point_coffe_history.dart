@@ -5,12 +5,15 @@ class PointCoffeeHistory {
   final int akmCup;
   final double cpd;
 
+  final double apc;
+
   PointCoffeeHistory({
     required this.tgl,
     required this.spd,
     required this.cup,
     required this.akmCup,
     required this.cpd,
+    this.apc = 0,
   });
 
   PointCoffeeHistory copyWith({
@@ -19,6 +22,7 @@ class PointCoffeeHistory {
     int? cup,
     int? akmCup,
     double? cpd,
+    double? apc,
   }) {
     return PointCoffeeHistory(
       tgl: tgl ?? this.tgl,
@@ -26,6 +30,7 @@ class PointCoffeeHistory {
       cup: cup ?? this.cup,
       akmCup: akmCup ?? this.akmCup,
       cpd: cpd ?? this.cpd,
+      apc: apc ?? this.apc,
     );
   }
 
@@ -35,7 +40,19 @@ class PointCoffeeHistory {
     'cup': cup,
     'akmCup': akmCup,
     'cpd': cpd,
+    'apc': apc,
   };
+
+  static double _coerceApc(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    if (v is String) {
+      final t = v.trim();
+      if (t.isEmpty) return 0;
+      return double.tryParse(t.replaceAll(',', '.')) ?? 0;
+    }
+    return 0;
+  }
 
   factory PointCoffeeHistory.fromJson(Map<String, dynamic> json) {
     return PointCoffeeHistory(
@@ -44,6 +61,7 @@ class PointCoffeeHistory {
       cup: json['cup'],
       akmCup: json['akmCup'],
       cpd: (json['cpd'] as num).toDouble(),
+      apc: _coerceApc(json['apc']),
     );
   }
 }

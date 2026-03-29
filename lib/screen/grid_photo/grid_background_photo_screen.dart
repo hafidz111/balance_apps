@@ -11,6 +11,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:starvy/providers/grid_background_photo_provider.dart';
 
 import '../../service/shared_preferences_service.dart';
+import '../../theme/app_colors.dart';
 import '../main/main_screen.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -62,7 +63,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
   final TextEditingController textController = TextEditingController();
   final TextEditingController colorController = TextEditingController(
-    text: "#038343",
+    text: AppColors.gridGreenHex,
   );
 
   Color hexToColor(String hex) {
@@ -286,7 +287,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        _colorCircle(const Color(0xFF038343)),
+                        _colorCircle(AppColors.gridGreen),
                         _colorCircle(Colors.black),
                         _colorCircle(Colors.white),
                         _colorCircle(Colors.red),
@@ -301,8 +302,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
                     TextField(
                       controller: colorController,
-                      decoration: const InputDecoration(
-                        hintText: "#038343",
+                      decoration: InputDecoration(
+                        hintText: AppColors.gridGreenHex,
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (value) {
@@ -321,7 +322,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         Switch(
                           inactiveTrackColor: Colors.white,
                           inactiveThumbColor: Colors.black,
-                          activeThumbColor: const Color(0xFF038343),
+                          activeThumbColor: AppColors.gridGreen,
                           value: provider.selectedTextIndex != null
                               ? provider
                                     .texts[provider.selectedTextIndex!]

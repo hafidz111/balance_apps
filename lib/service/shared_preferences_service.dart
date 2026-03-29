@@ -8,6 +8,7 @@ import '../data/model/barcode_data.dart';
 import '../data/model/point_coffe_history.dart';
 import '../data/model/say_bread_history.dart';
 import '../data/model/store_data.dart';
+import '../data/shift_time_phase.dart';
 
 class SharedPreferencesService {
   static SharedPreferences? _prefs;
@@ -27,6 +28,66 @@ class SharedPreferencesService {
   static const keyLogin = "login";
   static const phoneKey = "phone_number";
   static const shiftKey = "shift_count";
+  static const shiftTimeLabelsKey = 'shift_time_labels';
+
+  /// Hanya jam kerja per shift (subtitle di Coffee/Bread), diatur di Settings.
+  static const List<String> defaultShiftTimeLabels = [
+    '06:00 – 14:00',
+    '14:00 – 22:00',
+    '22:00 – 06:00',
+    '08:00 – 16:00',
+  ];
+
+  /// Data lama bisa berisi "Shift Pagi • 06:00…" — ambil bagian jam saja.
+  static String jamKerjaSubtitle(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final t = raw.trim();
+    final i = t.indexOf('•');
+    if (i != -1 && i + 1 < t.length) {
+      return t.substring(i + 1).trim();
+    }
+    return t;
+  }
+
+  /// Fase shift untuk badge: belum mulai / sedang berjalan / sudah lewat.
+  /// [raw] format `HH:mm – HH:mm` (disarankan dari time picker di Settings).
+  static ShiftTimePhase shiftTimePhaseAt(String? raw, [DateTime? now]) {
+    final t = jamKerjaSubtitle(raw);
+    if (t.isEmpty) return ShiftTimePhase.belumAktif;
+
+    final re = RegExp(
+      r'(\d{1,2})\s*:\s*(\d{2})\s*[–-]\s*(\d{1,2})\s*:\s*(\d{2})',
+    );
+    final m = re.firstMatch(t);
+    if (m == null) return ShiftTimePhase.belumAktif;
+
+    final current = now ?? DateTime.now();
+    final minutes = current.hour * 60 + current.minute;
+
+    final start = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
+    final end = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);
+
+    if (start == end) return ShiftTimePhase.belumAktif;
+
+    if (start < end) {
+      if (minutes < start) return ShiftTimePhase.belumAktif;
+      if (minutes >= end) return ShiftTimePhase.selesai;
+      return ShiftTimePhase.aktif;
+    }
+
+    // Lintas tengah malam (mis. 22:00 – 06:00)
+    if (minutes >= start || minutes < end) return ShiftTimePhase.aktif;
+    // Jeda siang: setelah selesai pagi vs belum mulai malam (bagi di tengah jeda)
+    final mid = (end + start) ~/ 2;
+    if (minutes < mid) return ShiftTimePhase.selesai;
+    return ShiftTimePhase.belumAktif;
+  }
+
+  /// True jika jam [now] (default: sekarang) berada dalam rentang jam shift di [raw].
+  /// Contoh: `06:00 – 14:00`, `22:00 - 06:00` (lintas tengah malam).
+  static bool isShiftActiveAt(String? raw, [DateTime? now]) {
+    return shiftTimePhaseAt(raw, now) == ShiftTimePhase.aktif;
+  }
   static const scheduleKey = "schedule_data";
   static const pcCpdManualKey = "pc_cpd_manual";
   static const pcCpdMonthKey = "pc_cpd_month";
@@ -132,6 +193,7 @@ class SharedPreferencesService {
           cup: item.cup,
           akmCup: runningAkm,
           cpd: runningAkm / day,
+          apc: item.apc,
         ),
       );
     }
@@ -195,6 +257,7 @@ class SharedPreferencesService {
           cup: item.cup,
           akmCup: runningAkm,
           cpd: runningAkm / day,
+          apc: item.apc,
         ),
       );
     }
@@ -447,6 +510,34 @@ class SharedPreferencesService {
 
   int? getShiftCount() {
     return prefs.getInt(shiftKey);
+  }
+
+  Future<void> saveShiftTimeLabels(List<String> labels) async {
+    final padded = List<String>.from(labels);
+    while (padded.length < 4) {
+      padded.add('');
+    }
+    await prefs.setString(
+      shiftTimeLabelsKey,
+      jsonEncode(padded.take(4).toList()),
+    );
+  }
+
+  List<String> getShiftTimeLabels() {
+    final raw = prefs.getString(shiftTimeLabelsKey);
+    if (raw == null) {
+      return List<String>.from(defaultShiftTimeLabels);
+    }
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      final out = list.map((e) => e.toString()).toList();
+      while (out.length < 4) {
+        out.add('');
+      }
+      return out.take(4).toList();
+    } catch (_) {
+      return List<String>.from(defaultShiftTimeLabels);
+    }
   }
 
   Future<void> saveLastBackupTime(DateTime date) async {

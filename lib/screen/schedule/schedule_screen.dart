@@ -13,6 +13,7 @@ import 'package:starvy/utils/ads_helper.dart';
 import '../../providers/schedule_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
+import '../../theme/app_colors.dart';
 import '../widgets/ads/rewarded_ads.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -146,22 +147,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _confirmDeleteEmployee(String name) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Hapus Karyawan"),
-        content: Text("Semua jadwal $name akan dihapus."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Hapus"),
-          ),
-        ],
-      ),
+    final confirm = await _showScheduleConfirmDialog(
+      title: 'Hapus karyawan?',
+      message: 'Semua jadwal $name di bulan ini akan dihapus.',
+      destructive: true,
+      confirmLabel: 'Hapus',
     );
 
     if (confirm == true) {
@@ -169,13 +159,123 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  final List<Color> _nameColors = [
-    Colors.orange.shade100,
-    Colors.blue.shade100,
-    Colors.purple.shade100,
-    Colors.teal.shade100,
-    Colors.red.shade100,
-    Colors.cyan.shade100,
+  Future<bool?> _showScheduleConfirmDialog({
+    required String title,
+    required String message,
+    bool destructive = false,
+    String confirmLabel = 'Oke',
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: destructive
+                            ? Colors.red.withValues(alpha: 0.12)
+                            : AppColors.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        destructive
+                            ? Icons.person_remove_rounded
+                            : Icons.calendar_month_rounded,
+                        color: destructive
+                            ? Colors.red.shade700
+                            : AppColors.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text('Batal'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: destructive
+                              ? Colors.red.shade700
+                              : AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          confirmLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static final List<Color> _nameColors = [
+    AppColors.primaryLight,
+    const Color(0xFFE0F7FA),
+    const Color(0xFFC8E6C9).withValues(alpha: 0.65),
+    const Color(0xFFFFF9C4).withValues(alpha: 0.85),
+    const Color(0xFFE1BEE7).withValues(alpha: 0.45),
+    const Color(0xFFFFCCBC).withValues(alpha: 0.65),
   ];
 
   Color _getColorForName(String name) {
@@ -586,8 +686,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }) {
     Color bgColor = Colors.white;
 
-    if (isHeader) bgColor = Colors.green.shade300;
-    if (isLibur) bgColor = Colors.red;
+    if (isHeader) bgColor = AppColors.primaryLight;
+    if (isLibur) bgColor = Colors.red.shade600;
     if (isName) bgColor = _getColorForName(text);
 
     return Container(
@@ -596,7 +696,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border.all(color: Colors.grey.shade400, width: 0.5),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.25),
+          width: 0.5,
+        ),
       ),
       child: Text(
         text,
@@ -604,7 +707,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         style: TextStyle(
           fontSize: 8,
           fontWeight: FontWeight.bold,
-          color: isLibur ? Colors.white : Colors.black,
+          color: isLibur
+              ? Colors.white
+              : isHeader
+              ? AppColors.primaryDark
+              : Colors.black87,
         ),
         overflow: TextOverflow.clip,
       ),
@@ -629,22 +736,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       children: [
         if (isLoading)
           Container(
-            color: Colors.black.withValues(alpha: 0.3),
-            child: const Center(child: CircularProgressIndicator()),
+            color: Colors.black.withValues(alpha: 0.35),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
           ),
         Scaffold(
-          backgroundColor: Colors.grey[100],
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: SafeArea(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       PremiumService.cachedPremium
-                          ? _headerButton(
-                              Icons.download,
-                              "Download Template",
+                          ? _scheduleOutlineButton(
+                              context,
+                              Icons.download_rounded,
+                              'Unduh template',
                               onTap: _exportExcel,
                             )
                           : RewardedAds(
@@ -653,20 +765,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               interstitialAdUnitId: AdsHelper
                                   .rewardedDownloadScheduleTemplateAdUnitId,
                               featureName: "download_template",
-                              customChild: _headerButton(
-                                Icons.download,
-                                "Download Template",
+                              customChild: _scheduleOutlineButton(
+                                context,
+                                Icons.download_rounded,
+                                'Unduh template',
                               ),
                               onRewarded: () async {
                                 await _exportExcel();
                               },
                             ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: PremiumService.cachedPremium
-                            ? _headerButton(
-                                Icons.upload,
-                                "Import Excel",
+                            ? _scheduleOutlineButton(
+                                context,
+                                Icons.upload_file_rounded,
+                                'Import Excel',
                                 onTap: _importExcel,
                               )
                             : RewardedAds(
@@ -675,9 +789,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 interstitialAdUnitId:
                                     AdsHelper.rewardedImportScheduleAdUnitId,
                                 featureName: "import_excel",
-                                customChild: _headerButton(
-                                  Icons.upload,
-                                  "Import Excel",
+                                customChild: _scheduleOutlineButton(
+                                  context,
+                                  Icons.upload_file_rounded,
+                                  'Import Excel',
                                 ),
                                 onRewarded: () async {
                                   await _importExcel();
@@ -686,116 +801,84 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
-
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: FilledButton.tonalIcon(
                           onPressed: () => _showAddShiftDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text("Tambah Jadwal"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            side: BorderSide(color: Colors.grey.shade300),
+                          icon: const Icon(Icons.add_rounded, size: 22),
+                          label: const Text(
+                            'Tambah jadwal',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primaryLight.withValues(
+                              alpha: 0.85,
+                            ),
+                            foregroundColor: AppColors.primaryDark,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
-                      SizedBox(
-                        height: 40,
-                        width: 48,
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text("Hapus Jadwal Bulan Ini?"),
-                                content: Text(
-                                  "Semua jadwal $_formattedMonth akan dihapus.",
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text("Batal"),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text("Hapus"),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirm == true) {
-                              _deleteSchedulesByCurrentMonth();
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.withValues(alpha: 0.12),
+                          foregroundColor: Colors.red.shade700,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
+                        onPressed: () async {
+                          final confirm = await _showScheduleConfirmDialog(
+                            title: 'Hapus jadwal bulan ini?',
+                            message:
+                                'Semua entri jadwal untuk $_formattedMonth akan dihapus.',
+                            destructive: true,
+                            confirmLabel: 'Hapus',
+                          );
+                          if (confirm == true) {
+                            _deleteSchedulesByCurrentMonth();
+                          }
+                        },
+                        tooltip: 'Hapus bulan ini',
+                        icon: const Icon(Icons.delete),
                       ),
-
                       const SizedBox(width: 8),
-
                       PremiumService.cachedPremium
-                          ? SizedBox(
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                onPressed: _exportAsImage,
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.black,
+                          ? IconButton.filledTonal(
+                              style: IconButton.styleFrom(
+                                backgroundColor: AppColors.primaryLight
+                                    .withValues(alpha: 0.85),
+                                foregroundColor: AppColors.primaryDark,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
+                              onPressed: _exportAsImage,
+                              tooltip: 'Simpan ke gambar',
+                              icon: const Icon(Icons.image_rounded),
                             )
                           : RewardedAds(
                               adUnitId: AdsHelper.rewardedSaveScheduleAdUnitId,
                               interstitialAdUnitId:
                                   AdsHelper.rewardedExportScheduleAdUnitId,
                               featureName: "export_image",
-                              icon: Icons.image,
-                              color: Colors.black,
-                              customChild: SizedBox(
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    side: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                              icon: Icons.image_rounded,
+                              color: AppColors.primaryDark,
+                              customChild: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight.withValues(
+                                    alpha: 0.85,
                                   ),
-                                  onPressed: null,
-                                  child: const Icon(
-                                    Icons.image,
-                                    color: Colors.black,
-                                  ),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
+                                child: const Icon(Icons.image_rounded),
                               ),
                               onRewarded: () async {
                                 await _exportAsImage();
@@ -803,39 +886,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ),
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        onPressed: _currentMonth.month == 1
-                            ? null
-                            : () => _changeMonth(-1),
-                        icon: const Icon(Icons.chevron_left),
-                      ),
-                      Text(
-                        _formattedMonth,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _currentMonth.month == 12
-                            ? null
-                            : () => _changeMonth(1),
-                        icon: const Icon(Icons.chevron_right),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 18),
+                  _buildMonthNavigator(context),
                   const SizedBox(height: 16),
-
                   _buildScheduleTable(context),
-                  const SizedBox(height: 20),
-
-                  _buildLegend(),
+                  const SizedBox(height: 16),
+                  _buildLegend(context),
                 ],
               ),
             ),
@@ -845,44 +901,161 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _headerButton(IconData icon, String label, {VoidCallback? onTap}) {
+  Widget _scheduleOutlineButton(
+    BuildContext context,
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, color: Colors.black),
-      label: Text(label, style: TextStyle(color: Colors.black)),
+      icon: Icon(icon, size: 20, color: AppColors.primaryDark),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: Colors.black,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        foregroundColor: Colors.black87,
-        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        foregroundColor: AppColors.primaryDark,
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.35)),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: scheme.surface,
+      ),
+    );
+  }
+
+  Widget _buildMonthNavigator(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton.filledTonal(
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _currentMonth.month == 1
+                  ? null
+                  : () => _changeMonth(-1),
+              icon: const Icon(Icons.chevron_left_rounded),
+            ),
+            Expanded(
+              child: Text(
+                _formattedMonth,
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            ),
+            IconButton.filledTonal(
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _currentMonth.month == 12
+                  ? null
+                  : () => _changeMonth(1),
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildScheduleTable(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     if (_employeeNames.isEmpty) {
       return Container(
+        height: 220,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        height: 200,
         alignment: Alignment.center,
-        child: Text(
-          "Belum ada jadwal $_formattedMonth",
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.event_busy_rounded,
+                  size: 40,
+                  color: AppColors.primary.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Belum ada jadwal',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$_formattedMonth — Import Excel atau tap tambah jadwal.',
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -969,20 +1142,35 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }) {
     return Container(
       width: 120,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: isHeader
-            ? Colors.green[100]
+            ? AppColors.primaryLight
             : isName
             ? _getColorForName(text)
-            : Colors.white,
+            : Theme.of(context).colorScheme.surface,
         border: Border(
-          right: BorderSide(color: Colors.grey.shade300),
-          bottom: BorderSide(color: Colors.grey.shade300),
+          right: BorderSide(
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.65),
+          ),
+          bottom: BorderSide(
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.65),
+          ),
         ),
       ),
       alignment: Alignment.centerLeft,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: isName ? 13 : 12,
+          color: isHeader ? AppColors.primaryDark : null,
+        ),
+      ),
     );
   }
 
@@ -991,60 +1179,161 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     bool isHeader = false,
     bool isLibur = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final borderColor = scheme.outlineVariant.withValues(alpha: 0.65);
     return Container(
       width: 50,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: isHeader
-            ? Colors.green[100]
+            ? AppColors.primaryLight
             : isLibur
-            ? Colors.red
-            : Colors.white,
+            ? Colors.red.shade600
+            : scheme.surface,
         border: Border(
-          right: BorderSide(color: Colors.grey.shade300),
-          bottom: BorderSide(color: Colors.grey.shade300),
+          right: BorderSide(color: borderColor),
+          bottom: BorderSide(color: borderColor),
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         text,
         style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: isLibur ? Colors.white : Colors.black,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+          color: isHeader
+              ? AppColors.primaryDark
+              : isLibur
+              ? Colors.white
+              : scheme.onSurface,
         ),
       ),
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final shiftText = List.generate(_shiftCount, (i) => "${i + 1}").join(", ");
 
     return Container(
-      padding: const EdgeInsets.all(16),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Keterangan",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: Text("Shift $shiftText = Shift kerja")),
-              Container(width: 20, height: 20, color: Colors.red),
-              const SizedBox(width: 8),
-              const Text("X = Hari Libur"),
-            ],
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.12),
+                  AppColors.primary.withValues(alpha: 0.04),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: AppColors.primaryDark),
+                const SizedBox(width: 8),
+                Text(
+                  'Keterangan',
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Angka $shiftText = Shift Kerja (Sesuai Pengaturan).',
+                  style: textTheme.bodyMedium?.copyWith(height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'X = Hari Libur',
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _scheduleFieldDecoration(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final base = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(
+        color: scheme.outlineVariant.withValues(alpha: 0.55),
+      ),
+    );
+    return InputDecoration(
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      border: base,
+      enabledBorder: base,
+      focusedBorder: base.copyWith(
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  Widget _buildDialogField({
+    required BuildContext context,
+    required String label,
+    required Widget child,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface.withValues(alpha: 0.9),
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
     );
   }
 
@@ -1056,201 +1345,283 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) {
+      builder: (dialogCtx) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          clipBehavior: Clip.antiAlias,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
           ),
           child: StatefulBuilder(
             builder: (context, setStateDialog) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: 24,
-                  right: 24,
-                  top: 24,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const SizedBox(width: 24),
-                          const Text(
-                            "Tambah Shift",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      const Text("Masukkan detail shift baru"),
-
-                      const SizedBox(height: 24),
-
-                      _buildDialogField(
-                        label: "Tanggal",
-                        child: TextField(
-                          controller: dateController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            hintText: "dd/mm/yyyy",
-                            suffixIcon: const Icon(Icons.calendar_today),
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          onTap: () async {
-                            final pickedDate = await showDatePicker(
-                              context: context,
-                              initialDate: _currentMonth,
-                              firstDate: DateTime(_activeYear, 1, 1),
-                              lastDate: DateTime(_activeYear, 12, 31),
-                            );
-
-                            if (pickedDate != null) {
-                              dateController.text =
-                                  "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                  "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                  "${pickedDate.year}";
-                            }
-                          },
+              final scheme = Theme.of(context).colorScheme;
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.2),
+                            AppColors.primary.withValues(alpha: 0.06),
+                          ],
                         ),
                       ),
-
-                      const SizedBox(height: 16),
-
-                      _buildDialogField(
-                        label: "Nama",
-                        child: TextField(
-                          controller: nameController,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      _buildDialogField(
-                        label: "Shift",
-                        child: DropdownButtonFormField<String>(
-                          initialValue: selectedShift,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          items: [
-                            ...List.generate(
-                              _shiftCount,
-                              (i) => DropdownMenuItem(
-                                value: "${i + 1}",
-                                child: Text("Shift ${i + 1}"),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 18, 8, 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.add_task_rounded,
+                                color: AppColors.primary,
+                                size: 26,
                               ),
                             ),
-                            const DropdownMenuItem(
-                              value: "X",
-                              child: Text("Libur (X)"),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tambah jadwal',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.3,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Isi tanggal, nama, dan shift.',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: () => Navigator.pop(dialogCtx),
+                              style: IconButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
-                          onChanged: (val) {
-                            setStateDialog(() {
-                              selectedShift = val!;
-                            });
-                          },
                         ),
                       ),
-
-                      const SizedBox(height: 28),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                    ),
+                    SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        20,
+                        20,
+                        MediaQuery.of(context).viewInsets.bottom + 20,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text("Batal"),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final name = nameController.text.trim();
-
-                              if (name.isEmpty || dateController.text.isEmpty) {
-                                return;
-                              }
-
-                              final isNewEmployee = !_employeeNames.contains(
-                                name,
-                              );
-
-                              if (isNewEmployee && _employeeNames.length >= 6) {
-                                CustomSnackBar.show(
-                                  context,
-                                  message: "Maksimal 6 karyawan",
-                                  type: SnackType.error,
+                          _buildDialogField(
+                            context: context,
+                            label: 'Tanggal',
+                            child: TextField(
+                              controller: dateController,
+                              readOnly: true,
+                              decoration: _scheduleFieldDecoration(context)
+                                  .copyWith(
+                                    hintText: 'dd/mm/yyyy',
+                                    suffixIcon: Icon(
+                                      Icons.calendar_month_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                              onTap: () async {
+                                final pickedDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: _currentMonth,
+                                  firstDate: DateTime(_activeYear, 1, 1),
+                                  lastDate: DateTime(_activeYear, 12, 31),
                                 );
-                                return;
-                              }
 
-                              final parts = dateController.text.split("/");
-
-                              final formattedDate =
-                                  "${parts[2]}-${parts[1]}-${parts[0]}";
-
-                              await _setSchedule(
-                                name,
-                                formattedDate,
-                                selectedShift,
-                              );
-
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
+                                if (pickedDate != null) {
+                                  dateController.text =
+                                      "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                      "${pickedDate.year}";
+                                }
+                              },
                             ),
-                            child: const Text(
-                              "Tambah",
-                              style: TextStyle(color: Colors.white),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDialogField(
+                            context: context,
+                            label: 'Nama karyawan',
+                            child: TextField(
+                              controller: nameController,
+                              textCapitalization: TextCapitalization.words,
+                              decoration: _scheduleFieldDecoration(context)
+                                  .copyWith(
+                                    hintText: 'Nama di jadwal',
+                                    prefixIcon: Icon(
+                                      Icons.person_outline_rounded,
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                    ),
+                                  ),
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDialogField(
+                            context: context,
+                            label: 'Shift',
+                            child: DropdownButtonFormField<String>(
+                              value: selectedShift,
+                              decoration: _scheduleFieldDecoration(context),
+                              items: [
+                                ...List.generate(
+                                  _shiftCount,
+                                  (i) => DropdownMenuItem(
+                                    value: "${i + 1}",
+                                    child: Text('Shift ${i + 1}'),
+                                  ),
+                                ),
+                                const DropdownMenuItem(
+                                  value: "X",
+                                  child: Text('Libur (X)'),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val == null) return;
+                                setStateDialog(() {
+                                  selectedShift = val;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(dialogCtx),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text('Batal'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: FilledButton.icon(
+                                  onPressed: () async {
+                                    final name = nameController.text.trim();
+
+                                    if (name.isEmpty ||
+                                        dateController.text.isEmpty) {
+                                      CustomSnackBar.show(
+                                        context,
+                                        message: 'Lengkapi tanggal dan nama',
+                                        type: SnackType.error,
+                                      );
+                                      return;
+                                    }
+
+                                    final isNewEmployee = !_employeeNames
+                                        .contains(name);
+
+                                    if (isNewEmployee &&
+                                        _employeeNames.length >= 6) {
+                                      CustomSnackBar.show(
+                                        context,
+                                        message: 'Maksimal 6 karyawan',
+                                        type: SnackType.error,
+                                      );
+                                      return;
+                                    }
+
+                                    final parts = dateController.text.split(
+                                      "/",
+                                    );
+
+                                    final formattedDate =
+                                        "${parts[2]}-${parts[1]}-${parts[0]}";
+
+                                    await _setSchedule(
+                                      name,
+                                      formattedDate,
+                                      selectedShift,
+                                    );
+
+                                    if (context.mounted) {
+                                      Navigator.pop(dialogCtx);
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.check_rounded,
+                                    size: 22,
+                                  ),
+                                  label: const Text(
+                                    'Simpan',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -1260,166 +1631,202 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildDialogField({required String label, required Widget child}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(label, style: const TextStyle(fontSize: 16)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: child),
-      ],
-    );
-  }
-
   void _showEditShiftDialog(BuildContext context, String name, DateTime date) {
     final dateString =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
-    String selectedShift = _schedules["${name}_$dateString"] ?? "1";
+    var selectedShift = _schedules["${name}_$dateString"] ?? "1";
+    if (selectedShift.isEmpty) selectedShift = "1";
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) {
+      builder: (dialogCtx) {
         return Dialog(
-          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          clipBehavior: Clip.antiAlias,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
           ),
           child: StatefulBuilder(
             builder: (context, setStateDialog) {
-              return Padding(
-                padding: const EdgeInsets.all(24),
+              final scheme = Theme.of(context).colorScheme;
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(width: 24),
-                        const Text(
-                          "Edit Shift",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.2),
+                            AppColors.primary.withValues(alpha: 0.06),
+                          ],
                         ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text("$name - $dateString"),
-
-                    const SizedBox(height: 24),
-
-                    _buildDialogField(
-                      label: "Shift",
-                      child: DropdownButtonFormField<String>(
-                        initialValue: selectedShift,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        items: [
-                          ...List.generate(
-                            _shiftCount,
-                            (i) => DropdownMenuItem(
-                              value: "${i + 1}",
-                              child: Text("Shift ${i + 1}"),
-                            ),
-                          ),
-                          const DropdownMenuItem(
-                            value: "X",
-                            child: Text("Libur (X)"),
-                          ),
-                        ],
-                        onChanged: (val) {
-                          setStateDialog(() {
-                            selectedShift = val!;
-                          });
-                        },
                       ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          height: 40,
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              await _deleteSchedule(name, dateString);
-                              Navigator.pop(context);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(40, 40),
-                              side: const BorderSide(color: Colors.red),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-
-                        Row(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 18, 8, 16),
+                        child: Row(
                           children: [
-                            OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text("Batal"),
+                              child: const Icon(
+                                Icons.edit_calendar_rounded,
+                                color: AppColors.primary,
+                                size: 26,
+                              ),
                             ),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () async {
-                                await _setSchedule(
-                                  name,
-                                  dateString,
-                                  selectedShift,
-                                );
-                                Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Edit shift',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$name · $dateString',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: () => Navigator.pop(dialogCtx),
+                              style: IconButton.styleFrom(
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
                               ),
-                              child: const Text(
-                                "Simpan",
-                                style: TextStyle(color: Colors.white),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildDialogField(
+                            context: context,
+                            label: 'Shift',
+                            child: DropdownButtonFormField<String>(
+                              value: selectedShift,
+                              decoration: _scheduleFieldDecoration(context),
+                              items: [
+                                ...List.generate(
+                                  _shiftCount,
+                                  (i) => DropdownMenuItem(
+                                    value: "${i + 1}",
+                                    child: Text('Shift ${i + 1}'),
+                                  ),
+                                ),
+                                const DropdownMenuItem(
+                                  value: "X",
+                                  child: Text('Libur (X)'),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val == null) return;
+                                setStateDialog(() {
+                                  selectedShift = val;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          Row(
+                            children: [
+                              IconButton.filledTonal(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.red.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  foregroundColor: Colors.red.shade700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  await _deleteSchedule(name, dateString);
+                                  if (context.mounted) {
+                                    Navigator.pop(dialogCtx);
+                                  }
+                                },
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                tooltip: 'Hapus',
+                              ),
+                              const Spacer(),
+                              OutlinedButton(
+                                onPressed: () => Navigator.pop(dialogCtx),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('Batal'),
+                              ),
+                              const SizedBox(width: 10),
+                              FilledButton.icon(
+                                onPressed: () async {
+                                  await _setSchedule(
+                                    name,
+                                    dateString,
+                                    selectedShift,
+                                  );
+                                  if (context.mounted) {
+                                    Navigator.pop(dialogCtx);
+                                  }
+                                },
+                                icon: const Icon(Icons.check_rounded, size: 20),
+                                label: const Text(
+                                  'Simpan',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

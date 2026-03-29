@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 class ActionButtons extends StatelessWidget {
   final VoidCallback onWhatsApp;
@@ -20,7 +21,7 @@ class ActionButtons extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1DB954),
+              backgroundColor: AppColors.actionPositive,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

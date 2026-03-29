@@ -8,6 +8,8 @@ class CustomInputField extends StatelessWidget {
   final bool enabled;
   final String? hintText;
   final List<TextInputFormatter>? inputFormatters;
+  final IconData? prefixIcon;
+  final IconData? suffixIcon;
 
   const CustomInputField({
     super.key,
@@ -17,6 +19,8 @@ class CustomInputField extends StatelessWidget {
     this.enabled = true,
     this.hintText,
     this.inputFormatters,
+    this.prefixIcon,
+    this.suffixIcon,
   });
 
   @override
@@ -72,6 +76,20 @@ class CustomInputField extends StatelessWidget {
             focusedBorder: baseBorder.copyWith(
               borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
             ),
+            prefixIcon: prefixIcon != null
+                ? Icon(
+                    prefixIcon,
+                    size: 22,
+                    color: colorScheme.primary.withOpacity(0.85),
+                  )
+                : null,
+            suffixIcon: suffixIcon != null
+                ? Icon(
+                    suffixIcon,
+                    size: 22,
+                    color: colorScheme.primary.withOpacity(0.85),
+                  )
+                : null,
           ),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: enabled

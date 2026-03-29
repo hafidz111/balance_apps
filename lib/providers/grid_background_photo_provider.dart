@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 enum BackgroundMode { defaultBg, custom, none }
 
@@ -122,7 +123,7 @@ class GridBackgroundPhotoProvider extends ChangeNotifier {
       offset: const Offset(100, 100),
       fontSize: 28,
       isBold: false,
-      color: const Color(0xFF038343),
+      color: AppColors.gridGreen,
     );
     _texts.add(newText);
     _selectedTextIndex = _texts.length - 1;

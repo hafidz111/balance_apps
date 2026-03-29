@@ -1,5 +1,6 @@
-import 'package:starvy/screen/widgets/summary_row.dart';
 import 'package:flutter/material.dart';
+import 'package:starvy/screen/widgets/summary_row.dart';
+import 'package:starvy/theme/app_colors.dart';
 
 class SummarySection extends StatelessWidget {
   final List<SummaryRow> rows;
@@ -12,7 +13,7 @@ class SummarySection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF009688),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import '../../../data/model/say_bread_history.dart';
 import '../../../service/shared_preferences_service.dart';
+import '../../../theme/app_colors.dart';
 import '../../../utils/number_format.dart';
+import '../../widgets/custom_snack_bar.dart';
 import '../../widgets/dialog_input_field.dart';
 
 class SayBreadDialog extends StatefulWidget {
@@ -138,77 +139,134 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-      contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.center,
-            child: Text(
-              widget.editData == null ? "Tambah Data Bread" : "Edit Data Bread",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
+    final scheme = Theme.of(context).colorScheme;
+    final title = widget.editData == null
+        ? "Tambah Data Bread"
+        : "Edit Data Bread";
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DialogInputField(
-                label: "Tanggal",
-                controller: tglCtrl,
-                readOnly: true,
-                onTap: _pickDate,
-              ),
-              DialogInputField(
-                label: "Total Sales",
-                controller: salesCtrl,
-                inputFormatters: [RupiahInputFormatter()],
-              ),
-              DialogInputField(
-                label: "Qty",
-                controller: qtyCtrl,
-                inputFormatters: [RupiahInputFormatter()],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF009688),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    "Simpan",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      backgroundColor: scheme.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.18),
+                    AppColors.primary.withValues(alpha: 0.06),
+                  ],
                 ),
               ),
-            ],
-          ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 8, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.bakery_dining_rounded,
+                        color: AppColors.primary,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      onPressed: () => Navigator.pop(context),
+                      style: IconButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 22,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DialogInputField(
+                    label: "Tanggal",
+                    controller: tglCtrl,
+                    readOnly: true,
+                    onTap: _pickDate,
+                    prefixIcon: Icons.calendar_today_rounded,
+                    hintText: "Ketuk untuk pilih tanggal",
+                  ),
+                  DialogInputField(
+                    label: "Total Sales",
+                    controller: salesCtrl,
+                    inputFormatters: [RupiahInputFormatter()],
+                    prefixIcon: Icons.payments_rounded,
+                    hintText: "Masukkan total sales",
+                  ),
+                  DialogInputField(
+                    label: "Qty",
+                    controller: qtyCtrl,
+                    inputFormatters: [RupiahInputFormatter()],
+                    prefixIcon: Icons.numbers_rounded,
+                    hintText: "Masukkan kuantitas roti",
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.check_rounded, size: 22),
+                    label: const Text(
+                      'Simpan',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 52),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

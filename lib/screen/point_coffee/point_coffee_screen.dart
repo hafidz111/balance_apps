@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,9 +15,7 @@ import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
-import '../widgets/shift_card.dart';
-import '../widgets/summary_row.dart';
-import '../widgets/summary_section.dart';
+import '../widgets/product_dashboard_widgets.dart';
 
 class PointCoffeeScreen extends StatefulWidget {
   const PointCoffeeScreen({super.key});
@@ -38,15 +38,53 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   late TextEditingController cpdManualController;
   String? savedMonthKey;
 
+  /// Subtitle shift (dari Settings → jam & nama shift).
+  List<String> _shiftLabels = List<String>.from(
+    SharedPreferencesService.defaultShiftTimeLabels,
+  );
+
+  Timer? _shiftClockTimer;
+
+  /// Akumulasi dari riwayat tersimpan (bukan draft hari ini).
+  int _accumSalesRupiah = 0;
+  int _accumCup = 0;
+  double _lastApcValue = 0;
+
   @override
   void initState() {
     super.initState();
+    _shiftLabels = SharedPreferencesService().getShiftTimeLabels();
     _loadStore();
     _initControllers();
     _loadDraft();
     cpdManualController = TextEditingController();
     cpdManualController.addListener(_saveCpdManual);
     _loadCpdManual();
+    _shiftClockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshAccumulationFromHistory();
+    });
+  }
+
+  Future<void> _refreshAccumulationFromHistory() async {
+    final list = await SharedPreferencesService().getPointCoffee();
+    if (!mounted) return;
+
+    final salesSum = list.fold<int>(0, (a, e) => a + e.spd);
+    final cupSum = list.fold<int>(0, (a, e) => a + e.cup);
+    double lastApc = 0;
+    if (list.isNotEmpty) {
+      final sorted = [...list]..sort((a, b) => b.tgl.compareTo(a.tgl));
+      lastApc = sorted.first.apc;
+    }
+
+    setState(() {
+      _accumSalesRupiah = salesSum;
+      _accumCup = cupSum;
+      _lastApcValue = lastApc;
+    });
   }
 
   void _initControllers() {
@@ -78,6 +116,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
     final shift = pref.shiftCount ?? 2;
     formProvider.setShiftCount(shift.clamp(1, maxShift));
+    _shiftLabels = SharedPreferencesService().getShiftTimeLabels();
   }
 
   int _toInt(TextEditingController c) {
@@ -136,12 +175,20 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     );
   }
 
+  double _apcValue(int sales, int std) {
+    if (std == 0) return 0;
+    return (sales / std) / 1000;
+  }
+
   String _apc(int sales, int std) {
-    if (std == 0) return "0";
+    final v = _apcValue(sales, std);
+    if (v == 0) return '0';
+    return v.toStringAsFixed(3).replaceAll('.', ',');
+  }
 
-    final result = (sales / std) / 1000;
-
-    return result.toStringAsFixed(3).replaceAll('.', ',');
+  String _apcDisplay(double v) {
+    if (v == 0) return '0';
+    return v.toStringAsFixed(3).replaceAll('.', ',');
   }
 
   void _updateAll() {
@@ -157,7 +204,58 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     context.read<PointCoffeeProvider>().markFormChanged();
   }
 
-  double get apc => totalStd == 0 ? 0 : totalSales / totalStd / 1000;
+  Widget _buildShiftInputs(int index) {
+    const goldStd = Color(0xFFC9A227);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ProductShiftInputRow(
+          label: 'Penjualan',
+          leadingIcon: Icons.account_balance_wallet_rounded,
+          iconColor: Colors.orange.shade700,
+          controller: salesControllers[index],
+          keyboardType: TextInputType.number,
+          inputFormatters: [RupiahInputFormatter()],
+        ),
+        const SizedBox(height: 10),
+        ProductShiftInputRow(
+          label: 'Cup terjual',
+          leadingIcon: Icons.local_cafe_rounded,
+          iconColor: Colors.deepOrange.shade400,
+          controller: cupControllers[index],
+          keyboardType: TextInputType.number,
+          inputFormatters: [RupiahInputFormatter()],
+        ),
+        const SizedBox(height: 10),
+        ProductShiftInputRow(
+          label: 'APC (Auto)',
+          leadingIcon: Icons.insights_rounded,
+          iconColor: Colors.green.shade700,
+          controller: apcControllers[index],
+          readOnly: true,
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 10),
+        ProductShiftInputRow(
+          label: 'Std',
+          leadingIcon: Icons.speed_rounded,
+          iconColor: goldStd,
+          controller: stdControllers[index],
+          keyboardType: TextInputType.number,
+          inputFormatters: [RupiahInputFormatter()],
+        ),
+        const SizedBox(height: 10),
+        ProductShiftInputRow(
+          label: 'Add',
+          leadingIcon: Icons.note_alt_outlined,
+          iconColor: Colors.teal.shade700,
+          controller: addControllers[index],
+          keyboardType: TextInputType.number,
+          inputFormatters: [RupiahInputFormatter()],
+        ),
+      ],
+    );
+  }
 
   Future<String> _buildMonthlyHistory() async {
     final service = SharedPreferencesService();
@@ -198,6 +296,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
   @override
   void dispose() {
+    _shiftClockTimer?.cancel();
     for (int i = 0; i < maxShift; i++) {
       salesControllers[i].dispose();
       stdControllers[i].dispose();
@@ -286,10 +385,12 @@ $historyText```
       cup: totalCup,
       akmCup: akmCup,
       cpd: akmCup / now.day,
+      apc: _apcValue(totalSales, totalStd),
     );
 
     await service.savePointCoffee(data);
     await service.clearPointCoffeeDraft(tgl);
+    await _refreshAccumulationFromHistory();
 
     FirebaseAnalytics.instance.logEvent(
       name: "point_coffee_saved",
@@ -354,107 +455,68 @@ $historyText```
     context.select<PointCoffeeProvider, int>(
       (provider) => provider.formVersion,
     );
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              ProductSummaryCard(
+                title: 'Total Akumulasi',
+                subtitle: 'Rangkuman hingga data terakhir',
+                metrics: [
+                  ProductMetricData(
+                    label: 'Sales',
+                    value: _rupiah(_accumSalesRupiah),
+                  ),
+                  ProductMetricData(
+                    label: 'Cup Terjual',
+                    value: _rupiah(_accumCup),
+                  ),
+                  ProductMetricData(
+                    label: 'APC',
+                    value: _apcDisplay(_lastApcValue),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               ...List.generate(shiftCount, (index) {
-                return Column(
-                  children: [
-                    ShiftCard(
-                      title: "Shift ${index + 1}",
-                      accentColor:
-                          Colors.primaries[index % Colors.primaries.length],
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CustomInputField(
-                                  label: "Sales",
-                                  controller: salesControllers[index],
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [RupiahInputFormatter()],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: CustomInputField(
-                                  label: "Std",
-                                  controller: stdControllers[index],
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [RupiahInputFormatter()],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CustomInputField(
-                                  label: "Apc",
-                                  controller: apcControllers[index],
-                                  enabled: false,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: CustomInputField(
-                                  label: "Cup",
-                                  controller: cupControllers[index],
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [RupiahInputFormatter()],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          CustomInputField(
-                            label: "Add",
-                            controller: addControllers[index],
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [RupiahInputFormatter()],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                final raw = index < _shiftLabels.length
+                    ? _shiftLabels[index]
+                    : '';
+                final sub = SharedPreferencesService.jamKerjaSubtitle(raw);
+                final phase = SharedPreferencesService.shiftTimePhaseAt(raw);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: ProductShiftCard(
+                    shiftIndex: index,
+                    subtitle: sub,
+                    shiftPhase: phase,
+                    child: _buildShiftInputs(index),
+                  ),
                 );
               }),
-
+              const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: BoxBorder.all(color: Colors.black26),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
                 ),
                 child: CustomInputField(
-                  label: "CPD Bulan Lalu",
+                  label: 'CPD bulan lalu',
                   controller: cpdManualController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [RupiahInputFormatter()],
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              SummarySection(
-                rows: [
-                  SummaryRow(label: "Sales:", value: totalSales.toString()),
-                  SummaryRow(label: "Std:", value: totalStd.toString()),
-                  SummaryRow(label: "Apc:", value: _apc(totalSales, totalStd)),
-                  SummaryRow(label: "Cup:", value: totalCup.toString()),
-                  SummaryRow(label: "Add:", value: totalAdd.toString()),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
               ActionButtons(
                 onWhatsApp: () async {
                   final service = SharedPreferencesService();
@@ -463,7 +525,7 @@ $historyText```
                   if (phone == null || phone.trim().isEmpty) {
                     CustomSnackBar.show(
                       context,
-                      message: "Nomor WhatsApp belum diatur di Settings",
+                      message: 'Nomor WhatsApp belum diatur di Settings',
                       type: SnackType.error,
                     );
                     return;
@@ -473,12 +535,12 @@ $historyText```
                   final text = await _buildWhatsAppMessage();
 
                   final uri = Uri.parse(
-                    "https://wa.me/$phone?text=${Uri.encodeComponent(text)}",
+                    'https://wa.me/$phone?text=${Uri.encodeComponent(text)}',
                   );
 
                   try {
                     FirebaseAnalytics.instance.logEvent(
-                      name: "point_coffee_whatsapp_sent",
+                      name: 'point_coffee_whatsapp_sent',
                     );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {
@@ -486,7 +548,7 @@ $historyText```
                     CustomSnackBar.show(
                       context,
                       message:
-                          "Gagal membuka WhatsApp: ${e.toString().replaceAll('Exception: ', '')}",
+                          'Gagal membuka WhatsApp: ${e.toString().replaceAll('Exception: ', '')}',
                       type: SnackType.error,
                     );
                   }

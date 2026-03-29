@@ -8,6 +8,7 @@ import '../../providers/firebase_auth_provider.dart';
 import '../../providers/login_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../static/firebase_auth_status.dart';
+import '../../theme/app_colors.dart';
 import '../main/main_screen.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -52,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF009688), Color(0xFF00695C)],
+            colors: [AppColors.primary, AppColors.primaryDark],
           ),
         ),
         child: SafeArea(
@@ -148,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? null
                                 : _tapToLogin,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF009688),
+                              backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -166,6 +167,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Text("Login"),
                           ),
                         ),
+                        if (loginProvider.loading) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            "Menghubungi server… Harap tunggu. Jika lambat, periksa koneksi internet.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
@@ -174,17 +187,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _openCreateAccountWhatsApp,
                             icon: const Icon(
                               Icons.chat,
-                              color: Color(0xFF009688),
+                              color: AppColors.primary,
                             ),
                             label: const Text(
                               "Buat Akun via WhatsApp",
                               style: TextStyle(
-                                color: Color(0xFF009688),
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF009688)),
+                              side: const BorderSide(color: AppColors.primary),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -286,9 +299,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
 
       default:
+        final msg = firebaseAuthProvider.message;
         CustomSnackBar.show(
           context,
-          message: "Login gagal",
+          message: (msg != null && msg.isNotEmpty)
+              ? msg
+              : "Login gagal. Periksa email dan password.",
           type: SnackType.error,
         );
     }

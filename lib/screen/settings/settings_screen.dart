@@ -14,10 +14,14 @@ import '../../providers/shared_preference_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/purchase_service.dart';
 import '../../service/shared_preferences_service.dart';
+import '../../theme/app_colors.dart';
 import '../../utils/ads_helper.dart';
 import '../../utils/date_format.dart';
+import '../../utils/shift_time_utils.dart';
+import '../../utils/user_friendly_error.dart';
 import '../widgets/ads/banner_ads.dart';
 import '../widgets/custom_snack_bar.dart';
+import 'widgets/shift_time_four_fields_row.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,10 +30,22 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+
+  /// Per shift: [jam mulai, menit mulai, jam selesai, menit selesai].
+  final List<List<TextEditingController>> _shiftTimeFieldRows = List.generate(
+    4,
+    (_) => List.generate(4, (_) => TextEditingController()),
+  );
+  bool _shiftTimesHydrated = false;
   String? _originalName;
+
+  /// Cache untuk dipakai di [dispose] / lifecycle (tanpa [context]).
+  SettingsProvider? _settingsProvider;
+  SharedPreferenceProvider? _prefProvider;
 
   bool get _isNameChanged {
     return _nameController.text.trim() != (_originalName ?? "");
@@ -38,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     Future.microtask(() {
       context.read<FirebaseAuthProvider>().validateSession();
@@ -48,6 +65,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context.read<SettingsProvider>().markChanged();
       }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Keluar ke app lain: tutup mode edit & kembalikan nilai tersimpan.
+    if (state == AppLifecycleState.paused) {
+      _exitEditModeWithoutSaving(updateControllers: true);
+    }
+  }
+
+  /// Keluar dari mode edit tanpa menyimpan (nilai dari prefs / terakhir tersimpan).
+  void _exitEditModeWithoutSaving({required bool updateControllers}) {
+    final settings = _settingsProvider;
+    final pref = _prefProvider;
+    if (settings == null || pref == null) return;
+    if (!settings.isEditingSettings && !settings.isEditingProfile) return;
+
+    if (settings.isEditingSettings) {
+      settings.setSelectedShift(pref.shiftCount ?? 2);
+      if (updateControllers && mounted) {
+        _phoneController.text = pref.phoneNumber ?? "";
+        final labels = SharedPreferencesService().getShiftTimeLabels();
+        for (int i = 0; i < 4; i++) {
+          final raw = i < labels.length ? labels[i] : '';
+          ShiftTimeUtils.setRowFromStoredLabel(_shiftTimeFieldRows[i], raw);
+        }
+      }
+    }
+    if (settings.isEditingProfile && updateControllers && mounted) {
+      _nameController.text = _originalName ?? "";
+    }
+
+    settings.setEditingSettings(false);
+    settings.setEditingProfile(false);
+
+    if (updateControllers && mounted) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Pindah tab / screen: provider global masih "edit" — reset + shift dari prefs.
+    _exitEditModeWithoutSaving(updateControllers: false);
+    _phoneController.dispose();
+    _nameController.dispose();
+    for (final row in _shiftTimeFieldRows) {
+      for (final c in row) {
+        c.dispose();
+      }
+    }
+    super.dispose();
   }
 
   Future<void> _loadLastBackupTime() async {
@@ -128,7 +199,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final settings = context.read<SettingsProvider>();
+    _settingsProvider = context.read<SettingsProvider>();
+    _prefProvider = context.read<SharedPreferenceProvider>();
+    final settings = _settingsProvider!;
 
     if (settings.isLoaded) return;
 
@@ -139,6 +212,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     settings.setSelectedShift(pref.shiftCount ?? 2);
     _nameController.text = auth.profile?.name ?? "";
     _originalName = auth.profile?.name ?? "";
+
+    if (!_shiftTimesHydrated) {
+      _shiftTimesHydrated = true;
+      final labels = SharedPreferencesService().getShiftTimeLabels();
+      for (int i = 0; i < 4; i++) {
+        final raw = i < labels.length ? labels[i] : '';
+        ShiftTimeUtils.setRowFromStoredLabel(_shiftTimeFieldRows[i], raw);
+      }
+    }
 
     settings.setLoaded(true);
     _loadLastBackupTime();
@@ -191,8 +273,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
+    final n = settings.selectedShift;
+    for (int i = 0; i < n; i++) {
+      final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i]);
+      if (eight == null || ShiftTimeUtils.tryParseEightDigits(eight) == null) {
+        CustomSnackBar.show(
+          context,
+          message:
+              'Jam shift ${i + 1}: isi keempat kotak (jam & menit, masing-masing 00–23 / 00–59).',
+          type: SnackType.error,
+        );
+        return;
+      }
+    }
+
     await pref.savePhoneNumber(_phoneController.text);
     await pref.saveShiftCount(settings.selectedShift);
+    final normalized = List<String>.generate(4, (i) {
+      if (i >= n) return '';
+      final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i])!;
+      final range = ShiftTimeUtils.tryParseEightDigits(eight)!;
+      return ShiftTimeUtils.formatRange(range.start, range.end);
+    });
+    await SharedPreferencesService().saveShiftTimeLabels(normalized);
+    for (int i = 0; i < 4; i++) {
+      ShiftTimeUtils.setRowFromStoredLabel(
+        _shiftTimeFieldRows[i],
+        i < n ? normalized[i] : '',
+      );
+    }
 
     settings.setEditingSettings(false);
 
@@ -224,7 +333,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryTeal = Color(0xFF009688);
     final authProvider = context.watch<FirebaseAuthProvider>();
     final settings = context.watch<SettingsProvider>();
     final user = authProvider.profile;
@@ -266,19 +374,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isLoggedIn = user != null;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF4F7FC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 16,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFF8FAFF), Color(0xFFF2F5FB)],
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               if (!PremiumService.cachedPremium) const BannerAds(),
               const SizedBox(height: 8),
               if (!PremiumService.cachedPremium)
@@ -301,19 +416,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.person_outline,
-                          color: primaryTeal,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Profil Pengguna",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                    _buildSectionHeader(
+                      icon: Icons.person_outline,
+                      title: "Profil Pengguna",
+                      color: AppColors.primary,
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -385,7 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   : _isNameChanged
                                   ? Icons.check
                                   : Icons.close,
-                              color: primaryTeal,
+                              color: AppColors.primary,
                               size: 20,
                             ),
                             onPressed: () async {
@@ -436,15 +542,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.settings, color: Colors.teal, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          "Pengaturan Aplikasi",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                    _buildSectionHeader(
+                      icon: Icons.settings,
+                      title: "Pengaturan Aplikasi",
+                      color: Colors.teal,
                     ),
                     const SizedBox(height: 20),
 
@@ -486,7 +587,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    for (int i = 0; i < settings.selectedShift; i++) ...[
+                      ShiftTimeFourFieldsRow(
+                        label: 'Jam Kerja Shift ${i + 1}',
+                        controllers: _shiftTimeFieldRows[i],
+                        enabled: settings.isEditingSettings,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    const SizedBox(height: 8),
 
                     _buildButton(
                       label: settings.isEditingSettings ? "Simpan" : "Edit",
@@ -504,15 +616,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.sync, color: Colors.blue, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          "Sinkronisasi Data",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                    _buildSectionHeader(
+                      icon: Icons.sync,
+                      title: "Sinkronisasi Data",
+                      color: Colors.blue,
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -527,10 +634,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.sync,
                         color: Colors.blue[700]!,
                         onPressed: () async {
-                          if (user == null) return;
+                          if (user == null) {
+                            CustomSnackBar.show(
+                              context,
+                              message:
+                                  'Login terlebih dahulu untuk sinkronisasi.',
+                              type: SnackType.error,
+                            );
+                            return;
+                          }
 
-                          await barcodeService.syncAll(user.uid!);
-                          await _loadLastSyncTime();
+                          try {
+                            await barcodeService.syncAll(user.uid!);
+                            await _loadLastSyncTime();
+
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "sync_success",
+                            );
+
+                            if (!mounted) return;
+                            CustomSnackBar.show(
+                              context,
+                              message: "Sinkronisasi berhasil!",
+                              type: SnackType.success,
+                            );
+                          } catch (e) {
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "sync_failed",
+                            );
+
+                            if (!mounted) return;
+
+                            CustomSnackBar.show(
+                              context,
+                              message: userFriendlyError(
+                                e,
+                                fallback:
+                                    'Sinkronisasi gagal. Coba lagi nanti.',
+                              ),
+                              type: SnackType.error,
+                            );
+                          }
                         },
                       )
                     else
@@ -556,7 +700,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           settings.setSyncing(true);
 
                           try {
-                            await barcodeService.syncBarcodes(user!.uid!);
+                            await barcodeService.syncAll(user!.uid!);
                             await _loadLastSyncTime();
 
                             FirebaseAnalytics.instance.logEvent(
@@ -573,29 +717,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               name: "sync_failed",
                             );
 
-                            final message = e.toString();
-
-                            if (message.contains(
-                                  "Belum ada backup di server",
-                                ) ||
-                                message.contains("Data kosong di server")) {
-                              settings.setSyncCooldownUntil(
-                                DateTime.now().add(const Duration(minutes: 10)),
-                              );
-
-                              CustomSnackBar.show(
-                                context,
-                                message:
-                                    "Tidak ada data yang disinkronkan. Coba lagi 10 menit.",
-                                type: SnackType.error,
-                              );
-                            } else {
-                              CustomSnackBar.show(
-                                context,
-                                message: "Sync gagal: $e",
-                                type: SnackType.error,
-                              );
-                            }
+                            CustomSnackBar.show(
+                              context,
+                              message: userFriendlyError(
+                                e,
+                                fallback:
+                                    'Sinkronisasi gagal. Coba lagi nanti.',
+                              ),
+                              type: SnackType.error,
+                            );
                           } finally {
                             if (mounted) {
                               settings.setSyncing(false);
@@ -623,15 +753,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.cloud, color: Colors.purple, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          "Backup Data",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
+                    _buildSectionHeader(
+                      icon: Icons.cloud,
+                      title: "Backup Data",
+                      color: Colors.purple,
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -645,6 +770,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.cloud_upload_outlined,
                         color: Colors.purple[700]!,
                         onPressed: () async {
+                          if (user == null) {
+                            CustomSnackBar.show(
+                              context,
+                              message: 'Login terlebih dahulu untuk backup.',
+                              type: SnackType.error,
+                            );
+                            return;
+                          }
+
                           final barcodes = await SharedPreferencesService()
                               .getBarcodes();
 
@@ -661,7 +795,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                           try {
                             await barcodeService.backupAll(
-                              user!.uid!,
+                              user.uid!,
                               user.email ?? "unknown",
                             );
                             await _loadLastBackupTime();
@@ -682,7 +816,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                             CustomSnackBar.show(
                               context,
-                              message: "Backup gagal: $e",
+                              message: userFriendlyError(
+                                e,
+                                fallback: 'Backup gagal. Coba lagi nanti.',
+                              ),
                               type: SnackType.error,
                             );
                           } finally {
@@ -742,7 +879,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                             CustomSnackBar.show(
                               context,
-                              message: "Backup gagal: $e",
+                              message: userFriendlyError(
+                                e,
+                                fallback: 'Backup gagal. Coba lagi nanti.',
+                              ),
                               type: SnackType.error,
                             );
                           } finally {
@@ -767,15 +907,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                 child: _buildButton(
                   label: isLoggedIn ? "Logout" : "Login",
                   icon: isLoggedIn ? Icons.login_outlined : Icons.person,
-                  color: isLoggedIn ? Colors.red[700]! : Color(0xFF009688),
+                  color: isLoggedIn ? Colors.red[700]! : AppColors.primary,
                   onPressed: _tapToSignOutOrLogin,
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -786,13 +927,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6EBF5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120D1B2A),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: child,
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: Color(0xFF1D2942),
+          ),
+        ),
+      ],
     );
   }
 
@@ -804,27 +981,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 50,
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.1,
+          ),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 0.5,
+          shadowColor: color.withValues(alpha: 0.35),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _nameController.dispose();
-    super.dispose();
   }
 }

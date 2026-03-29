@@ -1,4 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../data/model/profile.dart';
@@ -6,6 +7,7 @@ import '../service/firebase_auth_service.dart';
 import '../service/premium_service.dart';
 import '../service/purchase_service.dart';
 import '../static/firebase_auth_status.dart';
+import '../utils/auth_error_localization.dart';
 
 class FirebaseAuthProvider extends ChangeNotifier {
   final FirebaseAuthService _service;
@@ -33,7 +35,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
       _authStatus = FirebaseAuthStatus.accountCreated;
       _message = "Berhasil Buat Akun!";
     } catch (e) {
-      _message = e.toString();
+      _message = userFacingAuthError(e);
       _authStatus = FirebaseAuthStatus.error;
     }
     notifyListeners();
@@ -58,15 +60,18 @@ class FirebaseAuthProvider extends ChangeNotifier {
         photoUrl: result.user?.photoURL,
       );
 
-      await _purchaseService.init();
-
-      await PremiumService.isPremium();
+      try {
+        await _purchaseService.init();
+        await PremiumService.isPremium();
+      } catch (e, st) {
+        debugPrint('Post-login premium/init: $e\n$st');
+      }
 
       _authStatus = FirebaseAuthStatus.authenticated;
       _message = "Login Berhasil!";
       FirebaseAnalytics.instance.logEvent(name: "login_success");
     } catch (e) {
-      _message = "Login Gagal!";
+      _message = userFacingAuthError(e);
       _authStatus = FirebaseAuthStatus.error;
       FirebaseAnalytics.instance.logEvent(name: "login_failed");
     }
@@ -89,7 +94,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
       _authStatus = FirebaseAuthStatus.unauthenticated;
       _message = "Logout Berhasil!";
     } catch (e) {
-      _message = e.toString();
+      _message = userFacingAuthError(e);
       _authStatus = FirebaseAuthStatus.error;
     }
     notifyListeners();
@@ -114,7 +119,7 @@ class FirebaseAuthProvider extends ChangeNotifier {
 
       _message = "Nama berhasil diperbarui!";
     } catch (e) {
-      _message = e.toString();
+      _message = userFacingAuthError(e);
       _authStatus = FirebaseAuthStatus.error;
     }
 

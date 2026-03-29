@@ -325,48 +325,50 @@ class _RewardedAdsState extends State<RewardedAds> {
         final bool hasLabel = widget.label != null;
 
         if (!hasLabel) {
-          return IconButton(
-            onPressed: canPress ? _showAd : null,
-            icon: _isProcessing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+          return Opacity(
+            opacity: canPress ? 1.0 : 0.55,
+            child: IconButton(
+              onPressed: canPress ? _showAd : null,
+              icon: _isProcessing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      widget.icon ?? Icons.star,
+                      color: widget.color ?? Theme.of(context).iconTheme.color,
                     ),
-                  )
-                : Icon(
-                    widget.icon ?? Icons.star,
-                    color: widget.color ?? Theme.of(context).iconTheme.color,
-                  ),
+            ),
           );
         }
 
-        return SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: canPress ? _showAd : null,
-            icon: Icon(
-              _isProcessing ? Icons.hourglass_top : (widget.icon),
-              size: 18,
-            ),
-            label: Text(
-              _isProcessing
-                  ? (widget.loadingLabel ?? widget.label!)
-                  : widget.label!,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: widget.color ?? Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  (widget.color ?? Theme.of(context).primaryColor).withValues(
-                    alpha: 0.4,
-                  ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        return Opacity(
+          opacity: canPress ? 1.0 : 0.55,
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: canPress ? _showAd : null,
+              icon: Icon(
+                _isProcessing ? Icons.hourglass_top : (widget.icon),
+                size: 18,
+              ),
+              label: Text(
+                _isProcessing
+                    ? (widget.loadingLabel ?? widget.label!)
+                    : widget.label!,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.color ?? Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),

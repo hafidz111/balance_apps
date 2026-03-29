@@ -25,6 +25,7 @@ import 'package:starvy/providers/store_provider.dart';
 import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/service/firebase_auth_service.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
+import 'package:starvy/theme/app_colors.dart';
 import 'package:starvy/utils/track_app_start.dart';
 
 import 'firebase_options.dart';
@@ -98,7 +99,7 @@ class MyApp extends StatelessWidget {
       title: appTitle,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.themeSeed),
       ),
       home: MainScreen(),
       routes: {},
