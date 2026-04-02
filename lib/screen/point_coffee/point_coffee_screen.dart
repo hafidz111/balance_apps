@@ -38,14 +38,12 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   late TextEditingController cpdManualController;
   String? savedMonthKey;
 
-  /// Subtitle shift (dari Settings → jam & nama shift).
   List<String> _shiftLabels = List<String>.from(
     SharedPreferencesService.defaultShiftTimeLabels,
   );
 
   Timer? _shiftClockTimer;
 
-  /// Akumulasi dari riwayat tersimpan (bukan draft hari ini).
   int _accumSalesRupiah = 0;
   int _accumCup = 0;
   double _lastApcValue = 0;
@@ -333,21 +331,20 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
     for (int i = 0; i < shiftCount; i++) {
       shiftText +=
-          """
-*Shift ${i + 1}* ```
-Sales : ${_rupiah(_toInt(salesControllers[i]))}
-Std   : ${_toInt(stdControllers[i])}
-Apc   : ${apcControllers[i].text}
-Cup   : ${_toInt(cupControllers[i])}
-Add   : ${_toInt(addControllers[i])} ```
-""";
+          "*Shift ${i + 1}*\n"
+          "```Sales : ${_rupiah(_toInt(salesControllers[i]))}\n"
+          "Std   : ${_toInt(stdControllers[i])}\n"
+          "Apc   : ${apcControllers[i].text}\n"
+          "Cup   : ${_toInt(cupControllers[i])}\n"
+          "Add   : ${_toInt(addControllers[i])}\n"
+          "```\n";
     }
 
     return """
 *$title*
 ```Tanggal $tgl```
 
-$shiftText
+${shiftText.trim()}
 
 *TOTAL* ```
 Sales    : ${_rupiah(totalSales)}
@@ -360,9 +357,7 @@ Nama toko  = $nama
 Kode toko  = $kode
 Tgl GO     = $tglGo
 Area toko  = $area
-
-${cpdNow != null ? "CPD: $cpdNow\n" : ""}
-
+${cpdNow != null ? "\nCPD: $cpdNow\n" : ""}
 _Bulan berjalan :
 $blnIni
 

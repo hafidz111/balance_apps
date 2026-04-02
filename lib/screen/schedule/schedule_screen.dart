@@ -1142,6 +1142,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }) {
     return Container(
       width: 120,
+      height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: isHeader
@@ -1165,6 +1166,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       alignment: Alignment.centerLeft,
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: isName ? 13 : 12,
@@ -1183,6 +1186,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final borderColor = scheme.outlineVariant.withValues(alpha: 0.65);
     return Container(
       width: 50,
+      height: 44,
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: isHeader

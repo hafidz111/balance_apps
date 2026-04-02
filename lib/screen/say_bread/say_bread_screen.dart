@@ -179,19 +179,18 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
 
     for (int i = 0; i < shiftCount; i++) {
       shiftText +=
-          """
-*Shift ${i + 1}* ```
-Sales : ${_rupiah(_toInt(salesControllers[i]))}
-Qty   : ${_toInt(qtyControllers[i])}```
-""";
+          "*Shift ${i + 1}*\n"
+          "```Sales : ${_rupiah(_toInt(salesControllers[i]))}\n"
+          "Qty   : ${_toInt(qtyControllers[i])}\n"
+          "```\n";
     }
     return """
 *$sbtitle*
 ```Tanggal $tgl```
 
-$shiftText
+${shiftText.trim()}
 
-*TOTAL*```
+*TOTAL* ```
 Sales.     : ${_rupiah(totalSales)}
 Qty.       : $totalQty
 ```

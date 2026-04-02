@@ -35,15 +35,14 @@ class _SettingsScreenState extends State<SettingsScreen>
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  /// Per shift: [jam mulai, menit mulai, jam selesai, menit selesai].
   final List<List<TextEditingController>> _shiftTimeFieldRows = List.generate(
     4,
     (_) => List.generate(4, (_) => TextEditingController()),
   );
   bool _shiftTimesHydrated = false;
   String? _originalName;
+  bool _isInitScreenState = false;
 
-  /// Cache untuk dipakai di [dispose] / lifecycle (tanpa [context]).
   SettingsProvider? _settingsProvider;
   SharedPreferenceProvider? _prefProvider;
 
@@ -70,13 +69,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Keluar ke app lain: tutup mode edit & kembalikan nilai tersimpan.
     if (state == AppLifecycleState.paused) {
       _exitEditModeWithoutSaving(updateControllers: true);
     }
   }
 
-  /// Keluar dari mode edit tanpa menyimpan (nilai dari prefs / terakhir tersimpan).
   void _exitEditModeWithoutSaving({required bool updateControllers}) {
     final settings = _settingsProvider;
     final pref = _prefProvider;
@@ -109,7 +106,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Pindah tab / screen: provider global masih "edit" — reset + shift dari prefs.
     _exitEditModeWithoutSaving(updateControllers: false);
     _phoneController.dispose();
     _nameController.dispose();
@@ -203,7 +199,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     _prefProvider = context.read<SharedPreferenceProvider>();
     final settings = _settingsProvider!;
 
-    if (settings.isLoaded) return;
+    if (_isInitScreenState) return;
+    _isInitScreenState = true;
 
     final auth = context.read<FirebaseAuthProvider>();
     final pref = context.read<SharedPreferenceProvider>();
@@ -394,527 +391,527 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              if (!PremiumService.cachedPremium) const BannerAds(),
-              const SizedBox(height: 8),
-              if (!PremiumService.cachedPremium)
-                _buildButton(
-                  label: "Hapus Iklan (Sekali Bayar)",
-                  icon: Icons.workspace_premium,
-                  color: Colors.amber[700]!,
-                  onPressed: isLoggedIn ? _buyRemoveAds : null,
-                ),
-              if (!isLoggedIn && !PremiumService.cachedPremium)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
-                  child: Text(
-                    "Login untuk membeli fitur premium",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                if (!PremiumService.cachedPremium) const BannerAds(),
+                const SizedBox(height: 8),
+                if (!PremiumService.cachedPremium)
+                  _buildButton(
+                    label: "Hapus Iklan (Sekali Bayar)",
+                    icon: Icons.workspace_premium,
+                    color: Colors.amber[700]!,
+                    onPressed: isLoggedIn ? _buyRemoveAds : null,
                   ),
-                ),
-              const SizedBox(height: 16),
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      icon: Icons.person_outline,
-                      title: "Profil Pengguna",
-                      color: AppColors.primary,
+                if (!isLoggedIn && !PremiumService.cachedPremium)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      "Login untuk membeli fitur premium",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 35,
-                          backgroundImage: user?.photoUrl != null
-                              ? NetworkImage(user!.photoUrl!)
-                              : null,
-                          child: user?.photoUrl == null
-                              ? const Icon(Icons.person, size: 40)
-                              : null,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              settings.isEditingProfile
-                                  ? SizedBox(
-                                      width: double.infinity,
-                                      child: TextField(
-                                        controller: _nameController,
-                                        autofocus: true,
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          hintText: "Masukkan nama",
-                                          border: UnderlineInputBorder(),
+                  ),
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        icon: Icons.person_outline,
+                        title: "Profil Pengguna",
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 35,
+                            backgroundImage: user?.photoUrl != null
+                                ? NetworkImage(user!.photoUrl!)
+                                : null,
+                            child: user?.photoUrl == null
+                                ? const Icon(Icons.person, size: 40)
+                                : null,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                settings.isEditingProfile
+                                    ? SizedBox(
+                                        width: double.infinity,
+                                        child: TextField(
+                                          controller: _nameController,
+                                          autofocus: true,
+                                          decoration: const InputDecoration(
+                                            isDense: true,
+                                            hintText: "Masukkan nama",
+                                            border: UnderlineInputBorder(),
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
+                                      )
+                                    : Text(
+                                        user?.name ?? "Guest",
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                    )
-                                  : Text(
-                                      user?.name ?? "Guest",
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                              isLoggedIn
-                                  ? Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.email_outlined,
-                                          size: 14,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          user.email ?? 'Guest',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
+                                isLoggedIn
+                                    ? Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.email_outlined,
+                                            size: 14,
+                                            color: Colors.grey,
                                           ),
-                                        ),
-                                      ],
-                                    )
-                                  : const SizedBox(),
-                            ],
-                          ),
-                        ),
-                        if (isLoggedIn)
-                          IconButton(
-                            icon: Icon(
-                              !settings.isEditingProfile
-                                  ? Icons.edit
-                                  : _isNameChanged
-                                  ? Icons.check
-                                  : Icons.close,
-                              color: AppColors.primary,
-                              size: 20,
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            user.email ?? 'Guest',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : const SizedBox(),
+                              ],
                             ),
-                            onPressed: () async {
-                              if (!settings.isEditingProfile) {
-                                settings.setEditingProfile(true);
-                                return;
-                              }
+                          ),
+                          if (isLoggedIn)
+                            IconButton(
+                              icon: Icon(
+                                !settings.isEditingProfile
+                                    ? Icons.edit
+                                    : _isNameChanged
+                                    ? Icons.check
+                                    : Icons.close,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                              onPressed: () async {
+                                if (!settings.isEditingProfile) {
+                                  settings.setEditingProfile(true);
+                                  return;
+                                }
 
-                              if (!_isNameChanged) {
+                                if (!_isNameChanged) {
+                                  settings.setEditingProfile(false);
+                                  _nameController.text = _originalName ?? "";
+                                  FocusScope.of(context).unfocus();
+                                  return;
+                                }
+
+                                final newName = _nameController.text.trim();
+
+                                if (newName.isEmpty) {
+                                  CustomSnackBar.show(
+                                    context,
+                                    message: "Nama tidak boleh kosong",
+                                    type: SnackType.error,
+                                  );
+                                  return;
+                                }
+
+                                await context
+                                    .read<FirebaseAuthProvider>()
+                                    .updateUserName(newName);
+
                                 settings.setEditingProfile(false);
-                                _nameController.text = _originalName ?? "";
-                                FocusScope.of(context).unfocus();
-                                return;
-                              }
+                                _originalName = newName;
 
-                              final newName = _nameController.text.trim();
-
-                              if (newName.isEmpty) {
                                 CustomSnackBar.show(
                                   context,
-                                  message: "Nama tidak boleh kosong",
-                                  type: SnackType.error,
+                                  message: "Nama berhasil diperbarui",
+                                  type: SnackType.success,
                                 );
-                                return;
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                _buildSectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        icon: Icons.settings,
+                        title: "Pengaturan Aplikasi",
+                        color: Colors.teal,
+                      ),
+                      const SizedBox(height: 20),
+
+                      CustomInputField(
+                        label: "Nomor HP",
+                        controller: _phoneController,
+                        enabled: settings.isEditingSettings,
+                        keyboardType: TextInputType.phone,
+                        hintText: "Masukkan nomor HP",
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      const Text("Jumlah Shift"),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<int>(
+                        initialValue: settings.selectedShift,
+                        items: [1, 2, 3, 4]
+                            .map(
+                              (shift) => DropdownMenuItem(
+                                value: shift,
+                                child: Text("$shift Shift"),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: settings.isEditingSettings
+                            ? (value) {
+                                settings.setSelectedShift(value!);
                               }
+                            : null,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: !settings.isEditingSettings,
+                          fillColor: !settings.isEditingSettings
+                              ? Colors.grey.shade100
+                              : null,
+                        ),
+                      ),
 
-                              await context
-                                  .read<FirebaseAuthProvider>()
-                                  .updateUserName(newName);
+                      const SizedBox(height: 16),
 
-                              settings.setEditingProfile(false);
-                              _originalName = newName;
+                      for (int i = 0; i < settings.selectedShift; i++) ...[
+                        ShiftTimeFourFieldsRow(
+                          label: 'Jam Kerja Shift ${i + 1}',
+                          controllers: _shiftTimeFieldRows[i],
+                          enabled: settings.isEditingSettings,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      const SizedBox(height: 8),
+
+                      _buildButton(
+                        label: settings.isEditingSettings ? "Simpan" : "Edit",
+                        icon: settings.isEditingSettings
+                            ? Icons.save
+                            : Icons.edit,
+                        color: Colors.teal,
+                        onPressed: _saveSettings,
+                      ),
+                    ],
+                  ),
+                ),
+
+                _buildSectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        icon: Icons.sync,
+                        title: "Sinkronisasi Data",
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Sinkronkan data lokal dengan server",
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+
+                      const SizedBox(height: 12),
+                      if (PremiumService.cachedPremium)
+                        _buildButton(
+                          label: "Sinkronkan Sekarang",
+                          icon: Icons.sync,
+                          color: Colors.blue[700]!,
+                          onPressed: () async {
+                            if (user == null) {
+                              CustomSnackBar.show(
+                                context,
+                                message:
+                                    'Login terlebih dahulu untuk sinkronisasi.',
+                                type: SnackType.error,
+                              );
+                              return;
+                            }
+
+                            try {
+                              await barcodeService.syncAll(user.uid!);
+                              await _loadLastSyncTime();
+
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "sync_success",
+                              );
+
+                              if (!mounted) return;
+                              CustomSnackBar.show(
+                                context,
+                                message: "Sinkronisasi berhasil!",
+                                type: SnackType.success,
+                              );
+                            } catch (e) {
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "sync_failed",
+                              );
+
+                              if (!mounted) return;
 
                               CustomSnackBar.show(
                                 context,
-                                message: "Nama berhasil diperbarui",
+                                message: userFriendlyError(
+                                  e,
+                                  fallback:
+                                      'Sinkronisasi gagal. Coba lagi nanti.',
+                                ),
+                                type: SnackType.error,
+                              );
+                            }
+                          },
+                        )
+                      else
+                        RewardedAds(
+                          featureName: "sync",
+                          adUnitId: AdsHelper.rewardedSyncAdUnitId,
+                          interstitialAdUnitId:
+                              AdsHelper.rewardedSyncDataAdUnitId,
+                          label: "Sinkronkan Sekarang",
+                          loadingLabel: "Sedang Sync...",
+                          icon: Icons.sync,
+                          color: Colors.blue[700]!,
+                          enabled:
+                              isLoggedIn &&
+                              !settings.isSyncing &&
+                              (settings.syncCooldownUntil == null ||
+                                  DateTime.now().isAfter(
+                                    settings.syncCooldownUntil!,
+                                  )),
+                          onRewarded: () async {
+                            if (settings.isSyncing) return;
+
+                            settings.setSyncing(true);
+
+                            try {
+                              await barcodeService.syncAll(user!.uid!);
+                              await _loadLastSyncTime();
+
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "sync_success",
+                              );
+
+                              CustomSnackBar.show(
+                                context,
+                                message: "Sinkronisasi berhasil!",
                                 type: SnackType.success,
                               );
-                            },
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                            } catch (e) {
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "sync_failed",
+                              );
 
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      icon: Icons.settings,
-                      title: "Pengaturan Aplikasi",
-                      color: Colors.teal,
-                    ),
-                    const SizedBox(height: 20),
-
-                    CustomInputField(
-                      label: "Nomor HP",
-                      controller: _phoneController,
-                      enabled: settings.isEditingSettings,
-                      keyboardType: TextInputType.phone,
-                      hintText: "Masukkan nomor HP",
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    const Text("Jumlah Shift"),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<int>(
-                      initialValue: settings.selectedShift,
-                      items: [1, 2, 3, 4]
-                          .map(
-                            (shift) => DropdownMenuItem(
-                              value: shift,
-                              child: Text("$shift Shift"),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: settings.isEditingSettings
-                          ? (value) {
-                              settings.setSelectedShift(value!);
+                              CustomSnackBar.show(
+                                context,
+                                message: userFriendlyError(
+                                  e,
+                                  fallback:
+                                      'Sinkronisasi gagal. Coba lagi nanti.',
+                                ),
+                                type: SnackType.error,
+                              );
+                            } finally {
+                              if (mounted) {
+                                settings.setSyncing(false);
+                              }
                             }
-                          : null,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          },
                         ),
-                        filled: !settings.isEditingSettings,
-                        fillColor: !settings.isEditingSettings
-                            ? Colors.grey.shade100
-                            : null,
+                      if (settings.lastSyncTime != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            "Sync terakhir: ${formatDates(settings.lastSyncTime!)}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                _buildSectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        icon: Icons.cloud,
+                        title: "Backup Data",
+                        color: Colors.purple,
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    for (int i = 0; i < settings.selectedShift; i++) ...[
-                      ShiftTimeFourFieldsRow(
-                        label: 'Jam Kerja Shift ${i + 1}',
-                        controllers: _shiftTimeFieldRows[i],
-                        enabled: settings.isEditingSettings,
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Cadangkan semua data aplikasi Anda",
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                       const SizedBox(height: 12),
-                    ],
-
-                    const SizedBox(height: 8),
-
-                    _buildButton(
-                      label: settings.isEditingSettings ? "Simpan" : "Edit",
-                      icon: settings.isEditingSettings
-                          ? Icons.save
-                          : Icons.edit,
-                      color: Colors.teal,
-                      onPressed: _saveSettings,
-                    ),
-                  ],
-                ),
-              ),
-
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      icon: Icons.sync,
-                      title: "Sinkronisasi Data",
-                      color: Colors.blue,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Sinkronkan data lokal dengan server",
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-
-                    const SizedBox(height: 12),
-                    if (PremiumService.cachedPremium)
-                      _buildButton(
-                        label: "Sinkronkan Sekarang",
-                        icon: Icons.sync,
-                        color: Colors.blue[700]!,
-                        onPressed: () async {
-                          if (user == null) {
-                            CustomSnackBar.show(
-                              context,
-                              message:
-                                  'Login terlebih dahulu untuk sinkronisasi.',
-                              type: SnackType.error,
-                            );
-                            return;
-                          }
-
-                          try {
-                            await barcodeService.syncAll(user.uid!);
-                            await _loadLastSyncTime();
-
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "sync_success",
-                            );
-
-                            if (!mounted) return;
-                            CustomSnackBar.show(
-                              context,
-                              message: "Sinkronisasi berhasil!",
-                              type: SnackType.success,
-                            );
-                          } catch (e) {
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "sync_failed",
-                            );
-
-                            if (!mounted) return;
-
-                            CustomSnackBar.show(
-                              context,
-                              message: userFriendlyError(
-                                e,
-                                fallback:
-                                    'Sinkronisasi gagal. Coba lagi nanti.',
-                              ),
-                              type: SnackType.error,
-                            );
-                          }
-                        },
-                      )
-                    else
-                      RewardedAds(
-                        featureName: "sync",
-                        adUnitId: AdsHelper.rewardedSyncAdUnitId,
-                        interstitialAdUnitId:
-                            AdsHelper.rewardedSyncDataAdUnitId,
-                        label: "Sinkronkan Sekarang",
-                        loadingLabel: "Sedang Sync...",
-                        icon: Icons.sync,
-                        color: Colors.blue[700]!,
-                        enabled:
-                            isLoggedIn &&
-                            !settings.isSyncing &&
-                            (settings.syncCooldownUntil == null ||
-                                DateTime.now().isAfter(
-                                  settings.syncCooldownUntil!,
-                                )),
-                        onRewarded: () async {
-                          if (settings.isSyncing) return;
-
-                          settings.setSyncing(true);
-
-                          try {
-                            await barcodeService.syncAll(user!.uid!);
-                            await _loadLastSyncTime();
-
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "sync_success",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: "Sinkronisasi berhasil!",
-                              type: SnackType.success,
-                            );
-                          } catch (e) {
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "sync_failed",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: userFriendlyError(
-                                e,
-                                fallback:
-                                    'Sinkronisasi gagal. Coba lagi nanti.',
-                              ),
-                              type: SnackType.error,
-                            );
-                          } finally {
-                            if (mounted) {
-                              settings.setSyncing(false);
+                      if (PremiumService.cachedPremium)
+                        _buildButton(
+                          label: "Backup Sekarang",
+                          icon: Icons.cloud_upload_outlined,
+                          color: Colors.purple[700]!,
+                          onPressed: () async {
+                            if (user == null) {
+                              CustomSnackBar.show(
+                                context,
+                                message: 'Login terlebih dahulu untuk backup.',
+                                type: SnackType.error,
+                              );
+                              return;
                             }
-                          }
-                        },
-                      ),
-                    if (settings.lastSyncTime != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          "Sync terakhir: ${formatDates(settings.lastSyncTime!)}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
+
+                            final barcodes = await SharedPreferencesService()
+                                .getBarcodes();
+
+                            if (barcodes.isEmpty) {
+                              CustomSnackBar.show(
+                                context,
+                                message: "Tidak ada data untuk dibackup",
+                                type: SnackType.error,
+                              );
+                              return;
+                            }
+
+                            settings.setBackingUp(true);
+
+                            try {
+                              await barcodeService.backupAll(
+                                user.uid!,
+                                user.email ?? "unknown",
+                              );
+                              await _loadLastBackupTime();
+
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "backup_success",
+                              );
+
+                              CustomSnackBar.show(
+                                context,
+                                message: "Backup berhasil!",
+                                type: SnackType.success,
+                              );
+                            } catch (e) {
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "backup_failed",
+                              );
+
+                              CustomSnackBar.show(
+                                context,
+                                message: userFriendlyError(
+                                  e,
+                                  fallback: 'Backup gagal. Coba lagi nanti.',
+                                ),
+                                type: SnackType.error,
+                              );
+                            } finally {
+                              settings.setBackingUp(false);
+                            }
+                          },
+                        )
+                      else
+                        RewardedAds(
+                          featureName: "backup",
+                          adUnitId: AdsHelper.rewardedBackupAdUnitId,
+                          interstitialAdUnitId:
+                              AdsHelper.rewardedBackupDataAdUnitId,
+                          label: "Backup Sekarang",
+                          loadingLabel: "Sedang Backup...",
+                          icon: Icons.cloud_upload_outlined,
+                          color: Colors.purple[700]!,
+                          enabled: isLoggedIn && !settings.isBackingUp,
+                          onRewarded: () async {
+                            final barcodes = await SharedPreferencesService()
+                                .getBarcodes();
+
+                            if (barcodes.isEmpty) {
+                              CustomSnackBar.show(
+                                context,
+                                message: "Tidak ada data untuk dibackup",
+                                type: SnackType.error,
+                              );
+
+                              settings.setBackingUp(false);
+
+                              return;
+                            }
+
+                            settings.setBackingUp(true);
+
+                            try {
+                              await barcodeService.backupAll(
+                                user!.uid!,
+                                user.email ?? "unknown",
+                              );
+                              await _loadLastBackupTime();
+
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "backup_success",
+                              );
+
+                              CustomSnackBar.show(
+                                context,
+                                message: "Backup berhasil!",
+                                type: SnackType.success,
+                              );
+                            } catch (e) {
+                              FirebaseAnalytics.instance.logEvent(
+                                name: "backup_failed",
+                              );
+
+                              CustomSnackBar.show(
+                                context,
+                                message: userFriendlyError(
+                                  e,
+                                  fallback: 'Backup gagal. Coba lagi nanti.',
+                                ),
+                                type: SnackType.error,
+                              );
+                            } finally {
+                              settings.setBackingUp(false);
+                            }
+                          },
+                        ),
+                      if (settings.lastBackupTime != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            "Backup terakhir: ${formatDates(settings.lastBackupTime!)}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
 
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      icon: Icons.cloud,
-                      title: "Backup Data",
-                      color: Colors.purple,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Cadangkan semua data aplikasi Anda",
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    if (PremiumService.cachedPremium)
-                      _buildButton(
-                        label: "Backup Sekarang",
-                        icon: Icons.cloud_upload_outlined,
-                        color: Colors.purple[700]!,
-                        onPressed: () async {
-                          if (user == null) {
-                            CustomSnackBar.show(
-                              context,
-                              message: 'Login terlebih dahulu untuk backup.',
-                              type: SnackType.error,
-                            );
-                            return;
-                          }
-
-                          final barcodes = await SharedPreferencesService()
-                              .getBarcodes();
-
-                          if (barcodes.isEmpty) {
-                            CustomSnackBar.show(
-                              context,
-                              message: "Tidak ada data untuk dibackup",
-                              type: SnackType.error,
-                            );
-                            return;
-                          }
-
-                          settings.setBackingUp(true);
-
-                          try {
-                            await barcodeService.backupAll(
-                              user.uid!,
-                              user.email ?? "unknown",
-                            );
-                            await _loadLastBackupTime();
-
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "backup_success",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: "Backup berhasil!",
-                              type: SnackType.success,
-                            );
-                          } catch (e) {
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "backup_failed",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: userFriendlyError(
-                                e,
-                                fallback: 'Backup gagal. Coba lagi nanti.',
-                              ),
-                              type: SnackType.error,
-                            );
-                          } finally {
-                            settings.setBackingUp(false);
-                          }
-                        },
-                      )
-                    else
-                      RewardedAds(
-                        featureName: "backup",
-                        adUnitId: AdsHelper.rewardedBackupAdUnitId,
-                        interstitialAdUnitId:
-                            AdsHelper.rewardedBackupDataAdUnitId,
-                        label: "Backup Sekarang",
-                        loadingLabel: "Sedang Backup...",
-                        icon: Icons.cloud_upload_outlined,
-                        color: Colors.purple[700]!,
-                        enabled: isLoggedIn && !settings.isBackingUp,
-                        onRewarded: () async {
-                          final barcodes = await SharedPreferencesService()
-                              .getBarcodes();
-
-                          if (barcodes.isEmpty) {
-                            CustomSnackBar.show(
-                              context,
-                              message: "Tidak ada data untuk dibackup",
-                              type: SnackType.error,
-                            );
-
-                            settings.setBackingUp(false);
-
-                            return;
-                          }
-
-                          settings.setBackingUp(true);
-
-                          try {
-                            await barcodeService.backupAll(
-                              user!.uid!,
-                              user.email ?? "unknown",
-                            );
-                            await _loadLastBackupTime();
-
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "backup_success",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: "Backup berhasil!",
-                              type: SnackType.success,
-                            );
-                          } catch (e) {
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "backup_failed",
-                            );
-
-                            CustomSnackBar.show(
-                              context,
-                              message: userFriendlyError(
-                                e,
-                                fallback: 'Backup gagal. Coba lagi nanti.',
-                              ),
-                              type: SnackType.error,
-                            );
-                          } finally {
-                            settings.setBackingUp(false);
-                          }
-                        },
-                      ),
-                    if (settings.lastBackupTime != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          "Backup terakhir: ${formatDates(settings.lastBackupTime!)}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                  child: _buildButton(
+                    label: isLoggedIn ? "Logout" : "Login",
+                    icon: isLoggedIn ? Icons.login_outlined : Icons.person,
+                    color: isLoggedIn ? Colors.red[700]! : AppColors.primary,
+                    onPressed: _tapToSignOutOrLogin,
+                  ),
                 ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: _buildButton(
-                  label: isLoggedIn ? "Logout" : "Login",
-                  icon: isLoggedIn ? Icons.login_outlined : Icons.person,
-                  color: isLoggedIn ? Colors.red[700]! : AppColors.primary,
-                  onPressed: _tapToSignOutOrLogin,
-                ),
-              ),
               ],
             ),
           ),
