@@ -1,133 +1,43 @@
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:provider/provider.dart';
 
-import '../../../service/premium_service.dart';
-import '../../../utils/ads_helper.dart';
+import '../../../providers/banner_ads_provider.dart';
 
-class BannerAds extends StatefulWidget {
+class BannerAds extends StatelessWidget {
   const BannerAds({super.key});
 
   @override
-  State<BannerAds> createState() => _BannerAdsState();
-}
-
-class _BannerAdsState extends State<BannerAds> {
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
-  BannerAd? _bannerAd;
-  bool _isPremium = false;
-  final ValueNotifier<int> _renderTick = ValueNotifier<int>(0);
-
-  void _refresh() {
-    _renderTick.value++;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    _isPremium = PremiumService.cachedPremium
-        ? true
-        : await PremiumService.isPremium();
-
-    if (!_isPremium) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadAd();
-      });
-    }
-
-    if (mounted) _refresh();
-  }
-
-  Future<void> _loadAd() async {
-    final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-      MediaQuery.of(context).size.width.truncate(),
-    );
-
-    if (!mounted) return;
-    if (size == null) return;
-
-    final banner = BannerAd(
-      adUnitId: AdsHelper.bannerAdUnitId,
-      size: size,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          _analytics.logEvent(name: "banner_ad_loaded");
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-
-          _bannerAd = ad as BannerAd;
-          _refresh();
-        },
-        onAdFailedToLoad: (ad, error) {
-          _analytics.logEvent(
-            name: "banner_ad_failed",
-            parameters: {"error": error.code},
-          );
-          debugPrint("Ad failed: $error");
-          ad.dispose();
-        },
-        onPaidEvent:
-            (
-              Ad ad,
-              double valueMicros,
-              PrecisionType precision,
-              String currencyCode,
-            ) {
-              if (!mounted) return;
-              final revenue = valueMicros / 1000000;
-
-              _analytics.logEvent(
-                name: "ad_revenue",
-                parameters: {
-                  "ad_type": "banner",
-                  "value": revenue,
-                  "currency": currencyCode,
-                  "precision": precision.name,
-                },
-              );
-            },
-      ),
-    );
-
-    if (!mounted) {
-      banner.dispose();
-      return;
-    }
-    banner.load();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: _renderTick,
-      builder: (_, __, ___) {
-        if (_isPremium || _bannerAd == null) {
+    return Consumer<BannerAdsProvider>(
+      builder: (context, provider, child) {
+        if (!provider.isInitialized) {
           return const SizedBox();
         }
+
+        if (provider.isPremium || provider.bannerAd == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted &&
+                !provider.isPremium &&
+                provider.bannerAd == null) {
+              final maxWidth = MediaQuery.of(context).size.width.truncate();
+              provider.loadAd(maxWidth);
+            }
+          });
+          return const SizedBox();
+        }
+
+        final bannerAd = provider.bannerAd!;
 
         return Align(
           alignment: Alignment.center,
           child: SizedBox(
-            width: _bannerAd!.size.width.toDouble(),
-            height: _bannerAd!.size.height.toDouble(),
-            child: AdWidget(ad: _bannerAd!),
+            width: bannerAd.size.width.toDouble(),
+            height: bannerAd.size.height.toDouble(),
+            child: AdWidget(ad: bannerAd),
           ),
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    _bannerAd?.dispose();
-    _renderTick.dispose();
-    super.dispose();
   }
 }

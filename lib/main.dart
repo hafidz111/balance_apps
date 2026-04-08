@@ -15,6 +15,7 @@ import 'package:starvy/providers/grid_choose_photo_provider.dart';
 import 'package:starvy/providers/history_provider.dart';
 import 'package:starvy/providers/login_provider.dart';
 import 'package:starvy/providers/main_screen_provider.dart';
+import 'package:starvy/providers/banner_ads_provider.dart';
 import 'package:starvy/providers/point_coffee_provider.dart';
 import 'package:starvy/providers/say_bread_provider.dart';
 import 'package:starvy/providers/scanner_provider.dart';
@@ -73,10 +74,13 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ScannerProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => LoginProvider()),
-        ChangeNotifierProvider(create: (_) => StoreProvider()),
+        ChangeNotifierProvider(
+          create: (context) => StoreProvider(context.read<SharedPreferencesService>()),
+        ),
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => GridChoosePhotoProvider()),
         ChangeNotifierProvider(create: (_) => BarcodeDetailProvider()),
+        ChangeNotifierProvider(create: (_) => BannerAdsProvider()),
         Provider(create: (context) => FirebaseAuthService(firebaseAuth)),
         ChangeNotifierProvider(
           create: (context) =>

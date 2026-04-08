@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/theme/app_colors.dart';
 import 'package:starvy/utils/date_format.dart';
 
+import '../../../providers/store_provider.dart';
 import '../../widgets/custom_text_field.dart';
 
-class StoreCard extends StatefulWidget {
+class StoreCard extends StatelessWidget {
+  final String category;
   final TextEditingController titleController;
   final TextEditingController namaController;
   final TextEditingController kodeController;
@@ -15,6 +18,7 @@ class StoreCard extends StatefulWidget {
 
   const StoreCard({
     super.key,
+    required this.category,
     required this.titleController,
     required this.namaController,
     required this.kodeController,
@@ -23,80 +27,13 @@ class StoreCard extends StatefulWidget {
     required this.onSave,
   });
 
-  @override
-  State<StoreCard> createState() => _StoreCardState();
-}
-
-class _StoreCardState extends State<StoreCard> {
-  late Map<TextEditingController, String> _initialValues;
-  final ValueNotifier<bool> _isChanged = ValueNotifier<bool>(false);
-
-  @override
-  void initState() {
-    super.initState();
-
-    _initialValues = {
-      widget.titleController: widget.titleController.text,
-      widget.namaController: widget.namaController.text,
-      widget.kodeController: widget.kodeController.text,
-      widget.tglController: widget.tglController.text,
-      widget.areaController: widget.areaController.text,
-    };
-
-    for (final controller in _initialValues.keys) {
-      controller.addListener(_checkChanges);
-    }
-  }
-
-  void _checkChanges() {
-    final changed = _initialValues.entries.any((e) => e.key.text != e.value);
-    if (changed != _isChanged.value) {
-      _isChanged.value = changed;
-    }
-  }
-
-  @override
-  void dispose() {
-    for (final controller in _initialValues.keys) {
-      controller.removeListener(_checkChanges);
-    }
-    _isChanged.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant StoreCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    final wasEmpty = _initialValues.values.every((v) => v.isEmpty);
-    final nowHasData = [
-      widget.titleController,
-      widget.namaController,
-      widget.kodeController,
-      widget.tglController,
-      widget.areaController,
-    ].any((c) => c.text.isNotEmpty);
-
-    if (wasEmpty && nowHasData) {
-      _initialValues = {
-        widget.titleController: widget.titleController.text,
-        widget.namaController: widget.namaController.text,
-        widget.kodeController: widget.kodeController.text,
-        widget.tglController: widget.tglController.text,
-        widget.areaController: widget.areaController.text,
-      };
-
-      _isChanged.value = false;
-    }
-  }
-
-  void _onSavePressed() {
+  void _onSavePressed(BuildContext context) {
     final fields = [
-      widget.titleController,
-      widget.namaController,
-      widget.kodeController,
-      widget.tglController,
-      widget.areaController,
+      titleController,
+      namaController,
+      kodeController,
+      tglController,
+      areaController,
     ];
 
     if (fields.any((c) => c.text.trim().isEmpty)) {
@@ -108,13 +45,7 @@ class _StoreCardState extends State<StoreCard> {
       return;
     }
 
-    widget.onSave();
-
-    for (final e in _initialValues.entries) {
-      _initialValues[e.key] = e.key.text;
-    }
-
-    _isChanged.value = false;
+    onSave();
   }
 
   @override
@@ -216,9 +147,11 @@ class _StoreCardState extends State<StoreCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _isChanged,
-                    builder: (context, isChanged, _) {
+                  Consumer<StoreProvider>(
+                    builder: (context, provider, _) {
+                      final isChanged = category == "Coffee"
+                          ? provider.isPcChanged
+                          : provider.isSbChanged;
                       if (!isChanged) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
@@ -264,44 +197,48 @@ class _StoreCardState extends State<StoreCard> {
                   _buildFieldWrapper(
                     context,
                     'Title Report',
-                    widget.titleController,
+                    titleController,
                     prefixIcon: Icons.article_rounded,
                     hintText: 'Masukkan judul laporan',
                   ),
                   _buildFieldWrapper(
                     context,
                     'Store Name',
-                    widget.namaController,
+                    namaController,
                     prefixIcon: Icons.badge_rounded,
                     hintText: 'Masukkan nama outlet atau toko',
                   ),
                   _buildFieldWrapper(
                     context,
                     'Store Code',
-                    widget.kodeController,
+                    kodeController,
                     prefixIcon: Icons.tag_rounded,
                     hintText: 'Masukkan kode outlet atau toko',
                   ),
                   _buildFieldWrapper(
                     context,
                     'GO Date',
-                    widget.tglController,
+                    tglController,
                     prefixIcon: Icons.calendar_month_rounded,
                     hintText: 'Ketuk untuk pilih tanggal GO',
                   ),
                   _buildFieldWrapper(
                     context,
                     'Store Area',
-                    widget.areaController,
+                    areaController,
                     prefixIcon: Icons.map_outlined,
                     hintText: 'Wilayah atau area cakupan store',
                   ),
                   const SizedBox(height: 8),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _isChanged,
-                    builder: (context, isChanged, _) {
+                  Consumer<StoreProvider>(
+                    builder: (context, provider, _) {
+                      final isChanged = category == "Coffee"
+                          ? provider.isPcChanged
+                          : provider.isSbChanged;
                       return FilledButton.icon(
-                        onPressed: isChanged ? _onSavePressed : null,
+                        onPressed: isChanged
+                            ? () => _onSavePressed(context)
+                            : null,
                         icon: const Icon(Icons.check_rounded, size: 22),
                         label: const Text(
                           'Simpan data',

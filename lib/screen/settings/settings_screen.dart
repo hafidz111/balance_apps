@@ -69,9 +69,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused) {
-      _exitEditModeWithoutSaving(updateControllers: true);
-    }
   }
 
   void _exitEditModeWithoutSaving({required bool updateControllers}) {
@@ -232,7 +229,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
 
     final pref = context.read<SharedPreferenceProvider>();
-    final phone = _phoneController.text.trim();
+    String phone = _phoneController.text.trim();
+    phone = phone.replaceAll(RegExp(r'[\s\-]'), '');
+
     if (phone.isEmpty) {
       CustomSnackBar.show(
         context,
@@ -240,6 +239,12 @@ class _SettingsScreenState extends State<SettingsScreen>
         type: SnackType.error,
       );
       return;
+    }
+
+    if (phone.startsWith('+62')) {
+      phone = phone.replaceFirst('+62', '62');
+    } else if (phone.startsWith('0')) {
+      phone = '62${phone.substring(1)}';
     }
 
     final regex = RegExp(r'^[0-9]+$');
@@ -269,6 +274,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       );
       return;
     }
+
+    _phoneController.text = phone;
 
     final n = settings.selectedShift;
     for (int i = 0; i < n; i++) {

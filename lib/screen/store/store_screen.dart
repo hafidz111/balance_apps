@@ -3,72 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
-import '../../data/model/store_data.dart';
 import '../../providers/store_provider.dart';
-import '../../service/shared_preferences_service.dart';
 import 'widgets/store_card.dart';
 
-class StoreScreen extends StatefulWidget {
+class StoreScreen extends StatelessWidget {
   const StoreScreen({super.key});
-
-  @override
-  State<StoreScreen> createState() => _StoreScreenState();
-}
-
-class _StoreScreenState extends State<StoreScreen> {
-  final pcTitle = TextEditingController();
-  final pcNama = TextEditingController();
-  final pcKode = TextEditingController();
-  final pcTgl = TextEditingController();
-  final pcArea = TextEditingController();
-
-  final sbTitle = TextEditingController();
-  final sbNama = TextEditingController();
-  final sbKode = TextEditingController();
-  final sbTgl = TextEditingController();
-  final sbArea = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStoreData();
-  }
-
-  Future<void> _loadStoreData() async {
-    final storeProvider = context.read<StoreProvider>();
-    final service = SharedPreferencesService();
-
-    final pc = await service.getPointCoffeeStore();
-    if (pc != null) {
-      pcTitle.text = pc.title;
-      pcNama.text = pc.nama;
-      pcKode.text = pc.kode;
-      pcTgl.text = pc.tgl;
-      pcArea.text = pc.area;
-    } else {
-      pcTitle.clear();
-      pcNama.clear();
-      pcKode.clear();
-      pcTgl.clear();
-      pcArea.clear();
-    }
-
-    final sb = await service.getSayBreadStore();
-    if (sb != null) {
-      sbTitle.text = sb.title;
-      sbNama.text = sb.nama;
-      sbKode.text = sb.kode;
-      sbTgl.text = sb.tgl;
-      sbArea.text = sb.area;
-    } else {
-      sbTitle.clear();
-      sbNama.clear();
-      sbKode.clear();
-      sbTgl.clear();
-      sbArea.clear();
-    }
-    storeProvider.markDataLoaded();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,15 +29,17 @@ class _StoreScreenState extends State<StoreScreen> {
                 ),
                 child: Row(
                   children: [
-                    _buildTabItem("Coffee", 0),
-                    _buildTabItem("Bread", 1),
+                    _buildTabItem(context, "Coffee", 0),
+                    _buildTabItem(context, "Bread", 1),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
 
               Expanded(
-                child: activeTab == 0 ? _pointCoffeeTab() : _sayBreadTab(),
+                child: activeTab == 0
+                    ? _pointCoffeeTab(context)
+                    : _sayBreadTab(context),
               ),
             ],
           ),
@@ -107,7 +48,7 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  Widget _buildTabItem(String title, int index) {
+  Widget _buildTabItem(BuildContext context, String title, int index) {
     final activeTab = context.select<StoreProvider, int>(
       (provider) => provider.activeTab,
     );
@@ -120,9 +61,8 @@ class _StoreScreenState extends State<StoreScreen> {
             parameters: {"tab": index == 0 ? "point_coffee" : "say_bread"},
           );
           if (activeTab != index) {
-            await _loadStoreData();
-            if (!context.mounted) return;
-            context.read<StoreProvider>().setActiveTab(index);
+            final provider = context.read<StoreProvider>();
+            provider.setActiveTab(index);
           }
         },
         child: Container(
@@ -153,69 +93,54 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  Widget _pointCoffeeTab() {
+  Widget _pointCoffeeTab(BuildContext context) {
+    final provider = context.read<StoreProvider>();
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         StoreCard(
           key: const ValueKey("point_coffee_store"),
-          titleController: pcTitle,
-          namaController: pcNama,
-          kodeController: pcKode,
-          tglController: pcTgl,
-          areaController: pcArea,
-          onSave: () => _handleSave("Coffee"),
+          category: "Coffee",
+          titleController: provider.pcTitle,
+          namaController: provider.pcNama,
+          kodeController: provider.pcKode,
+          tglController: provider.pcTgl,
+          areaController: provider.pcArea,
+          onSave: () => _handleSave(context, "Coffee"),
         ),
       ],
     );
   }
 
-  Widget _sayBreadTab() {
+  Widget _sayBreadTab(BuildContext context) {
+    final provider = context.read<StoreProvider>();
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         StoreCard(
           key: const ValueKey("say_bread_store"),
-          titleController: sbTitle,
-          namaController: sbNama,
-          kodeController: sbKode,
-          tglController: sbTgl,
-          areaController: sbArea,
-          onSave: () => _handleSave("Bread"),
+          category: "Bread",
+          titleController: provider.sbTitle,
+          namaController: provider.sbNama,
+          kodeController: provider.sbKode,
+          tglController: provider.sbTgl,
+          areaController: provider.sbArea,
+          onSave: () => _handleSave(context, "Bread"),
         ),
       ],
     );
   }
 
-  void _handleSave(String category) async {
-    final service = SharedPreferencesService();
+  void _handleSave(BuildContext context, String category) async {
+    final provider = context.read<StoreProvider>();
 
-    if (category == "Coffee") {
-      await service.savePointCoffeeStore(
-        StoreData(
-          title: pcTitle.text,
-          nama: pcNama.text,
-          kode: pcKode.text,
-          tgl: pcTgl.text,
-          area: pcArea.text,
-        ),
-      );
-    } else {
-      await service.saveSayBreadStore(
-        StoreData(
-          title: sbTitle.text,
-          nama: sbNama.text,
-          kode: sbKode.text,
-          tgl: sbTgl.text,
-          area: sbArea.text,
-        ),
-      );
-    }
-    if (!mounted) return;
+    await provider.saveStoreData(category);
+
     FirebaseAnalytics.instance.logEvent(
       name: "store_saved",
       parameters: {"category": category},
     );
+    if (!context.mounted) return;
     CustomSnackBar.show(
       context,
       message: "Data $category berhasil disimpan",
