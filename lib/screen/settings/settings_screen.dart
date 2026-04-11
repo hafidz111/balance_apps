@@ -50,6 +50,35 @@ class _SettingsScreenState extends State<SettingsScreen>
     return _nameController.text.trim() != (_originalName ?? "");
   }
 
+  bool get _isSettingsChanged {
+    final pref = _prefProvider;
+    final settings = _settingsProvider;
+    if (pref == null || settings == null) return false;
+
+    if (_phoneController.text.trim() != (pref.phoneNumber ?? "")) return true;
+    if (settings.selectedShift != (pref.shiftCount ?? 2)) return true;
+
+    final savedLabels = SharedPreferencesService().getShiftTimeLabels();
+    for (int i = 0; i < settings.selectedShift; i++) {
+      final currentEight = ShiftTimeUtils.rowToEightDigits(
+        _shiftTimeFieldRows[i],
+      );
+      if (currentEight == null || currentEight.length != 8) return true;
+
+      final range = ShiftTimeUtils.tryParseEightDigits(currentEight);
+      if (range == null) return true;
+
+      final currentFormatted = ShiftTimeUtils.formatRange(
+        range.start,
+        range.end,
+      );
+      final savedRaw = i < savedLabels.length ? savedLabels[i] : '';
+      if (currentFormatted != savedRaw) return true;
+    }
+
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +93,22 @@ class _SettingsScreenState extends State<SettingsScreen>
         context.read<SettingsProvider>().markChanged();
       }
     });
+
+    _phoneController.addListener(() {
+      if (context.read<SettingsProvider>().isEditingSettings) {
+        context.read<SettingsProvider>().markChanged();
+      }
+    });
+
+    for (final row in _shiftTimeFieldRows) {
+      for (final controller in row) {
+        controller.addListener(() {
+          if (context.read<SettingsProvider>().isEditingSettings) {
+            context.read<SettingsProvider>().markChanged();
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -194,10 +239,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.didChangeDependencies();
     _settingsProvider = context.read<SettingsProvider>();
     _prefProvider = context.read<SharedPreferenceProvider>();
-    final settings = _settingsProvider!;
 
     if (_isInitScreenState) return;
     _isInitScreenState = true;
+
+    final settings = _settingsProvider!;
+
+    settings.setEditingSettings(false);
+    settings.setEditingProfile(false);
 
     final auth = context.read<FirebaseAuthProvider>();
     final pref = context.read<SharedPreferenceProvider>();
@@ -221,101 +270,127 @@ class _SettingsScreenState extends State<SettingsScreen>
     _loadLastSyncTime();
   }
 
+  bool _isTransitioningEdit = false;
+  bool _isSavingSettings = false;
+
   Future<void> _saveSettings() async {
+    if (_isSavingSettings || _isTransitioningEdit) return;
+
     final settings = context.read<SettingsProvider>();
     if (!settings.isEditingSettings) {
+      _isTransitioningEdit = true;
       settings.setEditingSettings(true);
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _isTransitioningEdit = false;
+        }
+      });
       return;
     }
 
-    final pref = context.read<SharedPreferenceProvider>();
-    String phone = _phoneController.text.trim();
-    phone = phone.replaceAll(RegExp(r'[\s\-]'), '');
+    _isSavingSettings = true;
+    setState(() {});
 
-    if (phone.isEmpty) {
-      CustomSnackBar.show(
-        context,
-        message: "Nomor HP tidak boleh kosong",
-        type: SnackType.error,
-      );
-      return;
-    }
+    try {
+      final pref = context.read<SharedPreferenceProvider>();
+      String phone = _phoneController.text.trim();
+      phone = phone.replaceAll(RegExp(r'[\s\-]'), '');
 
-    if (phone.startsWith('+62')) {
-      phone = phone.replaceFirst('+62', '62');
-    } else if (phone.startsWith('0')) {
-      phone = '62${phone.substring(1)}';
-    }
-
-    final regex = RegExp(r'^[0-9]+$');
-    if (!regex.hasMatch(phone)) {
-      CustomSnackBar.show(
-        context,
-        message: "Nomor HP hanya boleh angka",
-        type: SnackType.error,
-      );
-      return;
-    }
-
-    if (!phone.startsWith("628")) {
-      CustomSnackBar.show(
-        context,
-        message: "Nomor harus diawali 628",
-        type: SnackType.error,
-      );
-      return;
-    }
-
-    if (phone.length < 10) {
-      CustomSnackBar.show(
-        context,
-        message: "Nomor HP tidak valid",
-        type: SnackType.error,
-      );
-      return;
-    }
-
-    _phoneController.text = phone;
-
-    final n = settings.selectedShift;
-    for (int i = 0; i < n; i++) {
-      final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i]);
-      if (eight == null || ShiftTimeUtils.tryParseEightDigits(eight) == null) {
+      if (phone.isEmpty && settings.isEditingSettings) {
         CustomSnackBar.show(
           context,
-          message:
-              'Jam shift ${i + 1}: isi keempat kotak (jam & menit, masing-masing 00–23 / 00–59).',
+          message: "Nomor HP tidak boleh kosong",
+          type: SnackType.error,
+        );
+
+        return;
+      }
+
+      if (phone.startsWith('+62')) {
+        phone = phone.replaceFirst('+62', '62');
+      } else if (phone.startsWith('0')) {
+        phone = '62${phone.substring(1)}';
+      }
+
+      final regex = RegExp(r'^[0-9]+$');
+      if (!regex.hasMatch(phone) && settings.isEditingSettings) {
+        CustomSnackBar.show(
+          context,
+          message: "Nomor HP hanya boleh angka",
           type: SnackType.error,
         );
         return;
       }
-    }
 
-    await pref.savePhoneNumber(_phoneController.text);
-    await pref.saveShiftCount(settings.selectedShift);
-    final normalized = List<String>.generate(4, (i) {
-      if (i >= n) return '';
-      final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i])!;
-      final range = ShiftTimeUtils.tryParseEightDigits(eight)!;
-      return ShiftTimeUtils.formatRange(range.start, range.end);
-    });
-    await SharedPreferencesService().saveShiftTimeLabels(normalized);
-    for (int i = 0; i < 4; i++) {
-      ShiftTimeUtils.setRowFromStoredLabel(
-        _shiftTimeFieldRows[i],
-        i < n ? normalized[i] : '',
+      if (!phone.startsWith("628")) {
+        CustomSnackBar.show(
+          context,
+          message: "Nomor harus diawali 628",
+          type: SnackType.error,
+        );
+        return;
+      }
+
+      if (phone.length < 10 && settings.isEditingSettings) {
+        CustomSnackBar.show(
+          context,
+          message: "Nomor HP tidak valid",
+          type: SnackType.error,
+        );
+        return;
+      }
+
+      _phoneController.text = phone;
+
+      final n = settings.selectedShift;
+      for (int i = 0; i < n; i++) {
+        final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i]);
+        if (eight == null ||
+            ShiftTimeUtils.tryParseEightDigits(eight) == null) {
+          CustomSnackBar.show(
+            context,
+            message:
+                'Jam shift ${i + 1}: isi keempat kotak (jam & menit, masing-masing 00–23 / 00–59).',
+            type: SnackType.error,
+          );
+          return;
+        }
+      }
+
+      await pref.savePhoneNumber(_phoneController.text);
+      await pref.saveShiftCount(settings.selectedShift);
+      final normalized = List<String>.generate(4, (i) {
+        if (i >= n) return '';
+        final eight = ShiftTimeUtils.rowToEightDigits(_shiftTimeFieldRows[i])!;
+        final range = ShiftTimeUtils.tryParseEightDigits(eight)!;
+        return ShiftTimeUtils.formatRange(range.start, range.end);
+      });
+      await SharedPreferencesService().saveShiftTimeLabels(normalized);
+      for (int i = 0; i < 4; i++) {
+        ShiftTimeUtils.setRowFromStoredLabel(
+          _shiftTimeFieldRows[i],
+          i < n ? normalized[i] : '',
+        );
+      }
+
+      if (!mounted) return;
+
+      settings.setEditingSettings(false);
+
+      FirebaseAnalytics.instance.logEvent(name: "settings_saved");
+
+      CustomSnackBar.show(
+        context,
+        message: "Pengaturan berhasil disimpan",
+        type: SnackType.success,
       );
+    } finally {
+      if (mounted) {
+        _isSavingSettings = false;
+        setState(() {});
+      }
     }
-
-    settings.setEditingSettings(false);
-
-    FirebaseAnalytics.instance.logEvent(name: "settings_saved");
-
-    CustomSnackBar.show(
-      context,
-      message: "Pengaturan berhasil disimpan",
-      type: SnackType.success,
-    );
   }
 
   Future<void> _buyRemoveAds() async {
@@ -605,12 +680,26 @@ class _SettingsScreenState extends State<SettingsScreen>
                       const SizedBox(height: 8),
 
                       _buildButton(
-                        label: settings.isEditingSettings ? "Simpan" : "Edit",
-                        icon: settings.isEditingSettings
-                            ? Icons.save
-                            : Icons.edit,
-                        color: Colors.teal,
-                        onPressed: _saveSettings,
+                        label: !settings.isEditingSettings
+                            ? "Edit"
+                            : (_isSettingsChanged ? "Simpan" : "Batalkan"),
+                        icon: !settings.isEditingSettings
+                            ? Icons.edit
+                            : (_isSettingsChanged ? Icons.save : Icons.close),
+                        color: !settings.isEditingSettings
+                            ? Colors.teal
+                            : (_isSettingsChanged
+                                  ? Colors.teal
+                                  : Colors.red[400]!),
+                        isLoading: _isSavingSettings,
+                        onPressed: () {
+                          if (settings.isEditingSettings &&
+                              !_isSettingsChanged) {
+                            _exitEditModeWithoutSaving(updateControllers: true);
+                          } else {
+                            _saveSettings();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -982,15 +1071,25 @@ class _SettingsScreenState extends State<SettingsScreen>
     required IconData icon,
     required Color color,
     VoidCallback? onPressed,
+    bool isLoading = false,
   }) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18),
+        onPressed: isLoading ? null : onPressed,
+        icon: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(icon, size: 18),
         label: Text(
-          label,
+          isLoading ? "Menyimpan..." : label,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
@@ -999,6 +1098,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey[300],
+          disabledForegroundColor: Colors.grey[600],
           elevation: 0.5,
           shadowColor: color.withValues(alpha: 0.35),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

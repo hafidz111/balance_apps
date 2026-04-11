@@ -22,6 +22,9 @@ class BarcodeForm extends StatelessWidget {
     BuildContext context,
     BarcodeFormProvider provider,
   ) async {
+    provider.codeC.text = provider.codeC.text.trim();
+    provider.descC.text = provider.descC.text.trim();
+
     final newData = await provider.save((message) {
       if (!context.mounted) return;
       CustomSnackBar.show(context, message: message, type: SnackType.error);
@@ -132,6 +135,25 @@ class BarcodeForm extends StatelessWidget {
                         maxLines: 4,
                         decoration: InputDecoration(
                           hintText: "Deskripsi barcode (opsional)",
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Jumlah",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: provider.jumlahC,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: "Jumlah stok (opsional)",
                           filled: true,
                           fillColor: Colors.grey[100],
                           border: OutlineInputBorder(

@@ -12,6 +12,7 @@ import 'package:starvy/screen/point_coffee/point_coffee_screen.dart';
 import 'package:starvy/screen/schedule/schedule_screen.dart';
 import 'package:starvy/screen/settings/settings_screen.dart';
 import 'package:starvy/screen/store/store_screen.dart';
+import 'package:starvy/screen/warehouse/warehouse_screen.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/theme/app_colors.dart';
 
@@ -47,10 +48,13 @@ class _MainScreenState extends State<MainScreen> {
     "Bread",
     "History",
     "Barcode",
+    "Warehouse",
     "Space",
     "Schedule",
     'Settings',
   ];
+
+  static const int _barcodeIdx = 4;
 
   static const List<IconData> _icons = [
     Icons.store,
@@ -58,6 +62,7 @@ class _MainScreenState extends State<MainScreen> {
     Icons.bakery_dining,
     Icons.history,
     Icons.qr_code,
+    Icons.warehouse_rounded,
     Icons.space_dashboard,
     Icons.calendar_month,
     Icons.settings,
@@ -69,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
     _checkStoreData();
   }
 
-  Future<void> _checkStoreData() async {
+  void _checkStoreData() async {
     final service = SharedPreferencesService();
 
     final pc = await service.getPointCoffeeStore();
@@ -224,6 +229,7 @@ class _MainScreenState extends State<MainScreen> {
           exitSelectionMode = exit;
         },
       ),
+      const WarehouseScreen(),
       const GridPhotoScreen(),
       const ScheduleScreen(),
       const SettingsScreen(),
@@ -233,7 +239,7 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        title: isBarcodeSelectionMode && selectedIndex == 4
+        title: isBarcodeSelectionMode && selectedIndex == _barcodeIdx
             ? Text(
                 "$selectedBarcodeCount dipilih",
                 style: const TextStyle(color: Colors.white),
@@ -242,7 +248,7 @@ class _MainScreenState extends State<MainScreen> {
                 _titles[selectedIndex],
                 style: const TextStyle(color: Colors.white),
               ),
-        leading: isBarcodeSelectionMode && selectedIndex == 4
+        leading: isBarcodeSelectionMode && selectedIndex == _barcodeIdx
             ? IconButton(
                 icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: exitSelectionMode,
@@ -254,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
                   color: Colors.white,
                 ),
               ),
-        actions: isBarcodeSelectionMode && selectedIndex == 4
+        actions: isBarcodeSelectionMode && selectedIndex == _barcodeIdx
             ? [
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.white),
@@ -265,7 +271,7 @@ class _MainScreenState extends State<MainScreen> {
                   onPressed: selectAllBarcodes,
                 ),
               ]
-            : (selectedIndex == 4
+            : (selectedIndex == _barcodeIdx
                   ? [
                       PremiumService.cachedPremium
                           ? IconButton(

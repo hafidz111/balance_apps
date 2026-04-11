@@ -180,6 +180,15 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
                             value: b.description.isEmpty ? '—' : b.description,
                             icon: Icons.notes_rounded,
                           ),
+                          if (b.jumlah != null) ...[
+                            const SizedBox(height: 16),
+                            _buildInfoSection(
+                              context,
+                              label: 'Jumlah',
+                              value: b.jumlah.toString(),
+                              icon: Icons.inventory_2_rounded,
+                            ),
+                          ],
                         ],
                       ),
                     ),

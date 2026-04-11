@@ -271,7 +271,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                                 ),
                                 const SizedBox(width: 20),
 
-                                Expanded(
+                                  Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -293,6 +293,31 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                                                 color: Colors.grey[600],
                                               ),
                                             ),
+                                      if (b.jumlah != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.teal.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.teal.withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Stok: ${b.jumlah}',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.teal,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),

@@ -23,6 +23,7 @@ import 'package:starvy/providers/schedule_provider.dart';
 import 'package:starvy/providers/settings_provider.dart';
 import 'package:starvy/providers/shared_preference_provider.dart';
 import 'package:starvy/providers/store_provider.dart';
+import 'package:starvy/providers/warehouse_provider.dart';
 import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/service/firebase_auth_service.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
@@ -81,6 +82,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => GridChoosePhotoProvider()),
         ChangeNotifierProvider(create: (_) => BarcodeDetailProvider()),
         ChangeNotifierProvider(create: (_) => BannerAdsProvider()),
+        ChangeNotifierProvider(create: (_) => WarehouseProvider()),
         Provider(create: (context) => FirebaseAuthService(firebaseAuth)),
         ChangeNotifierProvider(
           create: (context) =>

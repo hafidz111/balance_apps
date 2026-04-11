@@ -8,6 +8,7 @@ import '../data/model/barcode_data.dart';
 import '../data/model/point_coffe_history.dart';
 import '../data/model/say_bread_history.dart';
 import '../data/model/store_data.dart';
+import '../data/model/warehouse_transaction.dart';
 import '../data/shift_time_phase.dart';
 
 class SharedPreferencesService {
@@ -29,16 +30,15 @@ class SharedPreferencesService {
   static const phoneKey = "phone_number";
   static const shiftKey = "shift_count";
   static const shiftTimeLabelsKey = 'shift_time_labels';
+  static const warehouseKey = 'warehouse_transactions';
 
-  /// Hanya jam kerja per shift (subtitle di Coffee/Bread), diatur di Settings.
   static const List<String> defaultShiftTimeLabels = [
-    '06:00 – 14:00',
-    '14:00 – 22:00',
-    '22:00 – 06:00',
-    '08:00 – 16:00',
+    '07:30 – 14:30',
+    '14:30 – 22:30',
+    '22:30 – 00:00',
+    '00:00 – 07:30',
   ];
 
-  /// Data lama bisa berisi "Shift Pagi • 06:00…" — ambil bagian jam saja.
   static String jamKerjaSubtitle(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '';
     final t = raw.trim();
@@ -49,8 +49,6 @@ class SharedPreferencesService {
     return t;
   }
 
-  /// Fase shift untuk badge: belum mulai / sedang berjalan / sudah lewat.
-  /// [raw] format `HH:mm – HH:mm` (disarankan dari time picker di Settings).
   static ShiftTimePhase shiftTimePhaseAt(String? raw, [DateTime? now]) {
     final t = jamKerjaSubtitle(raw);
     if (t.isEmpty) return ShiftTimePhase.belumAktif;
@@ -75,19 +73,16 @@ class SharedPreferencesService {
       return ShiftTimePhase.aktif;
     }
 
-    // Lintas tengah malam (mis. 22:00 – 06:00)
     if (minutes >= start || minutes < end) return ShiftTimePhase.aktif;
-    // Jeda siang: setelah selesai pagi vs belum mulai malam (bagi di tengah jeda)
     final mid = (end + start) ~/ 2;
     if (minutes < mid) return ShiftTimePhase.selesai;
     return ShiftTimePhase.belumAktif;
   }
 
-  /// True jika jam [now] (default: sekarang) berada dalam rentang jam shift di [raw].
-  /// Contoh: `06:00 – 14:00`, `22:00 - 06:00` (lintas tengah malam).
   static bool isShiftActiveAt(String? raw, [DateTime? now]) {
     return shiftTimePhaseAt(raw, now) == ShiftTimePhase.aktif;
   }
+
   static const scheduleKey = "schedule_data";
   static const pcCpdManualKey = "pc_cpd_manual";
   static const pcCpdMonthKey = "pc_cpd_month";
@@ -658,5 +653,37 @@ class SharedPreferencesService {
     final now = DateTime.now();
     final currentMonthKey = "${now.year}-${now.month}";
     await prefs.setString("last_saved_month", currentMonthKey);
+  }
+
+  Future<List<WarehouseTransaction>> getWarehouseTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(warehouseKey) ?? [];
+    return list
+        .map((e) => WarehouseTransaction.fromJson(jsonDecode(e)))
+        .toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  Future<void> saveWarehouseTransaction(WarehouseTransaction t) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(warehouseKey) ?? [];
+    list.add(jsonEncode(t.toJson()));
+    await prefs.setStringList(warehouseKey, list);
+    FirebaseAnalytics.instance.logEvent(
+      name: 'warehouse_transaction',
+      parameters: {'type': t.type},
+    );
+  }
+
+  Future<void> deleteWarehouseTransaction(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(warehouseKey) ?? [];
+    final updated = list.where((e) => jsonDecode(e)['id'] != id).toList();
+    await prefs.setStringList(warehouseKey, updated);
+  }
+
+  Future<void> clearWarehouseTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(warehouseKey);
   }
 }

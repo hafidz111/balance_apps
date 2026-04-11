@@ -1490,13 +1490,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           const SizedBox(height: 16),
                           _buildDialogField(
                             context: context,
-                            label: 'Nama karyawan',
+                            label: 'Nama',
                             child: TextField(
                               controller: nameController,
                               textCapitalization: TextCapitalization.words,
                               decoration: _scheduleFieldDecoration(context)
                                   .copyWith(
-                                    hintText: 'Nama di jadwal',
+                                    hintText: 'Masukkan nama',
                                     prefixIcon: Icon(
                                       Icons.person_outline_rounded,
                                       color: AppColors.primary.withValues(
