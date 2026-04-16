@@ -17,8 +17,13 @@ import '../widgets/custom_snack_bar.dart';
 
 class GridBackgroundPhotoScreen extends StatefulWidget {
   final Uint8List capturedImage;
+  final String title;
 
-  const GridBackgroundPhotoScreen({super.key, required this.capturedImage});
+  const GridBackgroundPhotoScreen({
+    super.key,
+    required this.capturedImage,
+    required this.title,
+  });
 
   @override
   State<GridBackgroundPhotoScreen> createState() =>
@@ -33,10 +38,30 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
 
   final String defaultBg = "assets/images/bg-grid-default.jpeg";
 
+  double _capturedImageRatio = 1.0;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(_loadSavedBackground);
+    Future.microtask(() async {
+      await _calculateCapturedImageRatio();
+      await _loadSavedBackground();
+    });
+  }
+
+  Future<void> _calculateCapturedImageRatio() async {
+    try {
+      final codec = await instantiateImageCodec(widget.capturedImage);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      if (mounted) {
+        setState(() {
+          _capturedImageRatio = image.width / image.height;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error calculating image ratio: $e");
+    }
   }
 
   Future<void> _loadSavedBackground() async {
@@ -381,90 +406,95 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         child: Column(
           children: [
             Expanded(
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: provider.canvasRatio,
-                  child: Container(
-                    margin: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Screenshot(
-                        controller: screenshotController,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(child: _buildBackground()),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: provider.canvasRatio,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Screenshot(
+                          controller: screenshotController,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(child: _buildBackground()),
 
-                            GestureDetector(
-                              onScaleStart: (details) {
-                                provider.onImageScaleStart();
-                              },
-                              onScaleUpdate: (details) {
-                                provider.onImageScaleUpdate(details);
-                              },
-                              child: Transform.translate(
-                                offset: provider.imageOffset,
-                                child: Transform.scale(
-                                  scale: provider.imageScale,
-                                  child: Center(
-                                    child: Image.memory(widget.capturedImage),
+                              GestureDetector(
+                                onScaleStart: (details) {
+                                  provider.onImageScaleStart();
+                                },
+                                onScaleUpdate: (details) {
+                                  provider.onImageScaleUpdate(details);
+                                },
+                                child: Transform.translate(
+                                  offset: provider.imageOffset,
+                                  child: Transform.scale(
+                                    scale: provider.imageScale,
+                                    child: Center(
+                                      child: Image.memory(widget.capturedImage),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
 
-                            ...provider.texts.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final item = entry.value;
+                              ...provider.texts.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final item = entry.value;
 
-                              return Positioned(
-                                left: item.offset.dx,
-                                top: item.offset.dy,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        provider.selectText(index);
-                                        textController.text = item.text;
-                                        _openTextEditor();
-                                      },
-                                      onPanUpdate: (details) {
-                                        provider.moveText(index, details.delta);
-                                      },
-                                      child: Text(
-                                        item.text,
-                                        style: TextStyle(
-                                          fontSize: item.fontSize,
-                                          fontWeight: item.isBold
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: item.color,
-                                          shadows: const [
-                                            Shadow(
-                                              blurRadius: 6,
-                                              color: Colors.black54,
-                                              offset: Offset(2, 2),
-                                            ),
-                                          ],
+                                return Positioned(
+                                  left: item.offset.dx,
+                                  top: item.offset.dy,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () {
+                                          provider.selectText(index);
+                                          textController.text = item.text;
+                                          _openTextEditor();
+                                        },
+                                        onPanUpdate: (details) {
+                                          provider.moveText(
+                                            index,
+                                            details.delta,
+                                          );
+                                        },
+                                        child: Text(
+                                          item.text,
+                                          style: TextStyle(
+                                            fontSize: item.fontSize,
+                                            fontWeight: item.isBold
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: item.color,
+                                            shadows: const [
+                                              Shadow(
+                                                blurRadius: 6,
+                                                color: Colors.black54,
+                                                offset: Offset(2, 2),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -514,9 +544,15 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                         label: "None",
                         color: Colors.grey,
                         onTap: () {
+                          final isSpecial =
+                              widget.title == 'Kalibrasi' ||
+                              widget.title == 'Initial';
                           context
                               .read<GridBackgroundPhotoProvider>()
-                              .setNoneBackground();
+                              .setNoneBackground(
+                                _capturedImageRatio,
+                                initialScale: isSpecial ? 0.90 : 1.0,
+                              );
                         },
                       ),
                     ],
@@ -607,7 +643,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
                   height: 56,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color),

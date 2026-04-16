@@ -55,10 +55,18 @@ class GridBackgroundPhotoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void resetImageTransform() {
+    _imageOffset = Offset.zero;
+    _imageScale = 1.0;
+    notifyListeners();
+  }
+
   void setCustomBackground(File image, double ratio) {
     _backgroundImage = image;
     _canvasRatio = ratio;
     _bgMode = BackgroundMode.custom;
+    _imageOffset = Offset.zero;
+    _imageScale = 1.0;
     notifyListeners();
   }
 
@@ -66,13 +74,17 @@ class GridBackgroundPhotoProvider extends ChangeNotifier {
     _backgroundImage = null;
     _bgMode = BackgroundMode.defaultBg;
     _canvasRatio = ratio;
+    _imageOffset = Offset.zero;
+    _imageScale = 1.0;
     notifyListeners();
   }
 
-  void setNoneBackground() {
+  void setNoneBackground(double ratio, {double initialScale = 1.0}) {
     _backgroundImage = null;
     _bgMode = BackgroundMode.none;
-    _canvasRatio = 1.0;
+    _canvasRatio = ratio;
+    _imageOffset = Offset.zero;
+    _imageScale = initialScale;
     notifyListeners();
   }
 

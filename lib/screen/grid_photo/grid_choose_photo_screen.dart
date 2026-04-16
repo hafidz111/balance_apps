@@ -39,10 +39,10 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
   int get _slotCount {
     if (widget.title == 'Kalibrasi') {
-      return 5; // 1 + 2 + 2
+      return 5;
     }
     if (widget.title == 'Initial') {
-      return 6; // 1 + 3 + 2
+      return 6;
     }
     return widget.rows * widget.cols;
   }
@@ -410,7 +410,10 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => GridBackgroundPhotoScreen(capturedImage: image),
+        builder: (_) => GridBackgroundPhotoScreen(
+          capturedImage: image,
+          title: widget.title,
+        ),
       ),
     ).then((_) {
       if (!context.mounted) return;
