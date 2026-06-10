@@ -10,7 +10,7 @@ Balance hadir untuk menggantikan proses manual yang sebelumnya dilakukan melalui
 
 Aplikasi Balance 
 
-<img width="2875" height="2043" alt="Balance Apps" src="https://github.com/user-attachments/assets/f5063ad1-72a4-42ee-adc2-2774c43124c0" />
+<img width="3341" height="2043" alt="Balance" src="https://github.com/user-attachments/assets/1f75d7f0-05a9-4ea8-ae23-cc7728ceeaf9" />
 
 ---
 
