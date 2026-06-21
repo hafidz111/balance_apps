@@ -270,22 +270,46 @@ class _SettingsScreenState extends State<SettingsScreen>
     _loadLastSyncTime();
   }
 
-  bool _isTransitioningEdit = false;
+  bool _isEnteringEditMode = false;
   bool _isSavingSettings = false;
 
+  Future<void> _enterSettingsEditMode() async {
+    if (_isEnteringEditMode || _isSavingSettings) return;
+
+    final settings = context.read<SettingsProvider>();
+    if (settings.isEditingSettings) return;
+
+    setState(() => _isEnteringEditMode = true);
+
+    try {
+      final pref = context.read<SharedPreferenceProvider>();
+      _phoneController.text = pref.phoneNumber ?? '';
+      settings.setSelectedShift(pref.shiftCount ?? 2);
+
+      final labels = SharedPreferencesService().getShiftTimeLabels();
+      for (int i = 0; i < 4; i++) {
+        final raw = i < labels.length ? labels[i] : '';
+        ShiftTimeUtils.setRowFromStoredLabel(_shiftTimeFieldRows[i], raw);
+      }
+
+      await Future<void>.delayed(Duration.zero);
+
+      if (!mounted) return;
+
+      settings.setEditingSettings(true);
+    } finally {
+      if (mounted) {
+        setState(() => _isEnteringEditMode = false);
+      }
+    }
+  }
+
   Future<void> _saveSettings() async {
-    if (_isSavingSettings || _isTransitioningEdit) return;
+    if (_isSavingSettings || _isEnteringEditMode) return;
 
     final settings = context.read<SettingsProvider>();
     if (!settings.isEditingSettings) {
-      _isTransitioningEdit = true;
-      settings.setEditingSettings(true);
-
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          _isTransitioningEdit = false;
-        }
-      });
+      await _enterSettingsEditMode();
       return;
     }
 
@@ -680,7 +704,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                       const SizedBox(height: 8),
 
                       _buildButton(
-                        label: !settings.isEditingSettings
+                        label: _isEnteringEditMode
+                            ? "Menyiapkan..."
+                            : !settings.isEditingSettings
                             ? "Edit"
                             : (_isSettingsChanged ? "Simpan" : "Batalkan"),
                         icon: !settings.isEditingSettings
@@ -691,13 +717,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                             : (_isSettingsChanged
                                   ? Colors.teal
                                   : Colors.red[400]!),
-                        isLoading: _isSavingSettings,
+                        isLoading: _isEnteringEditMode || _isSavingSettings,
+                        loadingLabel: _isEnteringEditMode
+                            ? "Menyiapkan..."
+                            : "Menyimpan...",
                         onPressed: () {
+                          if (_isEnteringEditMode || _isSavingSettings) return;
+
                           if (settings.isEditingSettings &&
                               !_isSettingsChanged) {
                             _exitEditModeWithoutSaving(updateControllers: true);
-                          } else {
+                          } else if (settings.isEditingSettings) {
                             _saveSettings();
+                          } else {
+                            _enterSettingsEditMode();
                           }
                         },
                       ),
@@ -1072,6 +1105,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     required Color color,
     VoidCallback? onPressed,
     bool isLoading = false,
+    String loadingLabel = "Menyimpan...",
   }) {
     return SizedBox(
       width: double.infinity,
@@ -1089,7 +1123,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               )
             : Icon(icon, size: 18),
         label: Text(
-          isLoading ? "Menyimpan..." : label,
+          isLoading ? loadingLabel : label,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
