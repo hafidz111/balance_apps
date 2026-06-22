@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:starvy/utils/ads_helper.dart';
@@ -36,7 +35,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final int _activeYear = DateTime.now().year;
 
   final ScreenshotController _screenshotController = ScreenshotController();
-  static const platform = MethodChannel('gallery_saver');
 
   String get _storeCode => context.read<ScheduleProvider>().storeCode;
 
@@ -452,44 +450,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  Future<bool> _requestGalleryPermission() async {
-    if (Platform.isAndroid) {
-      final storage = await Permission.storage.request();
-      final photos = await Permission.photos.request();
-
-      if (storage.isGranted || photos.isGranted) {
-        return true;
-      }
-
-      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    } else {
-      final photos = await Permission.photos.request();
-      if (photos.isGranted || photos.isLimited) {
-        return true;
-      }
-
-      if (photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    }
-  }
-
-  Future<void> _scanFile(String path) async {
-    if (Platform.isAndroid) {
-      try {
-        await platform.invokeMethod('scanFile', {"path": path});
-      } catch (e) {
-        debugPrint("Scan error: $e");
-      }
-    }
-  }
-
   Future<void> _exportAsImage() async {
     if (_employeeNames.isEmpty) {
       CustomSnackBar.show(
@@ -501,17 +461,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     try {
-      final hasPermission = await _requestGalleryPermission();
-      if (!hasPermission) {
-        if (!mounted) return;
-        CustomSnackBar.show(
-          context,
-          message: "Izin storage diperlukan",
-          type: SnackType.error,
-        );
-        return;
-      }
-
       if (!mounted) return;
 
       final Uint8List? image = await _screenshotController.captureFromWidget(
@@ -525,25 +474,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (image == null) return;
       if (!mounted) return;
 
-      Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
-
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      final filePath =
-          "${directory.path}/balance_jadwal_${DateTime.now().millisecondsSinceEpoch}.png";
-
-      File file = File(filePath);
-      await file.writeAsBytes(image);
-
-      await _scanFile(file.path);
+      await FileSaver.instance.saveFile(
+        name: "balance_jadwal_${DateTime.now().millisecondsSinceEpoch}",
+        bytes: image,
+        fileExtension: "png",
+        mimeType: MimeType.png,
+      );
 
       if (!mounted) return;
 
       CustomSnackBar.show(
         context,
-        message: "Berhasil disimpan ke Gallery",
+        message: "Berhasil disimpan ke galeri",
         type: SnackType.success,
       );
     } catch (e) {

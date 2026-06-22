@@ -2,10 +2,10 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:starvy/providers/grid_background_photo_provider.dart';
@@ -33,8 +33,6 @@ class GridBackgroundPhotoScreen extends StatefulWidget {
 class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   final ScreenshotController screenshotController = ScreenshotController();
   final ImagePicker _picker = ImagePicker();
-
-  static const platform = MethodChannel('gallery_saver');
 
   final String defaultBg = "assets/images/bg-grid-default.jpeg";
 
@@ -136,47 +134,8 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
     return image.width / image.height;
   }
 
-  Future<bool> _requestGalleryPermission() async {
-    if (Platform.isAndroid) {
-      final storage = await Permission.storage.request();
-      final photos = await Permission.photos.request();
-
-      if (storage.isGranted || photos.isGranted) {
-        return true;
-      }
-
-      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    } else {
-      final photos = await Permission.photos.request();
-      if (photos.isGranted || photos.isLimited) {
-        return true;
-      }
-
-      if (photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    }
-  }
-
   Future<void> _saveToGallery() async {
     try {
-      final hasPermission = await _requestGalleryPermission();
-      if (!hasPermission) {
-        if (!mounted) return;
-        CustomSnackBar.show(
-          context,
-          message: "Izin storage diperlukan untuk menyimpan",
-          type: SnackType.error,
-        );
-        return;
-      }
-
       final Uint8List? image = await screenshotController.capture(
         pixelRatio: 3.0,
       );
@@ -184,26 +143,18 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       if (image == null) return;
       if (!mounted) return;
 
-      Directory directory = Directory("/storage/emulated/0/Pictures/Balance");
-
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      final filePath =
-          "${directory.path}/balance_${DateTime.now().millisecondsSinceEpoch}.png";
-
-      File file = File(filePath);
-      await file.writeAsBytes(image);
-      if (!mounted) return;
-
-      await _scanFile(file.path);
+      await FileSaver.instance.saveFile(
+        name: "balance_${DateTime.now().millisecondsSinceEpoch}",
+        bytes: image,
+        fileExtension: "png",
+        mimeType: MimeType.png,
+      );
 
       if (!mounted) return;
       FirebaseAnalytics.instance.logEvent(name: "grid_saved_to_gallery");
       CustomSnackBar.show(
         context,
-        message: "Berhasil disimpan ke ${directory.path}",
+        message: "Berhasil disimpan ke galeri",
         type: SnackType.success,
       );
       Navigator.pushAndRemoveUntil(
@@ -213,16 +164,12 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       );
     } catch (e) {
       debugPrint("Error saving: $e");
-    }
-  }
-
-  Future<void> _scanFile(String path) async {
-    if (Platform.isAndroid) {
-      try {
-        await platform.invokeMethod('scanFile', {"path": path});
-      } catch (e) {
-        debugPrint("Scan error: $e");
-      }
+      if (!mounted) return;
+      CustomSnackBar.show(
+        context,
+        message: "Gagal menyimpan gambar",
+        type: SnackType.error,
+      );
     }
   }
 

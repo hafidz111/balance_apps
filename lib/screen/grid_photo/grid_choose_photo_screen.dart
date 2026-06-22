@@ -4,7 +4,6 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:screenshot/screenshot.dart';
@@ -56,17 +55,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickImage(int index) async {
-    final hasPermission = await _requestGalleryPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      CustomSnackBar.show(
-        context,
-        message: "Izin galeri diperlukan",
-        type: SnackType.error,
-      );
-      return;
-    }
-
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
       context.read<GridChoosePhotoProvider>().setImageAt(
@@ -82,17 +70,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickMultipleImages() async {
-    final hasPermission = await _requestGalleryPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      CustomSnackBar.show(
-        context,
-        message: "Izin galeri diperlukan",
-        type: SnackType.error,
-      );
-      return;
-    }
-
     final pickedFiles = await _picker.pickMultiImage();
 
     if (pickedFiles.isEmpty) return;
@@ -146,34 +123,6 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
 
   void _deleteImage(int index) {
     context.read<GridChoosePhotoProvider>().setImageAt(index, null);
-  }
-
-  Future<bool> _requestGalleryPermission() async {
-    if (Platform.isAndroid) {
-      final storage = await Permission.storage.request();
-      final photos = await Permission.photos.request();
-
-      if (storage.isGranted || photos.isGranted) {
-        return true;
-      }
-
-      if (storage.isPermanentlyDenied || photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    } else {
-      final photos = await Permission.photos.request();
-      if (photos.isGranted || photos.isLimited) {
-        return true;
-      }
-
-      if (photos.isPermanentlyDenied) {
-        await openAppSettings();
-      }
-
-      return false;
-    }
   }
 
   Widget _gridBox(int index) {
