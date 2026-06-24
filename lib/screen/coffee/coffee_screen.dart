@@ -7,9 +7,9 @@ import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../data/model/point_coffe_history.dart';
+import '../../data/model/coffee_history.dart';
 import '../../data/model/store_data.dart';
-import '../../providers/point_coffee_provider.dart';
+import '../../providers/coffee_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
@@ -17,14 +17,14 @@ import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/product_dashboard_widgets.dart';
 
-class PointCoffeeScreen extends StatefulWidget {
-  const PointCoffeeScreen({super.key});
+class CoffeeScreen extends StatefulWidget {
+  const CoffeeScreen({super.key});
 
   @override
-  State<PointCoffeeScreen> createState() => _PointCoffeeScreenState();
+  State<CoffeeScreen> createState() => _CoffeeScreenState();
 }
 
-class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
+class _CoffeeScreenState extends State<CoffeeScreen> {
   StoreData? store;
 
   late List<TextEditingController> salesControllers;
@@ -67,7 +67,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   Future<void> _refreshAccumulationFromHistory() async {
-    final list = await SharedPreferencesService().getPointCoffee();
+    final list = await SharedPreferencesService().getCoffee();
     if (!mounted) return;
 
     final salesSum = list.fold<int>(0, (a, e) => a + e.spd);
@@ -101,7 +101,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   Future<void> _loadStore() async {
-    final data = await SharedPreferencesService().getPointCoffeeStore();
+    final data = await SharedPreferencesService().getCoffeeStore();
     store = data;
   }
 
@@ -110,7 +110,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     super.didChangeDependencies();
 
     final pref = context.watch<SharedPreferenceProvider>();
-    final formProvider = context.read<PointCoffeeProvider>();
+    final formProvider = context.read<CoffeeProvider>();
 
     final shift = pref.shiftCount ?? 2;
     formProvider.setShiftCount(shift.clamp(1, maxShift));
@@ -123,7 +123,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   int get totalSales {
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(salesControllers[i]);
@@ -132,7 +132,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   int get totalStd {
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(stdControllers[i]);
@@ -141,7 +141,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   int get totalCup {
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(cupControllers[i]);
@@ -150,7 +150,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   int get totalAdd {
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(addControllers[i]);
@@ -190,7 +190,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
   }
 
   void _updateAll() {
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
     for (int i = 0; i < shiftCount; i++) {
       final sales = _toInt(salesControllers[i]);
       final std = _toInt(stdControllers[i]);
@@ -199,7 +199,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     }
 
     _saveDraft();
-    context.read<PointCoffeeProvider>().markFormChanged();
+    context.read<CoffeeProvider>().markFormChanged();
   }
 
   Widget _buildShiftInputs(int index) {
@@ -257,7 +257,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
   Future<String> _buildMonthlyHistory() async {
     final service = SharedPreferencesService();
-    final history = await service.getPointCoffee();
+    final history = await service.getCoffee();
 
     final buffer = StringBuffer();
     buffer.writeln("TGL_SPD_CUP_AKMCUP_CPD");
@@ -273,7 +273,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
 
   Future<void> _loadCpdManual() async {
     final service = SharedPreferencesService();
-    final value = await service.getPointCoffeeCpdManual();
+    final value = await service.getCoffeeCpdManual();
 
     if (value != null) {
       cpdManualController.text = value;
@@ -285,11 +285,11 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     final service = SharedPreferencesService();
 
     if (value.isEmpty) {
-      await service.clearPointCoffeeCpdManual();
+      await service.clearCoffeeCpdManual();
       return;
     }
 
-    await service.savePointCoffeeCpdManual(value);
+    await service.saveCoffeeCpdManual(value);
   }
 
   @override
@@ -312,7 +312,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     final historyText = await _buildMonthlyHistory();
 
     final service = SharedPreferencesService();
-    final manualCpd = await service.getPointCoffeeCpdManual();
+    final manualCpd = await service.getCoffeeCpdManual();
 
     String? cpdNow;
 
@@ -327,7 +327,7 @@ class _PointCoffeeScreenState extends State<PointCoffeeScreen> {
     final area = store?.area ?? "-";
 
     String shiftText = "";
-    final shiftCount = context.read<PointCoffeeProvider>().shiftCount;
+    final shiftCount = context.read<CoffeeProvider>().shiftCount;
 
     for (int i = 0; i < shiftCount; i++) {
       shiftText +=
@@ -370,11 +370,11 @@ $historyText```
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
     final service = SharedPreferencesService();
-    final history = await service.getPointCoffee();
+    final history = await service.getCoffee();
 
     final akmCup = history.fold(0, (sum, e) => sum + e.cup) + totalCup;
 
-    final data = PointCoffeeHistory(
+    final data = CoffeeHistory(
       tgl: tgl,
       spd: totalSales,
       cup: totalCup,
@@ -383,12 +383,12 @@ $historyText```
       apc: _apcValue(totalSales, totalStd),
     );
 
-    await service.savePointCoffee(data);
-    await service.clearPointCoffeeDraft(tgl);
+    await service.saveCoffee(data);
+    await service.clearCoffeeDraft(tgl);
     await _refreshAccumulationFromHistory();
 
     FirebaseAnalytics.instance.logEvent(
-      name: "point_coffee_saved",
+      name: "coffee_saved",
       parameters: {"total_sales": totalSales, "total_cup": totalCup},
     );
 
@@ -404,28 +404,28 @@ $historyText```
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
     final data = {
-      "shiftCount": context.read<PointCoffeeProvider>().shiftCount,
+      "shiftCount": context.read<CoffeeProvider>().shiftCount,
       "sales": salesControllers.map((e) => e.text).toList(),
       "std": stdControllers.map((e) => e.text).toList(),
       "cup": cupControllers.map((e) => e.text).toList(),
       "add": addControllers.map((e) => e.text).toList(),
     };
 
-    await SharedPreferencesService().savePointCoffeeDraft(tgl, data);
-    FirebaseAnalytics.instance.logEvent(name: "point_coffee_draft_saved");
+    await SharedPreferencesService().saveCoffeeDraft(tgl, data);
+    FirebaseAnalytics.instance.logEvent(name: "coffee_draft_saved");
   }
 
   Future<void> _loadDraft() async {
     final now = DateTime.now();
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
-    final draft = await SharedPreferencesService().getPointCoffeeDraft(tgl);
+    final draft = await SharedPreferencesService().getCoffeeDraft(tgl);
 
     if (draft == null) return;
 
-    final currentShift = context.read<PointCoffeeProvider>().shiftCount;
+    final currentShift = context.read<CoffeeProvider>().shiftCount;
     final shiftCount = draft["shiftCount"] ?? currentShift;
-    context.read<PointCoffeeProvider>().setShiftCount(shiftCount);
+    context.read<CoffeeProvider>().setShiftCount(shiftCount);
 
     final sales = List<String>.from(draft["sales"] ?? []);
     final std = List<String>.from(draft["std"] ?? []);
@@ -444,10 +444,10 @@ $historyText```
 
   @override
   Widget build(BuildContext context) {
-    final shiftCount = context.select<PointCoffeeProvider, int>(
+    final shiftCount = context.select<CoffeeProvider, int>(
       (provider) => provider.shiftCount,
     );
-    context.select<PointCoffeeProvider, int>(
+    context.select<CoffeeProvider, int>(
       (provider) => provider.formVersion,
     );
     final scheme = Theme.of(context).colorScheme;
@@ -535,7 +535,7 @@ $historyText```
 
                   try {
                     FirebaseAnalytics.instance.logEvent(
-                      name: 'point_coffee_whatsapp_sent',
+                      name: 'coffee_whatsapp_sent',
                     );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {

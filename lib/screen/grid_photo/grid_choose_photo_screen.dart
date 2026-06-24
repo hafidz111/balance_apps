@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:screenshot/screenshot.dart';
@@ -13,6 +12,7 @@ import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
 import '../../providers/grid_choose_photo_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/gallery_access_helper.dart';
 
 class GridChoosePhotoScreen extends StatefulWidget {
   final int rows;
@@ -31,7 +31,6 @@ class GridChoosePhotoScreen extends StatefulWidget {
 }
 
 class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
-  final ImagePicker _picker = ImagePicker();
   final ScreenshotController screenshotController = ScreenshotController();
 
   File? backgroundImage;
@@ -55,7 +54,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickImage(int index) async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final picked = await GalleryAccessHelper.pickImage();
     if (picked != null) {
       context.read<GridChoosePhotoProvider>().setImageAt(
         index,
@@ -70,7 +69,7 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
   }
 
   Future<void> _pickMultipleImages() async {
-    final pickedFiles = await _picker.pickMultiImage();
+    final pickedFiles = await GalleryAccessHelper.pickMultiImage();
 
     if (pickedFiles.isEmpty) return;
 

@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/model/barcode_data.dart';
-import '../data/model/point_coffe_history.dart';
-import '../data/model/say_bread_history.dart';
+import '../data/model/coffee_history.dart';
+import '../data/model/bread_history.dart';
 import '../data/model/store_data.dart';
 import '../data/model/warehouse_transaction.dart';
 import '../data/shift_time_phase.dart';
@@ -19,12 +19,12 @@ class SharedPreferencesService {
   }
 
   SharedPreferences get prefs => _prefs!;
-  static const pcKey = 'point_coffee_history';
-  static const pcDraftKey = "pc_draft";
-  static const sbKey = 'say_bread_history';
-  static const sbDraftKey = "sb_draft";
-  static const pcStoreKey = 'pc_store_data';
-  static const sbStoreKey = 'sb_store_data';
+  static const coffeeKey = 'coffee_history';
+  static const coffeeDraftKey = 'coffee_draft';
+  static const breadKey = 'bread_history';
+  static const breadDraftKey = 'bread_draft';
+  static const coffeeStoreKey = 'coffee_store_data';
+  static const breadStoreKey = 'bread_store_data';
   static const barcodeKey = 'barcode_list';
   static const keyLogin = "login";
   static const phoneKey = "phone_number";
@@ -84,8 +84,8 @@ class SharedPreferencesService {
   }
 
   static const scheduleKey = "schedule_data";
-  static const pcCpdManualKey = "pc_cpd_manual";
-  static const pcCpdMonthKey = "pc_cpd_month";
+  static const coffeeCpdManualKey = 'coffee_cpd_manual';
+  static const coffeeCpdMonthKey = 'coffee_cpd_month';
   static const customBackgroundKey = "custom_background";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
@@ -107,7 +107,7 @@ class SharedPreferencesService {
   }
 
   static const dbVersionKey = 'db_version';
-  static const currentDbVersion = 2;
+  static const currentDbVersion = 3;
 
   Future<void> initDb() async {
     final prefs = await SharedPreferences.getInstance();
@@ -121,7 +121,7 @@ class SharedPreferencesService {
   }
 
   Future<void> _migrate(SharedPreferences prefs, int oldVersion) async {
-    if (oldVersion == 1) {
+    if (oldVersion < 2) {
       final list = await getBarcodes();
 
       final fixed = list.map((e) {
@@ -135,38 +135,87 @@ class SharedPreferencesService {
 
       await saveBarcodes(fixed);
     }
+
+    if (oldVersion < 3) {
+      await _migratePrefsKey(prefs, 'point_coffee_history', coffeeKey);
+      await _migratePrefsKey(prefs, 'say_bread_history', breadKey);
+      await _migratePrefsKey(prefs, 'pc_store_data', coffeeStoreKey);
+      await _migratePrefsKey(prefs, 'sb_store_data', breadStoreKey);
+      await _migratePrefsKey(prefs, 'pc_cpd_manual', coffeeCpdManualKey);
+      await _migratePrefsKey(prefs, 'pc_cpd_month', coffeeCpdMonthKey);
+
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith('pc_draft')) {
+          final value = prefs.getString(key);
+          if (value != null) {
+            await prefs.setString(
+              key.replaceFirst('pc_draft', coffeeDraftKey),
+              value,
+            );
+          }
+          await prefs.remove(key);
+        } else if (key.startsWith('sb_draft')) {
+          final value = prefs.getString(key);
+          if (value != null) {
+            await prefs.setString(
+              key.replaceFirst('sb_draft', breadDraftKey),
+              value,
+            );
+          }
+          await prefs.remove(key);
+        }
+      }
+    }
   }
 
-  Future<void> savePointCoffeeStore(StoreData data) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(pcStoreKey, jsonEncode(data.toJson()));
+  Future<void> _migratePrefsKey(
+    SharedPreferences prefs,
+    String oldKey,
+    String newKey,
+  ) async {
+    if (prefs.containsKey(newKey)) return;
+
+    if (prefs.containsKey(oldKey)) {
+      final value = prefs.get(oldKey);
+      if (value is String) {
+        await prefs.setString(newKey, value);
+      } else if (value is List<String>) {
+        await prefs.setStringList(newKey, value);
+      }
+      await prefs.remove(oldKey);
+    }
   }
 
-  Future<StoreData?> getPointCoffeeStore() async {
+  Future<void> saveCoffeeStore(StoreData data) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(pcStoreKey);
+    await prefs.setString(coffeeStoreKey, jsonEncode(data.toJson()));
+  }
+
+  Future<StoreData?> getCoffeeStore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(coffeeStoreKey);
     if (jsonString == null) return null;
     return StoreData.fromJson(jsonDecode(jsonString));
   }
 
-  Future<void> saveSayBreadStore(StoreData data) async {
+  Future<void> saveBreadStore(StoreData data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(sbStoreKey, jsonEncode(data.toJson()));
+    await prefs.setString(breadStoreKey, jsonEncode(data.toJson()));
   }
 
-  Future<StoreData?> getSayBreadStore() async {
+  Future<StoreData?> getBreadStore() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(sbStoreKey);
+    final jsonString = prefs.getString(breadStoreKey);
     if (jsonString == null) return null;
     return StoreData.fromJson(jsonDecode(jsonString));
   }
 
-  Future<void> savePointCoffee(PointCoffeeHistory data) async {
+  Future<void> saveCoffee(CoffeeHistory data) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(pcKey) ?? [];
+    final list = prefs.getStringList(coffeeKey) ?? [];
 
     final histories = list
-        .map((e) => PointCoffeeHistory.fromJson(jsonDecode(e)))
+        .map((e) => CoffeeHistory.fromJson(jsonDecode(e)))
         .toList();
 
     histories.removeWhere((e) => e.tgl == data.tgl);
@@ -175,14 +224,14 @@ class SharedPreferencesService {
     histories.sort((a, b) => a.tgl.compareTo(b.tgl));
 
     int runningAkm = 0;
-    final fixed = <PointCoffeeHistory>[];
+    final fixed = <CoffeeHistory>[];
 
     for (final item in histories) {
       runningAkm += item.cup;
       final day = item.tgl % 100;
 
       fixed.add(
-        PointCoffeeHistory(
+        CoffeeHistory(
           tgl: item.tgl,
           spd: item.spd,
           cup: item.cup,
@@ -194,19 +243,19 @@ class SharedPreferencesService {
     }
 
     await prefs.setStringList(
-      pcKey,
+      coffeeKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
 
-    FirebaseAnalytics.instance.logEvent(name: "point_coffee_entry_added");
+    FirebaseAnalytics.instance.logEvent(name: "coffee_entry_added");
   }
 
-  Future<List<PointCoffeeHistory>> getPointCoffee() async {
+  Future<List<CoffeeHistory>> getCoffee() async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(pcKey) ?? [];
+    final list = prefs.getStringList(coffeeKey) ?? [];
 
     final histories = list
-        .map((e) => PointCoffeeHistory.fromJson(jsonDecode(e)))
+        .map((e) => CoffeeHistory.fromJson(jsonDecode(e)))
         .toList();
 
     histories.sort((a, b) => a.tgl.compareTo(b.tgl));
@@ -214,11 +263,11 @@ class SharedPreferencesService {
     return histories;
   }
 
-  Future<List<PointCoffeeHistory>> getPointCoffeeByMonth(
+  Future<List<CoffeeHistory>> getCoffeeByMonth(
     int year,
     int month,
   ) async {
-    final all = await getPointCoffee();
+    final all = await getCoffee();
 
     return all.where((e) {
       final y = e.tgl ~/ 10000;
@@ -227,26 +276,26 @@ class SharedPreferencesService {
     }).toList();
   }
 
-  Future<void> deletePointCoffee(int tgl) async {
+  Future<void> deleteCoffee(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(pcKey) ?? [];
+    final list = prefs.getStringList(coffeeKey) ?? [];
 
     final histories =
         list
-            .map((e) => PointCoffeeHistory.fromJson(jsonDecode(e)))
+            .map((e) => CoffeeHistory.fromJson(jsonDecode(e)))
             .where((e) => e.tgl != tgl)
             .toList()
           ..sort((a, b) => a.tgl.compareTo(b.tgl));
 
     int runningAkm = 0;
-    final fixed = <PointCoffeeHistory>[];
+    final fixed = <CoffeeHistory>[];
 
     for (final item in histories) {
       runningAkm += item.cup;
       final day = item.tgl % 100;
 
       fixed.add(
-        PointCoffeeHistory(
+        CoffeeHistory(
           tgl: item.tgl,
           spd: item.spd,
           cup: item.cup,
@@ -258,39 +307,39 @@ class SharedPreferencesService {
     }
 
     await prefs.setStringList(
-      pcKey,
+      coffeeKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
   }
 
-  Future<void> savePointCoffeeDraft(int tgl, Map<String, dynamic> data) async {
+  Future<void> saveCoffeeDraft(int tgl, Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("$pcDraftKey$tgl", jsonEncode(data));
+    await prefs.setString("$coffeeDraftKey$tgl", jsonEncode(data));
   }
 
-  Future<Map<String, dynamic>?> getPointCoffeeDraft(int tgl) async {
+  Future<Map<String, dynamic>?> getCoffeeDraft(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString("$pcDraftKey$tgl");
+    final jsonString = prefs.getString("$coffeeDraftKey$tgl");
     if (jsonString == null) return null;
     return jsonDecode(jsonString);
   }
 
-  Future<void> clearPointCoffeeDraft(int tgl) async {
+  Future<void> clearCoffeeDraft(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("$pcDraftKey$tgl");
+    await prefs.remove("$coffeeDraftKey$tgl");
   }
 
-  Future<void> clearPointCoffee() async {
+  Future<void> clearCoffee() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(pcKey);
+    await prefs.remove(coffeeKey);
   }
 
-  Future<void> saveSayBread(SayBreadHistory data) async {
+  Future<void> saveBread(BreadHistory data) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(sbKey) ?? [];
+    final list = prefs.getStringList(breadKey) ?? [];
 
     final histories = list
-        .map((e) => SayBreadHistory.fromJson(jsonDecode(e)))
+        .map((e) => BreadHistory.fromJson(jsonDecode(e)))
         .toList();
 
     histories.removeWhere((e) => e.tgl == data.tgl);
@@ -300,7 +349,7 @@ class SharedPreferencesService {
 
     int runningQty = 0;
     int runningSales = 0;
-    final fixed = <SayBreadHistory>[];
+    final fixed = <BreadHistory>[];
 
     for (final item in histories) {
       runningQty += item.qty;
@@ -308,7 +357,7 @@ class SharedPreferencesService {
       final day = item.tgl % 100;
 
       fixed.add(
-        SayBreadHistory(
+        BreadHistory(
           tgl: item.tgl,
           sales: item.sales,
           qty: item.qty,
@@ -320,27 +369,27 @@ class SharedPreferencesService {
     }
 
     await prefs.setStringList(
-      sbKey,
+      breadKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
 
-    FirebaseAnalytics.instance.logEvent(name: "say_bread_entry_added");
+    FirebaseAnalytics.instance.logEvent(name: "bread_entry_added");
   }
 
-  Future<void> deleteSayBread(int tgl) async {
+  Future<void> deleteBread(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(sbKey) ?? [];
+    final list = prefs.getStringList(breadKey) ?? [];
 
     final histories =
         list
-            .map((e) => SayBreadHistory.fromJson(jsonDecode(e)))
+            .map((e) => BreadHistory.fromJson(jsonDecode(e)))
             .where((e) => e.tgl != tgl)
             .toList()
           ..sort((a, b) => a.tgl.compareTo(b.tgl));
 
     int runningQty = 0;
     int runningSales = 0;
-    final fixed = <SayBreadHistory>[];
+    final fixed = <BreadHistory>[];
 
     for (final item in histories) {
       runningQty += item.qty;
@@ -348,7 +397,7 @@ class SharedPreferencesService {
       final day = item.tgl % 100;
 
       fixed.add(
-        SayBreadHistory(
+        BreadHistory(
           tgl: item.tgl,
           sales: item.sales,
           qty: item.qty,
@@ -360,17 +409,17 @@ class SharedPreferencesService {
     }
 
     await prefs.setStringList(
-      sbKey,
+      breadKey,
       fixed.map((e) => jsonEncode(e.toJson())).toList(),
     );
   }
 
-  Future<List<SayBreadHistory>> getSayBread() async {
+  Future<List<BreadHistory>> getBread() async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(sbKey) ?? [];
+    final list = prefs.getStringList(breadKey) ?? [];
 
     final histories = list
-        .map((e) => SayBreadHistory.fromJson(jsonDecode(e)))
+        .map((e) => BreadHistory.fromJson(jsonDecode(e)))
         .toList();
 
     histories.sort((a, b) => a.tgl.compareTo(b.tgl));
@@ -378,8 +427,8 @@ class SharedPreferencesService {
     return histories;
   }
 
-  Future<List<SayBreadHistory>> getSayBreadByMonth(int year, int month) async {
-    final all = await getSayBread();
+  Future<List<BreadHistory>> getBreadByMonth(int year, int month) async {
+    final all = await getBread();
 
     return all.where((e) {
       final y = e.tgl ~/ 10000;
@@ -388,26 +437,26 @@ class SharedPreferencesService {
     }).toList();
   }
 
-  Future<void> saveSayBreadDraft(int tgl, Map<String, dynamic> data) async {
+  Future<void> saveBreadDraft(int tgl, Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("$sbDraftKey$tgl", jsonEncode(data));
+    await prefs.setString("$breadDraftKey$tgl", jsonEncode(data));
   }
 
-  Future<Map<String, dynamic>?> getSayBreadDraft(int tgl) async {
+  Future<Map<String, dynamic>?> getBreadDraft(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString("$sbDraftKey$tgl");
+    final jsonString = prefs.getString("$breadDraftKey$tgl");
     if (jsonString == null) return null;
     return jsonDecode(jsonString);
   }
 
-  Future<void> clearSayBreadDraft(int tgl) async {
+  Future<void> clearBreadDraft(int tgl) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("$sbDraftKey$tgl");
+    await prefs.remove("$breadDraftKey$tgl");
   }
 
-  Future<void> clearSayBread() async {
+  Future<void> clearBread() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(sbKey);
+    await prefs.remove(breadKey);
   }
 
   Future<void> saveBarcode(BarcodeData data) async {
@@ -589,38 +638,38 @@ class SharedPreferencesService {
     await saveSchedules(schedules);
   }
 
-  Future<void> savePointCoffeeCpdManual(String cpd) async {
+  Future<void> saveCoffeeCpdManual(String cpd) async {
     final now = DateTime.now();
     final monthKey = "${now.year}-${now.month}";
 
-    await prefs.setString(pcCpdManualKey, cpd);
-    await prefs.setString(pcCpdMonthKey, monthKey);
+    await prefs.setString(coffeeCpdManualKey, cpd);
+    await prefs.setString(coffeeCpdMonthKey, monthKey);
 
-    FirebaseAnalytics.instance.logEvent(name: "point_coffee_cpd_manual_saved");
+    FirebaseAnalytics.instance.logEvent(name: "coffee_cpd_manual_saved");
   }
 
-  Future<String?> getPointCoffeeCpdManual() async {
+  Future<String?> getCoffeeCpdManual() async {
     final now = DateTime.now();
     final currentMonthKey = "${now.year}-${now.month}";
 
-    final savedMonth = prefs.getString(pcCpdMonthKey);
-    final savedCpd = prefs.getString(pcCpdManualKey);
+    final savedMonth = prefs.getString(coffeeCpdMonthKey);
+    final savedCpd = prefs.getString(coffeeCpdManualKey);
 
     if (savedMonth == null || savedCpd == null) {
       return null;
     }
 
     if (savedMonth != currentMonthKey) {
-      await clearPointCoffeeCpdManual();
+      await clearCoffeeCpdManual();
       return null;
     }
 
     return savedCpd;
   }
 
-  Future<void> clearPointCoffeeCpdManual() async {
-    await prefs.remove(pcCpdManualKey);
-    await prefs.remove(pcCpdMonthKey);
+  Future<void> clearCoffeeCpdManual() async {
+    await prefs.remove(coffeeCpdManualKey);
+    await prefs.remove(coffeeCpdMonthKey);
   }
 
   Future<void> saveCustomBackground(String path) async {

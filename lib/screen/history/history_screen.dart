@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:starvy/providers/history_provider.dart';
 
-import '../../data/model/point_coffe_history.dart';
-import '../../data/model/say_bread_history.dart';
+import '../../data/model/coffee_history.dart';
+import '../../data/model/bread_history.dart';
 import '../../service/barcode_firebase_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
-import 'widgets/point_coffe_dialog.dart';
-import 'widgets/say_bread_dialog.dart';
+import 'widgets/coffee_dialog.dart';
+import 'widgets/bread_dialog.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -151,8 +151,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (!isNewMonth) return;
 
     final hasData =
-        (await _prefsService.getPointCoffee()).isNotEmpty ||
-        (await _prefsService.getSayBread()).isNotEmpty;
+        (await _prefsService.getCoffee()).isNotEmpty ||
+        (await _prefsService.getBread()).isNotEmpty;
 
     if (!hasData) {
       await _prefsService.updateCurrentMonth();
@@ -188,9 +188,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
       await _firebaseService.deleteOldMonths(uid);
 
-      await _prefsService.clearPointCoffee();
-      await _prefsService.clearSayBread();
-      await _prefsService.clearPointCoffeeCpdManual();
+      await _prefsService.clearCoffee();
+      await _prefsService.clearBread();
+      await _prefsService.clearCoffeeCpdManual();
 
       await _prefsService.updateCurrentMonth();
 
@@ -216,7 +216,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     await context.read<HistoryProvider>().loadHistory();
   }
 
-  Future<void> _deletePointCoffee(PointCoffeeHistory data) async {
+  Future<void> _deleteCoffee(CoffeeHistory data) async {
     final ok = await _showModernConfirmDialog(
       title: 'Hapus data?',
       message: 'Entri history Coffee ini akan dihapus permanen dari perangkat.',
@@ -228,14 +228,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (ok == true) {
-      await _prefsService.deletePointCoffee(data.tgl);
+      await _prefsService.deleteCoffee(data.tgl);
       _loadHistory();
     }
 
-    FirebaseAnalytics.instance.logEvent(name: "point_coffee_deleted");
+    FirebaseAnalytics.instance.logEvent(name: "coffee_deleted");
   }
 
-  Future<void> _deleteSayBread(SayBreadHistory data) async {
+  Future<void> _deleteBread(BreadHistory data) async {
     final ok = await _showModernConfirmDialog(
       title: 'Hapus data?',
       message: 'Entri history Bread ini akan dihapus permanen dari perangkat.',
@@ -247,35 +247,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (ok == true) {
-      await _prefsService.deleteSayBread(data.tgl);
+      await _prefsService.deleteBread(data.tgl);
       _loadHistory();
     }
 
-    FirebaseAnalytics.instance.logEvent(name: "say_bread_deleted");
+    FirebaseAnalytics.instance.logEvent(name: "bread_deleted");
   }
 
-  Future<void> _editPointCoffee(PointCoffeeHistory data) async {
+  Future<void> _editCoffee(CoffeeHistory data) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => PointCoffeeDialog(editData: data),
+      builder: (_) => CoffeeDialog(editData: data),
     );
 
     if (result == true) {
       _loadHistory();
     }
-    FirebaseAnalytics.instance.logEvent(name: "point_coffee_edit");
+    FirebaseAnalytics.instance.logEvent(name: "coffee_edit");
   }
 
-  Future<void> _editSayBread(SayBreadHistory data) async {
+  Future<void> _editBread(BreadHistory data) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => SayBreadDialog(editData: data),
+      builder: (_) => BreadDialog(editData: data),
     );
 
     if (result == true) {
       _loadHistory();
     }
-    FirebaseAnalytics.instance.logEvent(name: "say_bread_edit");
+    FirebaseAnalytics.instance.logEvent(name: "bread_edit");
   }
 
   Future<void> _deleteAllData() async {
@@ -295,9 +295,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     if (ok == true) {
       if (activeTab == 0) {
-        await _prefsService.clearPointCoffee();
+        await _prefsService.clearCoffee();
       } else {
-        await _prefsService.clearSayBread();
+        await _prefsService.clearBread();
       }
 
       await historyProvider.loadHistory();
@@ -305,7 +305,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     FirebaseAnalytics.instance.logEvent(
       name: "history_delete_all",
-      parameters: {"tab": activeTab == 0 ? "point_coffee" : "say_bread"},
+      parameters: {"tab": activeTab == 0 ? "coffee" : "bread"},
     );
   }
 
@@ -407,8 +407,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               Expanded(
                 child: activeTab == 0
-                    ? _buildPointCoffeeHistory()
-                    : _buildSayBreadHistory(),
+                    ? _buildCoffeeHistory()
+                    : _buildBreadHistory(),
               ),
             ],
           ),
@@ -424,7 +424,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     bool isActive = activeTab == index;
     FirebaseAnalytics.instance.logEvent(
       name: "history_tab_changed",
-      parameters: {"tab": index == 0 ? "point_coffee" : "say_bread"},
+      parameters: {"tab": index == 0 ? "coffee" : "bread"},
     );
 
     return Expanded(
@@ -909,7 +909,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final activeTab = context.read<HistoryProvider>().activeTab;
     FirebaseAnalytics.instance.logEvent(
       name: "history_manual_input_opened",
-      parameters: {"tab": activeTab == 0 ? "point_coffee" : "say_bread"},
+      parameters: {"tab": activeTab == 0 ? "coffee" : "bread"},
     );
 
     final result = await showDialog<bool>(
@@ -917,8 +917,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       barrierDismissible: false,
       builder: (context) {
         return activeTab == 0
-            ? const PointCoffeeDialog()
-            : const SayBreadDialog();
+            ? const CoffeeDialog()
+            : const BreadDialog();
       },
     );
 
@@ -927,8 +927,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  Widget _buildPointCoffeeHistory() {
-    final pcHistory = context.select<HistoryProvider, List<PointCoffeeHistory>>(
+  Widget _buildCoffeeHistory() {
+    final pcHistory = context.select<HistoryProvider, List<CoffeeHistory>>(
       (provider) => provider.pcHistory,
     );
     if (pcHistory.isEmpty) {
@@ -953,8 +953,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           context: context,
           headerTitle: formatDate(data.tgl),
           menu: _historyPopupMenu(
-            onEdit: () => _editPointCoffee(data),
-            onDelete: () => _deletePointCoffee(data),
+            onEdit: () => _editCoffee(data),
+            onDelete: () => _deleteCoffee(data),
           ),
           stats: [
             ("SPD", data.spd.toMillion()),
@@ -967,8 +967,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildSayBreadHistory() {
-    final sbHistory = context.select<HistoryProvider, List<SayBreadHistory>>(
+  Widget _buildBreadHistory() {
+    final sbHistory = context.select<HistoryProvider, List<BreadHistory>>(
       (provider) => provider.sbHistory,
     );
     if (sbHistory.isEmpty) {
@@ -993,8 +993,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           context: context,
           headerTitle: "Tanggal: ${formatDate(data.tgl)}",
           menu: _historyPopupMenu(
-            onEdit: () => _editSayBread(data),
-            onDelete: () => _deleteSayBread(data),
+            onEdit: () => _editBread(data),
+            onDelete: () => _deleteBread(data),
           ),
           stats: [
             ("Qty", data.qty.toString()),

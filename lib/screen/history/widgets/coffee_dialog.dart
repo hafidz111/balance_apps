@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/model/point_coffe_history.dart';
+import '../../../data/model/coffee_history.dart';
 import '../../../service/shared_preferences_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../utils/number_format.dart';
 import '../../widgets/custom_snack_bar.dart';
 import '../../widgets/dialog_input_field.dart';
 
-class PointCoffeeDialog extends StatefulWidget {
-  final PointCoffeeHistory? editData;
+class CoffeeDialog extends StatefulWidget {
+  final CoffeeHistory? editData;
 
-  const PointCoffeeDialog({super.key, this.editData});
+  const CoffeeDialog({super.key, this.editData});
 
   @override
-  State<PointCoffeeDialog> createState() => _PointCoffeeDialogState();
+  State<CoffeeDialog> createState() => _CoffeeDialogState();
 }
 
-class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
+class _CoffeeDialogState extends State<CoffeeDialog> {
   final tglCtrl = TextEditingController();
   final spdCtrl = TextEditingController();
   final cupCtrl = TextEditingController();
@@ -77,7 +77,7 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
 
     final tgl = _toYmd(selectedDate!);
 
-    final data = PointCoffeeHistory(
+    final data = CoffeeHistory(
       tgl: tgl,
       spd: spd,
       cup: cup,
@@ -86,7 +86,7 @@ class _PointCoffeeDialogState extends State<PointCoffeeDialog> {
       apc: 0,
     );
 
-    await SharedPreferencesService().savePointCoffee(data);
+    await SharedPreferencesService().saveCoffee(data);
     if (!mounted) return;
     Navigator.pop(context, true);
   }

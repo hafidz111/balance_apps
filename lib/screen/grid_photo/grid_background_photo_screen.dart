@@ -2,16 +2,15 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:starvy/providers/grid_background_photo_provider.dart';
 
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/gallery_access_helper.dart';
 import '../main/main_screen.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -32,7 +31,6 @@ class GridBackgroundPhotoScreen extends StatefulWidget {
 
 class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   final ScreenshotController screenshotController = ScreenshotController();
-  final ImagePicker _picker = ImagePicker();
 
   final String defaultBg = "assets/images/bg-grid-default.jpeg";
 
@@ -98,7 +96,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
   }
 
   Future<void> _pickBackground() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final picked = await GalleryAccessHelper.pickImage();
 
     if (picked != null) {
       final file = File(picked.path);
@@ -143,12 +141,19 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
       if (image == null) return;
       if (!mounted) return;
 
-      await FileSaver.instance.saveFile(
-        name: "balance_${DateTime.now().millisecondsSinceEpoch}",
-        bytes: image,
-        fileExtension: "png",
-        mimeType: MimeType.png,
+      final saved = await GalleryAccessHelper.savePngToGallery(
+        image,
+        fileName: "starvy_${DateTime.now().millisecondsSinceEpoch}",
       );
+      if (!saved) {
+        if (!mounted) return;
+        CustomSnackBar.show(
+          context,
+          message: "Gagal menyimpan gambar",
+          type: SnackType.error,
+        );
+        return;
+      }
 
       if (!mounted) return;
       FirebaseAnalytics.instance.logEvent(name: "grid_saved_to_gallery");

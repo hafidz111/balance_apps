@@ -1,7 +1,7 @@
 enum NavigationRoute {
   mainRoute("/"),
-  pointCoffeeRoute("/point-coffe"),
-  sayBreadRoute("/say-bread"),
+  coffeeRoute("/coffee"),
+  breadRoute("/bread"),
   barcodeRoute("/barcode");
 
   const NavigationRoute(this.name);

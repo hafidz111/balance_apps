@@ -16,8 +16,8 @@ import 'package:starvy/providers/history_provider.dart';
 import 'package:starvy/providers/login_provider.dart';
 import 'package:starvy/providers/main_screen_provider.dart';
 import 'package:starvy/providers/banner_ads_provider.dart';
-import 'package:starvy/providers/point_coffee_provider.dart';
-import 'package:starvy/providers/say_bread_provider.dart';
+import 'package:starvy/providers/coffee_provider.dart';
+import 'package:starvy/providers/bread_provider.dart';
 import 'package:starvy/providers/scanner_provider.dart';
 import 'package:starvy/providers/schedule_provider.dart';
 import 'package:starvy/providers/settings_provider.dart';
@@ -68,8 +68,8 @@ void main() async {
               HistoryProvider(context.read<SharedPreferencesService>()),
         ),
         ChangeNotifierProvider(create: (_) => MainScreenProvider()),
-        ChangeNotifierProvider(create: (_) => PointCoffeeProvider()),
-        ChangeNotifierProvider(create: (_) => SayBreadProvider()),
+        ChangeNotifierProvider(create: (_) => CoffeeProvider()),
+        ChangeNotifierProvider(create: (_) => BreadProvider()),
         ChangeNotifierProvider(create: (_) => GridBackgroundPhotoProvider()),
         ChangeNotifierProvider(create: (_) => BarcodeProvider()),
         ChangeNotifierProvider(create: (_) => ScannerProvider()),

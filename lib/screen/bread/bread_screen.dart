@@ -7,8 +7,8 @@ import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../data/model/say_bread_history.dart';
-import '../../providers/say_bread_provider.dart';
+import '../../data/model/bread_history.dart';
+import '../../providers/bread_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
@@ -16,14 +16,14 @@ import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/product_dashboard_widgets.dart';
 
-class SayBreadScreen extends StatefulWidget {
-  const SayBreadScreen({super.key});
+class BreadScreen extends StatefulWidget {
+  const BreadScreen({super.key});
 
   @override
-  State<SayBreadScreen> createState() => _SayBreadScreenState();
+  State<BreadScreen> createState() => _BreadScreenState();
 }
 
-class _SayBreadScreenState extends State<SayBreadScreen> {
+class _BreadScreenState extends State<BreadScreen> {
   late List<TextEditingController> salesControllers;
   late List<TextEditingController> qtyControllers;
 
@@ -64,7 +64,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   }
 
   Future<void> _refreshAccumulationFromHistory() async {
-    final list = await SharedPreferencesService().getSayBread();
+    final list = await SharedPreferencesService().getBread();
     if (!mounted) return;
 
     final salesSum = list.fold<int>(0, (a, e) => a + e.sales);
@@ -81,14 +81,14 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     super.didChangeDependencies();
 
     final pref = context.watch<SharedPreferenceProvider>();
-    final formProvider = context.read<SayBreadProvider>();
+    final formProvider = context.read<BreadProvider>();
 
     final shift = pref.shiftCount ?? 2;
     final next = shift.clamp(1, maxShift);
     if (formProvider.shiftCount != next) {
       formProvider.setShiftCount(next);
       FirebaseAnalytics.instance.logEvent(
-        name: "say_bread_shift_changed",
+        name: "bread_shift_changed",
         parameters: {"shift_count": next},
       );
     }
@@ -101,7 +101,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   }
 
   int get totalSales {
-    final shiftCount = context.read<SayBreadProvider>().shiftCount;
+    final shiftCount = context.read<BreadProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(salesControllers[i]);
@@ -110,7 +110,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
   }
 
   int get totalQty {
-    final shiftCount = context.read<SayBreadProvider>().shiftCount;
+    final shiftCount = context.read<BreadProvider>().shiftCount;
     int total = 0;
     for (int i = 0; i < shiftCount; i++) {
       total += _toInt(qtyControllers[i]);
@@ -127,7 +127,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
 
   Future<String> _buildMonthlyHistory() async {
     final service = SharedPreferencesService();
-    final history = await service.getSayBread();
+    final history = await service.getBread();
 
     final now = DateTime.now();
     final thisMonth = now.year * 100 + now.month;
@@ -151,7 +151,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
 
   void _updateSummary() {
     _saveDraft();
-    context.read<SayBreadProvider>().markFormChanged();
+    context.read<BreadProvider>().markFormChanged();
   }
 
   Future<String> _buildWhatsAppMessage() async {
@@ -161,7 +161,7 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     final blnLalu = formatPrevMonth(today);
 
     final service = SharedPreferencesService();
-    final store = await service.getSayBreadStore();
+    final store = await service.getBreadStore();
     final historyText = await _buildMonthlyHistory();
 
     final sbtitle = store?.title ?? "LAPORAN BREAD";
@@ -170,12 +170,12 @@ class _SayBreadScreenState extends State<SayBreadScreen> {
     final sbtgl = store?.tgl ?? "-";
     final sbarea = store?.area ?? "-";
 
-    final history = await service.getSayBread();
+    final history = await service.getBread();
     final akmQty = history.fold(0, (sum, e) => sum + e.qty);
     final akmSales = history.fold(0, (sum, e) => sum + e.sales);
 
     String shiftText = "";
-    final shiftCount = context.read<SayBreadProvider>().shiftCount;
+    final shiftCount = context.read<BreadProvider>().shiftCount;
 
     for (int i = 0; i < shiftCount; i++) {
       shiftText +=
@@ -232,13 +232,13 @@ $historyText```
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
     final service = SharedPreferencesService();
-    final history = await service.getSayBread();
+    final history = await service.getBread();
 
     final akmQty = history.fold(0, (sum, e) => sum + e.qty) + totalQty;
 
     final akmSales = history.fold(0, (sum, e) => sum + e.sales) + totalSales;
 
-    final data = SayBreadHistory(
+    final data = BreadHistory(
       tgl: tgl,
       sales: totalSales,
       qty: totalQty,
@@ -247,12 +247,12 @@ $historyText```
       average: akmQty / now.day,
     );
 
-    await service.saveSayBread(data);
-    await service.clearSayBreadDraft(tgl);
+    await service.saveBread(data);
+    await service.clearBreadDraft(tgl);
     await _refreshAccumulationFromHistory();
 
     FirebaseAnalytics.instance.logEvent(
-      name: "say_bread_saved",
+      name: "bread_saved",
       parameters: {"total_sales": totalSales, "total_qty": totalQty},
     );
 
@@ -269,27 +269,27 @@ $historyText```
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
     final data = {
-      "shiftCount": context.read<SayBreadProvider>().shiftCount,
+      "shiftCount": context.read<BreadProvider>().shiftCount,
       "sales": salesControllers.map((e) => e.text).toList(),
       "qty": qtyControllers.map((e) => e.text).toList(),
       "akmLastMonth": akmLastMonth.text,
     };
 
-    await SharedPreferencesService().saveSayBreadDraft(tgl, data);
-    FirebaseAnalytics.instance.logEvent(name: "say_bread_draft_saved");
+    await SharedPreferencesService().saveBreadDraft(tgl, data);
+    FirebaseAnalytics.instance.logEvent(name: "bread_draft_saved");
   }
 
   Future<void> _loadDraft() async {
     final now = DateTime.now();
     final tgl = now.year * 10000 + now.month * 100 + now.day;
 
-    final draft = await SharedPreferencesService().getSayBreadDraft(tgl);
+    final draft = await SharedPreferencesService().getBreadDraft(tgl);
 
     if (draft == null) return;
 
-    final currentShift = context.read<SayBreadProvider>().shiftCount;
+    final currentShift = context.read<BreadProvider>().shiftCount;
     final shiftCount = draft["shiftCount"] ?? currentShift;
-    context.read<SayBreadProvider>().setShiftCount(shiftCount);
+    context.read<BreadProvider>().setShiftCount(shiftCount);
     final sales = List<String>.from(draft["sales"] ?? []);
     final qty = List<String>.from(draft["qty"] ?? []);
 
@@ -300,15 +300,15 @@ $historyText```
 
     akmLastMonth.text = draft["akmLastMonth"] ?? "";
 
-    context.read<SayBreadProvider>().markFormChanged();
+    context.read<BreadProvider>().markFormChanged();
   }
 
   @override
   Widget build(BuildContext context) {
-    final shiftCount = context.select<SayBreadProvider, int>(
+    final shiftCount = context.select<BreadProvider, int>(
       (provider) => provider.shiftCount,
     );
-    context.select<SayBreadProvider, int>((provider) => provider.formVersion);
+    context.select<BreadProvider, int>((provider) => provider.formVersion);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -409,7 +409,7 @@ $historyText```
 
                   try {
                     FirebaseAnalytics.instance.logEvent(
-                      name: 'say_bread_whatsapp_sent',
+                      name: 'bread_whatsapp_sent',
                     );
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (e) {

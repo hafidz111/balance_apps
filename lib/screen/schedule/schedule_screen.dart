@@ -13,6 +13,7 @@ import '../../providers/schedule_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/gallery_access_helper.dart';
 import '../widgets/ads/rewarded_ads.dart';
 import '../widgets/custom_snack_bar.dart';
 
@@ -49,7 +50,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     provider.setSchedules(await _prefsService.getSchedules());
     provider.setShiftCount(_prefsService.getShiftCount() ?? 2);
 
-    final store = await _prefsService.getPointCoffeeStore();
+    final store = await _prefsService.getCoffeeStore();
     provider.setStoreCode(
       store?.kode.isNotEmpty == true ? store!.kode : "FBVO",
     );
@@ -319,7 +320,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final bytes = byteData.buffer.asUint8List();
 
       await FileSaver.instance.saveFile(
-        name: "balance_schedule",
+        name: "starvy_schedule",
         bytes: bytes,
         fileExtension: "xlsx",
         mimeType: MimeType.microsoftExcel,
@@ -474,14 +475,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (image == null) return;
       if (!mounted) return;
 
-      await FileSaver.instance.saveFile(
-        name: "balance_jadwal_${DateTime.now().millisecondsSinceEpoch}",
-        bytes: image,
-        fileExtension: "png",
-        mimeType: MimeType.png,
+      final saved = await GalleryAccessHelper.savePngToGallery(
+        image,
+        fileName: "starvy_jadwal_${DateTime.now().millisecondsSinceEpoch}",
       );
 
       if (!mounted) return;
+
+      if (!saved) {
+        CustomSnackBar.show(
+          context,
+          message: "Gagal menyimpan gambar",
+          type: SnackType.error,
+        );
+        return;
+      }
 
       CustomSnackBar.show(
         context,

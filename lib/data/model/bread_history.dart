@@ -1,4 +1,4 @@
-class SayBreadHistory {
+class BreadHistory {
   final int tgl;
   final int sales;
   final int qty;
@@ -6,7 +6,7 @@ class SayBreadHistory {
   final int akmSales;
   final double average;
 
-  SayBreadHistory({
+  BreadHistory({
     required this.tgl,
     required this.sales,
     required this.qty,
@@ -24,8 +24,8 @@ class SayBreadHistory {
     'average': average,
   };
 
-  factory SayBreadHistory.fromJson(Map<String, dynamic> json) {
-    return SayBreadHistory(
+  factory BreadHistory.fromJson(Map<String, dynamic> json) {
+    return BreadHistory(
       tgl: json['tgl'],
       sales: json['sales'],
       qty: json['qty'],

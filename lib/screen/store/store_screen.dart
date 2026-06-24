@@ -38,8 +38,8 @@ class StoreScreen extends StatelessWidget {
 
               Expanded(
                 child: activeTab == 0
-                    ? _pointCoffeeTab(context)
-                    : _sayBreadTab(context),
+                    ? _coffeeTab(context)
+                    : _breadTab(context),
               ),
             ],
           ),
@@ -58,7 +58,7 @@ class StoreScreen extends StatelessWidget {
         onTap: () async {
           FirebaseAnalytics.instance.logEvent(
             name: "store_tab_changed",
-            parameters: {"tab": index == 0 ? "point_coffee" : "say_bread"},
+            parameters: {"tab": index == 0 ? "coffee" : "bread"},
           );
           if (activeTab != index) {
             final provider = context.read<StoreProvider>();
@@ -93,13 +93,13 @@ class StoreScreen extends StatelessWidget {
     );
   }
 
-  Widget _pointCoffeeTab(BuildContext context) {
+  Widget _coffeeTab(BuildContext context) {
     final provider = context.read<StoreProvider>();
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         StoreCard(
-          key: const ValueKey("point_coffee_store"),
+          key: const ValueKey("coffee_store"),
           category: "Coffee",
           titleController: provider.pcTitle,
           namaController: provider.pcNama,
@@ -112,13 +112,13 @@ class StoreScreen extends StatelessWidget {
     );
   }
 
-  Widget _sayBreadTab(BuildContext context) {
+  Widget _breadTab(BuildContext context) {
     final provider = context.read<StoreProvider>();
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         StoreCard(
-          key: const ValueKey("say_bread_store"),
+          key: const ValueKey("bread_store"),
           category: "Bread",
           titleController: provider.sbTitle,
           namaController: provider.sbNama,

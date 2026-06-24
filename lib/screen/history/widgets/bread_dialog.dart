@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/model/say_bread_history.dart';
+import '../../../data/model/bread_history.dart';
 import '../../../service/shared_preferences_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../utils/number_format.dart';
 import '../../widgets/custom_snack_bar.dart';
 import '../../widgets/dialog_input_field.dart';
 
-class SayBreadDialog extends StatefulWidget {
-  final SayBreadHistory? editData;
+class BreadDialog extends StatefulWidget {
+  final BreadHistory? editData;
 
-  const SayBreadDialog({super.key, this.editData});
+  const BreadDialog({super.key, this.editData});
 
   @override
-  State<SayBreadDialog> createState() => _SayBreadDialogState();
+  State<BreadDialog> createState() => _BreadDialogState();
 }
 
-class _SayBreadDialogState extends State<SayBreadDialog> {
+class _BreadDialogState extends State<BreadDialog> {
   final tglCtrl = TextEditingController();
   final salesCtrl = TextEditingController();
   final qtyCtrl = TextEditingController();
@@ -95,7 +95,7 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
 
     final tgl = _toYmd(selectedDate!);
 
-    final data = SayBreadHistory(
+    final data = BreadHistory(
       tgl: tgl,
       sales: sales,
       qty: qty,
@@ -104,7 +104,7 @@ class _SayBreadDialogState extends State<SayBreadDialog> {
       average: 0,
     );
 
-    await _service.saveSayBread(data);
+    await _service.saveBread(data);
     if (!mounted) return;
     CustomSnackBar.show(
       context,

@@ -1,4 +1,4 @@
-class PointCoffeeHistory {
+class CoffeeHistory {
   final int tgl;
   final int spd;
   final int cup;
@@ -7,7 +7,7 @@ class PointCoffeeHistory {
 
   final double apc;
 
-  PointCoffeeHistory({
+  CoffeeHistory({
     required this.tgl,
     required this.spd,
     required this.cup,
@@ -16,7 +16,7 @@ class PointCoffeeHistory {
     this.apc = 0,
   });
 
-  PointCoffeeHistory copyWith({
+  CoffeeHistory copyWith({
     int? tgl,
     int? spd,
     int? cup,
@@ -24,7 +24,7 @@ class PointCoffeeHistory {
     double? cpd,
     double? apc,
   }) {
-    return PointCoffeeHistory(
+    return CoffeeHistory(
       tgl: tgl ?? this.tgl,
       spd: spd ?? this.spd,
       cup: cup ?? this.cup,
@@ -54,8 +54,8 @@ class PointCoffeeHistory {
     return 0;
   }
 
-  factory PointCoffeeHistory.fromJson(Map<String, dynamic> json) {
-    return PointCoffeeHistory(
+  factory CoffeeHistory.fromJson(Map<String, dynamic> json) {
+    return CoffeeHistory(
       tgl: json['tgl'],
       spd: json['spd'],
       cup: json['cup'],

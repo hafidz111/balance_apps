@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../data/model/point_coffe_history.dart';
-import '../data/model/say_bread_history.dart';
+import '../data/model/coffee_history.dart';
+import '../data/model/bread_history.dart';
 import '../service/shared_preferences_service.dart';
 
 class HistoryProvider extends ChangeNotifier {
@@ -11,16 +11,16 @@ class HistoryProvider extends ChangeNotifier {
 
   int _activeTab = 0;
   DateTime _selectedMonthYear = DateTime.now();
-  List<PointCoffeeHistory> _pcHistory = [];
-  List<SayBreadHistory> _sbHistory = [];
+  List<CoffeeHistory> _pcHistory = [];
+  List<BreadHistory> _sbHistory = [];
 
   int get activeTab => _activeTab;
 
   DateTime get selectedMonthYear => _selectedMonthYear;
 
-  List<PointCoffeeHistory> get pcHistory => _pcHistory;
+  List<CoffeeHistory> get pcHistory => _pcHistory;
 
-  List<SayBreadHistory> get sbHistory => _sbHistory;
+  List<BreadHistory> get sbHistory => _sbHistory;
 
   void setActiveTab(int value) {
     if (_activeTab == value) return;
@@ -34,8 +34,8 @@ class HistoryProvider extends ChangeNotifier {
   }
 
   Future<void> loadHistory() async {
-    final pc = await _prefsService.getPointCoffee();
-    final sb = await _prefsService.getSayBread();
+    final pc = await _prefsService.getCoffee();
+    final sb = await _prefsService.getBread();
 
     final thisMonth = _selectedMonthYear.month;
     final thisYear = _selectedMonthYear.year;

@@ -62,7 +62,7 @@ class StoreProvider extends ChangeNotifier {
   }
 
   Future<void> loadStoreData() async {
-    final pc = await _service.getPointCoffeeStore();
+    final pc = await _service.getCoffeeStore();
     if (pc != null) {
       pcTitle.text = pc.title;
       pcNama.text = pc.nama;
@@ -77,7 +77,7 @@ class StoreProvider extends ChangeNotifier {
       pcArea.clear();
     }
 
-    final sb = await _service.getSayBreadStore();
+    final sb = await _service.getBreadStore();
     if (sb != null) {
       sbTitle.text = sb.title;
       sbNama.text = sb.nama;
@@ -101,7 +101,7 @@ class StoreProvider extends ChangeNotifier {
 
   Future<void> saveStoreData(String category) async {
     if (category == "Coffee") {
-      await _service.savePointCoffeeStore(
+      await _service.saveCoffeeStore(
         StoreData(
           title: pcTitle.text,
           nama: pcNama.text,
@@ -112,7 +112,7 @@ class StoreProvider extends ChangeNotifier {
       );
       _isPcChanged = false;
     } else {
-      await _service.saveSayBreadStore(
+      await _service.saveBreadStore(
         StoreData(
           title: sbTitle.text,
           nama: sbNama.text,

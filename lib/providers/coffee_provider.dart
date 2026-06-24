@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class PointCoffeeProvider extends ChangeNotifier {
+class CoffeeProvider extends ChangeNotifier {
   static const int maxShift = 4;
 
   int _shiftCount = 2;

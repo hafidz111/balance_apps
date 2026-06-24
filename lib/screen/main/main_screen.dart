@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:starvy/screen/barcode/barcode_screen.dart';
 import 'package:starvy/screen/history/history_screen.dart';
-import 'package:starvy/screen/point_coffee/point_coffee_screen.dart';
+import 'package:starvy/screen/coffee/coffee_screen.dart';
 import 'package:starvy/screen/schedule/schedule_screen.dart';
 import 'package:starvy/screen/settings/settings_screen.dart';
 import 'package:starvy/screen/store/store_screen.dart';
@@ -25,7 +25,7 @@ import '../../utils/ads_helper.dart';
 import '../../utils/user_friendly_error.dart';
 import '../grid_photo/grid_photo_screen.dart';
 import '../login/login_screen.dart';
-import '../say_bread/say_bread_screen.dart';
+import '../bread/bread_screen.dart';
 import '../widgets/ads/rewarded_ads.dart';
 
 class MainScreen extends StatefulWidget {
@@ -77,8 +77,8 @@ class _MainScreenState extends State<MainScreen> {
   void _checkStoreData() async {
     final service = SharedPreferencesService();
 
-    final pc = await service.getPointCoffeeStore();
-    final sb = await service.getSayBreadStore();
+    final pc = await service.getCoffeeStore();
+    final sb = await service.getBreadStore();
 
     if (pc == null ||
         pc.title.isEmpty ||
@@ -148,7 +148,7 @@ class _MainScreenState extends State<MainScreen> {
       final path = await FilePicker.platform.saveFile(
         dialogTitle: 'Simpan Backup Barcode',
         fileName:
-            'balance_barcode_backup_${DateTime.now().millisecondsSinceEpoch}.json',
+            'starvy_barcode_backup_${DateTime.now().millisecondsSinceEpoch}.json',
         bytes: bytes,
       );
 
@@ -212,8 +212,8 @@ class _MainScreenState extends State<MainScreen> {
 
     final widgetOptions = [
       const StoreScreen(),
-      const PointCoffeeScreen(),
-      const SayBreadScreen(),
+      const CoffeeScreen(),
+      const BreadScreen(),
       const HistoryScreen(),
       BarcodeScreen(
         key: ValueKey(mainProvider.barcodeRefreshKey),
