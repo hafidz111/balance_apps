@@ -24,7 +24,7 @@ import '../../service/shared_preferences_service.dart';
 import '../../utils/ads_helper.dart';
 import '../../utils/user_friendly_error.dart';
 import '../grid_photo/grid_photo_screen.dart';
-import '../login/login_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import '../bread/bread_screen.dart';
 import '../widgets/ads/rewarded_ads.dart';
 
@@ -164,10 +164,7 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       CustomSnackBar.show(
         context,
-        message: userFriendlyError(
-          e,
-          fallback: 'Export gagal. Coba lagi.',
-        ),
+        message: userFriendlyError(e, fallback: 'Export gagal. Coba lagi.'),
         type: SnackType.error,
       );
     }
@@ -336,14 +333,9 @@ class _MainScreenState extends State<MainScreen> {
                       Navigator.pop(context);
 
                       if (isLogin) {
-                        _onItemTapped(7);
+                        _onItemTapped(8);
                       } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
+                        context.pushAppRoute(AppRoutes.login);
                       }
                     },
                     child: Row(

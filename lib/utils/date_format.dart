@@ -87,6 +87,10 @@ String formatMonth(DateTime date) {
   return bulan[date.month];
 }
 
+String formatMonthYear(int year, int month) {
+  return '${formatMonth(DateTime(year, month))} $year';
+}
+
 String formatPrevMonth(DateTime date) {
   final prev = DateTime(date.year, date.month - 1);
 

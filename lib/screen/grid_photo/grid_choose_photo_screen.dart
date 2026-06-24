@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:screenshot/screenshot.dart';
-import 'package:starvy/screen/grid_photo/grid_background_photo_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/screen/grid_photo/widgets/grid_item.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 
@@ -355,15 +355,15 @@ class _GridChoosePhotoScreenState extends State<GridChoosePhotoScreen> {
       parameters: {"total_slots": images.length},
     );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => GridBackgroundPhotoScreen(
-          capturedImage: image,
-          title: widget.title,
-        ),
-      ),
-    ).then((_) {
+    context
+        .pushAppRoute(
+          AppRoutes.gridBackground,
+          arguments: GridBackgroundPhotoArgs(
+            capturedImage: image,
+            title: widget.title,
+          ),
+        )
+        .then((_) {
       if (!context.mounted) return;
       context.read<GridChoosePhotoProvider>().setSaved(false);
     });

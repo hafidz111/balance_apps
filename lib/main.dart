@@ -23,7 +23,9 @@ import 'package:starvy/providers/schedule_provider.dart';
 import 'package:starvy/providers/settings_provider.dart';
 import 'package:starvy/providers/shared_preference_provider.dart';
 import 'package:starvy/providers/store_provider.dart';
+import 'package:starvy/providers/grid_photo_provider.dart';
 import 'package:starvy/providers/warehouse_provider.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/service/firebase_auth_service.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
@@ -68,9 +70,18 @@ void main() async {
               HistoryProvider(context.read<SharedPreferencesService>()),
         ),
         ChangeNotifierProvider(create: (_) => MainScreenProvider()),
-        ChangeNotifierProvider(create: (_) => CoffeeProvider()),
-        ChangeNotifierProvider(create: (_) => BreadProvider()),
+        ChangeNotifierProvider(
+          create: (context) => CoffeeProvider(
+            context.read<SharedPreferencesService>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => BreadProvider(
+            context.read<SharedPreferencesService>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => GridBackgroundPhotoProvider()),
+        ChangeNotifierProvider(create: (_) => GridPhotoProvider()),
         ChangeNotifierProvider(create: (_) => BarcodeProvider()),
         ChangeNotifierProvider(create: (_) => ScannerProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
@@ -107,8 +118,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.themeSeed),
       ),
-      home: MainScreen(),
-      routes: {},
+      home: const MainScreen(),
+      routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
 }

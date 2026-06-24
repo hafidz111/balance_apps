@@ -9,7 +9,7 @@ import '../../providers/login_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../static/firebase_auth_status.dart';
 import '../../theme/app_colors.dart';
-import '../main/main_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import '../widgets/custom_snack_bar.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,10 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+        context.pushReplacementAppRoute(AppRoutes.main);
       }
     });
   }
@@ -292,10 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+        context.pushReplacementAppRoute(AppRoutes.main);
         return;
 
       default:

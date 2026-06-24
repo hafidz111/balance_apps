@@ -11,7 +11,7 @@ import 'package:starvy/providers/grid_background_photo_provider.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/gallery_access_helper.dart';
-import '../main/main_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import '../widgets/custom_snack_bar.dart';
 
 class GridBackgroundPhotoScreen extends StatefulWidget {
@@ -162,11 +162,7 @@ class _GridBackgroundPhotoScreenState extends State<GridBackgroundPhotoScreen> {
         message: "Berhasil disimpan ke galeri",
         type: SnackType.success,
       );
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-        (route) => false,
-      );
+      context.pushAndRemoveUntilAppRoute(AppRoutes.main);
     } catch (e) {
       debugPrint("Error saving: $e");
       if (!mounted) return;

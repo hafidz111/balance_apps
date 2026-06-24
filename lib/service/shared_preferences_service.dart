@@ -86,6 +86,8 @@ class SharedPreferencesService {
   static const scheduleKey = "schedule_data";
   static const coffeeCpdManualKey = 'coffee_cpd_manual';
   static const coffeeCpdMonthKey = 'coffee_cpd_month';
+  static const coffeeSalesPrevManualKey = 'coffee_sales_prev_manual';
+  static const coffeeSalesPrevMonthKey = 'coffee_sales_prev_month';
   static const customBackgroundKey = "custom_background";
 
   bool get isLogin => prefs.getBool(keyLogin) ?? false;
@@ -263,10 +265,7 @@ class SharedPreferencesService {
     return histories;
   }
 
-  Future<List<CoffeeHistory>> getCoffeeByMonth(
-    int year,
-    int month,
-  ) async {
+  Future<List<CoffeeHistory>> getCoffeeByMonth(int year, int month) async {
     final all = await getCoffee();
 
     return all.where((e) {
@@ -274,6 +273,119 @@ class SharedPreferencesService {
       final m = (e.tgl % 10000) ~/ 100;
       return y == year && m == month;
     }).toList();
+  }
+
+  static bool isHistoryMonthStale(int year, int month, [DateTime? now]) {
+    final d = now ?? DateTime.now();
+    final prev = DateTime(d.year, d.month - 1);
+    if (year < prev.year) return true;
+    if (year == prev.year && month < prev.month) return true;
+    return false;
+  }
+
+  Future<List<({int year, int month})>> getStaleHistoryMonths([
+    DateTime? now,
+  ]) async {
+    final d = now ?? DateTime.now();
+    final coffee = await getCoffee();
+    final bread = await getBread();
+    final keys = <String, ({int year, int month})>{};
+
+    void consider(int tgl) {
+      final y = tgl ~/ 10000;
+      final m = (tgl % 10000) ~/ 100;
+      if (isHistoryMonthStale(y, m, d)) {
+        keys['$y-$m'] = (year: y, month: m);
+      }
+    }
+
+    for (final e in coffee) {
+      consider(e.tgl);
+    }
+    for (final e in bread) {
+      consider(e.tgl);
+    }
+
+    final result = keys.values.toList()
+      ..sort((a, b) {
+        if (a.year != b.year) return a.year.compareTo(b.year);
+        return a.month.compareTo(b.month);
+      });
+    return result;
+  }
+
+  Future<void> deleteCoffeeByMonth(int year, int month) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(coffeeKey) ?? [];
+
+    final histories =
+        list.map((e) => CoffeeHistory.fromJson(jsonDecode(e))).where((e) {
+          final y = e.tgl ~/ 10000;
+          final m = (e.tgl % 10000) ~/ 100;
+          return !(y == year && m == month);
+        }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
+
+    int runningAkm = 0;
+    final fixed = <CoffeeHistory>[];
+
+    for (final item in histories) {
+      runningAkm += item.cup;
+      final day = item.tgl % 100;
+
+      fixed.add(
+        CoffeeHistory(
+          tgl: item.tgl,
+          spd: item.spd,
+          cup: item.cup,
+          akmCup: runningAkm,
+          cpd: runningAkm / day,
+          apc: item.apc,
+        ),
+      );
+    }
+
+    await prefs.setStringList(
+      coffeeKey,
+      fixed.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<void> deleteBreadByMonth(int year, int month) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(breadKey) ?? [];
+
+    final histories =
+        list.map((e) => BreadHistory.fromJson(jsonDecode(e))).where((e) {
+          final y = e.tgl ~/ 10000;
+          final m = (e.tgl % 10000) ~/ 100;
+          return !(y == year && m == month);
+        }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
+
+    int runningQty = 0;
+    int runningSales = 0;
+    final fixed = <BreadHistory>[];
+
+    for (final item in histories) {
+      runningQty += item.qty;
+      runningSales += item.sales;
+      final day = item.tgl % 100;
+
+      fixed.add(
+        BreadHistory(
+          tgl: item.tgl,
+          sales: item.sales,
+          qty: item.qty,
+          akmQty: runningQty,
+          akmSales: runningSales,
+          average: runningQty / day,
+        ),
+      );
+    }
+
+    await prefs.setStringList(
+      breadKey,
+      fixed.map((e) => jsonEncode(e.toJson())).toList(),
+    );
   }
 
   Future<void> deleteCoffee(int tgl) async {
@@ -670,6 +782,54 @@ class SharedPreferencesService {
   Future<void> clearCoffeeCpdManual() async {
     await prefs.remove(coffeeCpdManualKey);
     await prefs.remove(coffeeCpdMonthKey);
+  }
+
+  static String _monthKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  }
+
+  /// Input manual total sales **bulan lalu** untuk Achiev Target **bulan saat ini**.
+  /// Saat masuk bulan berikutnya, nilai lama dihapus otomatis.
+  Future<void> saveCoffeeSalesPrevManual(String sales) async {
+    final forMonth = _monthKey(DateTime.now());
+
+    await prefs.setString(coffeeSalesPrevManualKey, sales);
+    await prefs.setString(coffeeSalesPrevMonthKey, forMonth);
+
+    FirebaseAnalytics.instance.logEvent(name: "coffee_sales_prev_manual_saved");
+  }
+
+  Future<String?> getCoffeeSalesPrevManual() async {
+    await expireCoffeeSalesPrevManualIfNeeded();
+
+    return prefs.getString(coffeeSalesPrevManualKey);
+  }
+
+  /// Hapus sales bulan lalu manual jika sudah tidak relevan (bukan bulan saat ini).
+  Future<void> expireCoffeeSalesPrevManualIfNeeded() async {
+    final activeMonth = _monthKey(DateTime.now());
+    final savedForMonth = prefs.getString(coffeeSalesPrevMonthKey);
+
+    if (savedForMonth == null) return;
+
+    final normalizedSaved = _normalizeMonthKey(savedForMonth);
+    if (normalizedSaved != activeMonth) {
+      await clearCoffeeSalesPrevManual();
+    }
+  }
+
+  static String _normalizeMonthKey(String key) {
+    final parts = key.split('-');
+    if (parts.length != 2) return key;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null) return key;
+    return '$year-${month.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> clearCoffeeSalesPrevManual() async {
+    await prefs.remove(coffeeSalesPrevManualKey);
+    await prefs.remove(coffeeSalesPrevMonthKey);
   }
 
   Future<void> saveCustomBackground(String path) async {

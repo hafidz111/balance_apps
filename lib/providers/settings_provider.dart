@@ -74,6 +74,19 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void initializeScreenState({required int shiftCount}) {
+    _isEditingProfile = false;
+    _isEditingSettings = false;
+    _selectedShift = shiftCount;
+    _isLoaded = true;
+    notifyListeners();
+  }
+
+  void clearEditingStateSilent() {
+    _isEditingProfile = false;
+    _isEditingSettings = false;
+  }
+
   void markChanged() {
     notifyListeners();
   }

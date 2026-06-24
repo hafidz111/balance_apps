@@ -1,102 +1,90 @@
-import 'dart:io';
-
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
-import 'package:screenshot/screenshot.dart';
+import 'package:provider/provider.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/screen/widgets/custom_snack_bar.dart';
 import 'package:starvy/theme/app_colors.dart';
 
-import 'grid_choose_photo_screen.dart';
+import '../../providers/grid_photo_provider.dart';
 
-class GridPhotoScreen extends StatefulWidget {
+class GridPhotoScreen extends StatelessWidget {
   const GridPhotoScreen({super.key});
-
-  @override
-  State<GridPhotoScreen> createState() => _GridPhotoScreenState();
-}
-
-class _GridPhotoScreenState extends State<GridPhotoScreen> {
-  final ScreenshotController screenshotController = ScreenshotController();
-
-  int gridCount = 4;
-  bool gridSelected = false;
-  bool isSaved = false;
-
-  List<File?> images = [];
-  File? backgroundImage;
-
-  Offset gridOffset = Offset.zero;
-  double gridScale = 1.0;
-  double baseScale = 1.0;
-
-  final List<Map<String, dynamic>> _gridOptions = [
-    {"title": "Hit & Run", "icon": Icons.run_circle, "rows": 2, "cols": 2},
-    {
-      "title": "Kalibrasi",
-      "icon": Icons.compass_calibration,
-      "rows": 3,
-      "cols": 3,
-    },
-    {
-      "title": "Initial",
-      "icon": Icons.dashboard_customize,
-      "rows": 4,
-      "cols": 4,
-    },
-    {
-      "title": "General Cleaning",
-      "icon": Icons.clean_hands,
-      "rows": 3,
-      "cols": 3,
-    },
-  ];
 
   static final List<Map<String, Color>> _menuColors =
       AppColors.gridMenuCardColors;
 
   @override
-  void initState() {
-    super.initState();
+  Widget build(BuildContext context) {
+    final templates = GridPhotoProvider.templates;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: GridView.builder(
+            itemCount: templates.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.8,
+            ),
+            itemBuilder: (context, index) {
+              final template = templates[index];
+              return _GridTemplateTile(
+                index: index,
+                template: template,
+                colorSet: _menuColors[index % _menuColors.length],
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
+}
 
-  int get crossAxisCount {
-    if (gridCount == 4) return 2;
-    if (gridCount == 6) return 3;
-    if (gridCount == 8) return 4;
-    if (gridCount == 10) return 5;
-    return 3;
-  }
+class _GridTemplateTile extends StatelessWidget {
+  const _GridTemplateTile({
+    required this.index,
+    required this.template,
+    required this.colorSet,
+  });
 
-  Widget _buildMenuItem({
-    required int index,
-    required String title,
-    required IconData icon,
-    required int rows,
-    required int cols,
-  }) {
-    final colorSet = _menuColors[index % _menuColors.length];
+  final int index;
+  final GridTemplate template;
+  final Map<String, Color> colorSet;
 
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
+        context.read<GridPhotoProvider>().markSelected(index);
+
         FirebaseAnalytics.instance.logEvent(
-          name: "grid_template_selected",
-          parameters: {"title": title, "rows": rows, "cols": cols},
+          name: 'grid_template_selected',
+          parameters: {
+            'title': template.title,
+            'rows': template.rows,
+            'cols': template.cols,
+          },
         );
 
         CustomSnackBar.show(
           context,
-          message: "$title dipilih",
+          message: '${template.title} dipilih',
           type: SnackType.info,
         );
 
         Future.delayed(const Duration(milliseconds: 200), () {
-          if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  GridChoosePhotoScreen(rows: rows, cols: cols, title: title),
+          if (!context.mounted) return;
+          context.pushAppRoute(
+            AppRoutes.gridChoose,
+            arguments: GridChoosePhotoArgs(
+              rows: template.rows,
+              cols: template.cols,
+              title: template.title,
             ),
           );
         });
@@ -108,62 +96,20 @@ class _GridPhotoScreenState extends State<GridPhotoScreen> {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: colorSet["bg"],
+              color: colorSet['bg'],
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Center(child: Icon(icon, size: 40, color: colorSet["icon"])),
+            child: Center(
+              child: Icon(template.icon, size: 40, color: colorSet['icon']),
+            ),
           ),
-
           const SizedBox(height: 12),
-
           Text(
-            title,
+            template.title,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return GridView.builder(
-                      itemCount: _gridOptions.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.8,
-                          ),
-                      itemBuilder: (context, index) {
-                        final grid = _gridOptions[index];
-                        return _buildMenuItem(
-                          index: index,
-                          title: grid['title'],
-                          icon: grid['icon'],
-                          rows: grid['rows'],
-                          cols: grid['cols'],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

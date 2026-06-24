@@ -1,14 +1,12 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:starvy/screen/barcode/choose_barcode_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/theme/app_colors.dart';
 
 import '../../data/model/barcode_data.dart';
 import '../../providers/barcode_provider.dart';
-import '../scanner/scanner_screen.dart';
 import '../widgets/custom_snack_bar.dart';
-import 'barcode_detail_screen.dart';
 import 'barcode_ui.dart';
 
 class BarcodeScreen extends StatefulWidget {
@@ -56,9 +54,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   void _openDetail(BarcodeData b) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: b)),
+    final result = await context.pushAppRoute(
+      AppRoutes.barcodeDetail,
+      arguments: BarcodeDetailArgs(barcode: b),
     );
     if (result == true) {
       await context.read<BarcodeProvider>().load();
@@ -355,10 +353,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
             onPressed: () async {
               _toggleMenu();
               FirebaseAnalytics.instance.logEvent(name: "barcode_scan_opened");
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ScannerScreen()),
-              );
+              final result = await context.pushAppRoute(AppRoutes.scanner);
 
               if (result != null) {
                 if (!mounted) return;
@@ -381,10 +376,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
             color: AppColors.primary,
             onPressed: () async {
               _toggleMenu();
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ChooseBarcodeScreen()),
-              );
+              final result = await context.pushAppRoute(AppRoutes.barcodeChoose);
 
               if (result != null) {
                 await context.read<BarcodeProvider>().load();

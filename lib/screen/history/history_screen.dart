@@ -7,11 +7,11 @@ import 'package:starvy/providers/history_provider.dart';
 
 import '../../data/model/coffee_history.dart';
 import '../../data/model/bread_history.dart';
-import '../../service/barcode_firebase_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/date_format.dart';
 import '../../utils/number_format.dart';
+import '../../utils/stale_history_cleanup.dart';
 import 'widgets/coffee_dialog.dart';
 import 'widgets/bread_dialog.dart';
 
@@ -26,7 +26,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   static const int _pageSize = 10;
 
   final _prefsService = SharedPreferencesService();
-  final _firebaseService = BarcodeFirebaseService();
 
   final ScrollController _coffeeScrollController = ScrollController();
   final ScrollController _breadScrollController = ScrollController();
@@ -147,69 +146,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _checkMonthChange() async {
-    final isNewMonth = await _prefsService.isNewMonth();
-    if (!isNewMonth) return;
-
-    final hasData =
-        (await _prefsService.getCoffee()).isNotEmpty ||
-        (await _prefsService.getBread()).isNotEmpty;
-
-    if (!hasData) {
-      await _prefsService.updateCurrentMonth();
-      return;
-    }
-
-    final confirm = await _showModernConfirmDialog(
-      title: 'Bulan baru',
-      message:
-          'Sudah masuk bulan baru.\n\n'
-          'Data bulan lalu akan di-backup sebelum dihapus.\n\n'
-          'Lanjutkan?',
-      icon: Icons.cloud_sync_rounded,
-      iconColor: AppColors.primary,
-      iconBgColor: AppColors.primary.withValues(alpha: 0.12),
-      confirmLabel: 'Lanjutkan',
-      confirmIsPrimary: true,
-    );
-
-    if (confirm != true) return;
-
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-
-      final uid = "USER_UID";
-      final email = "USER_EMAIL";
-
-      await _firebaseService.backupAll(uid, email);
-
-      await _firebaseService.deleteOldMonths(uid);
-
-      await _prefsService.clearCoffee();
-      await _prefsService.clearBread();
-      await _prefsService.clearCoffeeCpdManual();
-
-      await _prefsService.updateCurrentMonth();
-
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Backup & reset berhasil")));
-
-      FirebaseAnalytics.instance.logEvent(name: "monthly_backup_and_clear");
-    } catch (e) {
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Gagal backup: $e")));
-
-      FirebaseAnalytics.instance.logEvent(name: "monthly_backup_failed");
-    }
+    if (!mounted) return;
+    await promptStaleHistoryCleanup(context);
   }
 
   Future<void> _loadHistory() async {

@@ -2,8 +2,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:starvy/screen/login/login_screen.dart';
-import 'package:starvy/screen/main/main_screen.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/screen/widgets/ads/rewarded_ads.dart';
 import 'package:starvy/screen/widgets/custom_text_field.dart';
 import 'package:starvy/service/barcode_firebase_service.dart';
@@ -11,6 +10,7 @@ import 'package:starvy/service/barcode_firebase_service.dart';
 import '../../providers/firebase_auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/shared_preference_provider.dart';
+import '../../static/firebase_auth_status.dart';
 import '../../service/premium_service.dart';
 import '../../service/purchase_service.dart';
 import '../../service/shared_preferences_service.dart';
@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _shiftTimesHydrated = false;
   String? _originalName;
   bool _isInitScreenState = false;
+  bool _isAuthActionInProgress = false;
 
   SettingsProvider? _settingsProvider;
   SharedPreferenceProvider? _prefProvider;
@@ -84,8 +85,24 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    Future.microtask(() {
-      context.read<FirebaseAuthProvider>().validateSession();
+    Future.microtask(() async {
+      final auth = context.read<FirebaseAuthProvider>();
+      final pref = context.read<SharedPreferenceProvider>();
+      final hadLocalLogin = pref.isLogin;
+
+      await auth.validateSession();
+
+      if (!mounted) return;
+
+      if (hadLocalLogin && auth.profile == null) {
+        await pref.logout();
+      }
+
+      if (auth.profile != null) {
+        _nameController.text = auth.profile?.name ?? "";
+        _originalName = auth.profile?.name ?? "";
+        setState(() {});
+      }
     });
 
     _nameController.addListener(() {
@@ -148,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _exitEditModeWithoutSaving(updateControllers: false);
+    _settingsProvider?.clearEditingStateSilent();
     _phoneController.dispose();
     _nameController.dispose();
     for (final row in _shiftTimeFieldRows) {
@@ -243,16 +260,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (_isInitScreenState) return;
     _isInitScreenState = true;
 
-    final settings = _settingsProvider!;
-
-    settings.setEditingSettings(false);
-    settings.setEditingProfile(false);
-
+    final pref = _prefProvider!;
     final auth = context.read<FirebaseAuthProvider>();
-    final pref = context.read<SharedPreferenceProvider>();
 
     _phoneController.text = pref.phoneNumber ?? "";
-    settings.setSelectedShift(pref.shiftCount ?? 2);
     _nameController.text = auth.profile?.name ?? "";
     _originalName = auth.profile?.name ?? "";
 
@@ -265,9 +276,14 @@ class _SettingsScreenState extends State<SettingsScreen>
       }
     }
 
-    settings.setLoaded(true);
-    _loadLastBackupTime();
-    _loadLastSyncTime();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _settingsProvider == null) return;
+      _settingsProvider!.initializeScreenState(
+        shiftCount: pref.shiftCount ?? 2,
+      );
+      _loadLastBackupTime();
+      _loadLastSyncTime();
+    });
   }
 
   bool _isTransitioningEdit = false;
@@ -410,45 +426,75 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  Future<void> _tapToSignOutOrLogin() async {
+    if (_isAuthActionInProgress) return;
+
+    final firebaseAuthProvider = context.read<FirebaseAuthProvider>();
+    final sharedPreferenceProvider = context.read<SharedPreferenceProvider>();
+    final isLoggedIn = firebaseAuthProvider.profile != null;
+
+    if (!isLoggedIn) {
+      await context.pushAppRoute(AppRoutes.login);
+
+      if (!mounted) return;
+
+      final auth = context.read<FirebaseAuthProvider>();
+      if (auth.profile != null) {
+        _nameController.text = auth.profile?.name ?? "";
+        _originalName = auth.profile?.name ?? "";
+        setState(() {});
+      }
+      return;
+    }
+
+    setState(() => _isAuthActionInProgress = true);
+
+    try {
+      await firebaseAuthProvider.signOutUser();
+
+      if (!mounted) return;
+
+      if (firebaseAuthProvider.authStatus !=
+          FirebaseAuthStatus.unauthenticated) {
+        CustomSnackBar.show(
+          context,
+          message:
+              firebaseAuthProvider.message ??
+              "Logout gagal. Silakan coba lagi.",
+          type: SnackType.error,
+        );
+        return;
+      }
+
+      await sharedPreferenceProvider.logout();
+
+      _nameController.text = "";
+      _originalName = "";
+
+      FirebaseAnalytics.instance.logEvent(name: "logout");
+
+      CustomSnackBar.show(
+        context,
+        message: firebaseAuthProvider.message ?? "Logout berhasil",
+        type: SnackType.success,
+      );
+
+      if (!mounted) return;
+
+      context.pushAndRemoveUntilAppRoute(AppRoutes.main);
+    } finally {
+      if (mounted) {
+        setState(() => _isAuthActionInProgress = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<FirebaseAuthProvider>();
     final settings = context.watch<SettingsProvider>();
     final user = authProvider.profile;
     final barcodeService = BarcodeFirebaseService();
-
-    void _tapToSignOutOrLogin() async {
-      final sharedPreferenceProvider = context.read<SharedPreferenceProvider>();
-      final firebaseAuthProvider = context.read<FirebaseAuthProvider>();
-
-      if (user != null) {
-        await firebaseAuthProvider
-            .signOutUser()
-            .then((value) async {
-              await sharedPreferenceProvider.logout();
-              PremiumService.reset();
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const MainScreen()),
-                (route) => false,
-              );
-            })
-            .whenComplete(() {
-              CustomSnackBar.show(
-                context,
-                message: firebaseAuthProvider.message ?? "",
-                type: SnackType.success,
-              );
-            });
-
-        FirebaseAnalytics.instance.logEvent(name: "logout");
-      } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
-    }
 
     final isLoggedIn = user != null;
 
@@ -1003,9 +1049,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                   padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                   child: _buildButton(
                     label: isLoggedIn ? "Logout" : "Login",
-                    icon: isLoggedIn ? Icons.login_outlined : Icons.person,
+                    icon: isLoggedIn ? Icons.logout : Icons.login,
                     color: isLoggedIn ? Colors.red[700]! : AppColors.primary,
-                    onPressed: _tapToSignOutOrLogin,
+                    isLoading: _isAuthActionInProgress,
+                    loadingLabel: isLoggedIn ? "Keluar..." : "Memproses...",
+                    onPressed: _isAuthActionInProgress ? null : _tapToSignOutOrLogin,
                   ),
                 ),
               ],
@@ -1072,6 +1120,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     required Color color,
     VoidCallback? onPressed,
     bool isLoading = false,
+    String? loadingLabel,
   }) {
     return SizedBox(
       width: double.infinity,
@@ -1089,7 +1138,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               )
             : Icon(icon, size: 18),
         label: Text(
-          isLoading ? "Menyimpan..." : label,
+          isLoading ? (loadingLabel ?? "Menyimpan...") : label,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,

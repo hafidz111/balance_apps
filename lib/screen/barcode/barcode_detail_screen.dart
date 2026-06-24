@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:starvy/screen/widgets/ads/banner_ads.dart';
 
+import 'package:starvy/navigation/app_routes.dart';
+
 import '../../data/model/barcode_data.dart';
 import '../../providers/barcode_detail_provider.dart';
 import '../../service/premium_service.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
 import 'barcode_ui.dart';
-import 'widgets/barcode_form.dart';
 
 class BarcodeDetailScreen extends StatefulWidget {
   final BarcodeData barcode;
@@ -41,11 +42,9 @@ class _BarcodeDetailScreenState extends State<BarcodeDetailScreen> {
 
   void _edit() async {
     final current = context.read<BarcodeDetailProvider>().current;
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BarcodeForm(type: current.type, barcode: current),
-      ),
+    final result = await context.pushAppRoute(
+      AppRoutes.barcodeForm,
+      arguments: BarcodeFormArgs(type: current.type, barcode: current),
     );
 
     if (result is BarcodeData) {

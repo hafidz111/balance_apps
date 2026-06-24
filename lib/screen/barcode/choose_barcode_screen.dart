@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/theme/app_colors.dart';
 
 import 'barcode_ui.dart';
-import 'widgets/barcode_form.dart';
 
 class ChooseBarcodeScreen extends StatelessWidget {
   const ChooseBarcodeScreen({super.key});
@@ -68,9 +68,9 @@ class ChooseBarcodeScreen extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => BarcodeForm(type: type)),
+          final result = await context.pushAppRoute(
+            AppRoutes.barcodeForm,
+            arguments: BarcodeFormArgs(type: type),
           );
 
           if (result != null && context.mounted) {

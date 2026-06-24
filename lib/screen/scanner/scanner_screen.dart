@@ -6,13 +6,13 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
+import 'package:starvy/navigation/app_routes.dart';
+
 import '../../data/model/barcode_data.dart';
 import '../../providers/scanner_provider.dart';
 import '../../service/shared_preferences_service.dart';
 import '../../theme/app_colors.dart';
-import '../barcode/barcode_detail_screen.dart';
 import '../barcode/barcode_ui.dart';
-import '../barcode/widgets/barcode_form.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -81,17 +81,15 @@ class _ScannerScreenState extends State<ScannerScreen>
       parameters: {"found": found != null},
     );
     if (found != null) {
-      final result = await Navigator.push<bool?>(
-        context,
-        MaterialPageRoute(builder: (_) => BarcodeDetailScreen(barcode: found!)),
+      final result = await context.pushAppRoute<bool?>(
+        AppRoutes.barcodeDetail,
+        arguments: BarcodeDetailArgs(barcode: found),
       );
       await _afterSubRoutePop(result, popScannerIf: (r) => r == true);
     } else {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BarcodeForm(type: 'code128', initialCode: code),
-        ),
+      final result = await context.pushAppRoute(
+        AppRoutes.barcodeForm,
+        arguments: BarcodeFormArgs(type: 'code128', initialCode: code),
       );
       await _afterSubRoutePop(result, popScannerIf: (r) => r != null);
     }
