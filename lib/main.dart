@@ -26,7 +26,6 @@ import 'package:starvy/providers/store_provider.dart';
 import 'package:starvy/providers/grid_photo_provider.dart';
 import 'package:starvy/providers/warehouse_provider.dart';
 import 'package:starvy/navigation/app_routes.dart';
-import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/service/firebase_auth_service.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:starvy/theme/app_colors.dart';
@@ -118,7 +117,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.themeSeed),
       ),
-      home: const MainScreen(),
+      initialRoute: AppRoutes.main,
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );

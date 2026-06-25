@@ -88,141 +88,165 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Selamat Datang",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Login untuk melanjutkan ke dashboard aplikasi",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 24),
-                        TextField(
-                          controller: emailC,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: "Email",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
                             ),
-                            prefixIcon: const Icon(Icons.person),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: passC,
-                          obscureText: loginProvider.hidePass,
-                          decoration: InputDecoration(
-                            labelText: "Password",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            prefixIcon: const Icon(Icons.lock),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                loginProvider.hidePass
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                context.read<LoginProvider>().toggleHidePass();
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: loginProvider.loading
-                                ? null
-                                : _tapToLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: loginProvider.loading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                            child: IntrinsicHeight(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Selamat Datang",
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                  )
-                                : const Text("Login"),
-                          ),
-                        ),
-                        if (loginProvider.loading) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            "Menghubungi server… Harap tunggu. Jika lambat, periksa koneksi internet.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: OutlinedButton.icon(
-                            onPressed: _openCreateAccountWhatsApp,
-                            icon: const Icon(
-                              Icons.chat,
-                              color: AppColors.primary,
-                            ),
-                            label: const Text(
-                              "Buat Akun via WhatsApp",
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "Login untuk melanjutkan ke dashboard aplikasi",
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  TextField(
+                                    controller: emailC,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: InputDecoration(
+                                      labelText: "Email",
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      prefixIcon: const Icon(Icons.person),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextField(
+                                    controller: passC,
+                                    obscureText: loginProvider.hidePass,
+                                    decoration: InputDecoration(
+                                      labelText: "Password",
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      prefixIcon: const Icon(Icons.lock),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          loginProvider.hidePass
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
+                                        ),
+                                        onPressed: () {
+                                          context
+                                              .read<LoginProvider>()
+                                              .toggleHidePass();
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: ElevatedButton(
+                                      onPressed: loginProvider.loading
+                                          ? null
+                                          : _tapToLogin,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: loginProvider.loading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Text("Login"),
+                                    ),
+                                  ),
+                                  if (loginProvider.loading) ...[
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      "Menghubungi server… Harap tunggu. Jika lambat, periksa koneksi internet.",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[700],
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _openCreateAccountWhatsApp,
+                                      icon: const Icon(
+                                        Icons.chat,
+                                        color: AppColors.primary,
+                                      ),
+                                      label: const Text(
+                                        "Buat Akun via WhatsApp",
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                          color: AppColors.primary,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Belum punya akun? Hubungi admin untuk dibuatkan akun.",
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Center(
+                                    child: FutureBuilder<PackageInfo>(
+                                      future: PackageInfo.fromPlatform(),
+                                      builder: (context, snapshot) {
+                                        final version =
+                                            snapshot.data?.version ?? "-";
+                                        return Text(
+                                          "Versi $version",
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Belum punya akun? Hubungi admin untuk dibuatkan akun.",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        Center(
-                          child: FutureBuilder<PackageInfo>(
-                            future: PackageInfo.fromPlatform(),
-                            builder: (context, snapshot) {
-                              final version = snapshot.data?.version ?? "-";
-                              return Text(
-                                "Versi $version",
-                                style: TextStyle(color: Colors.grey[500]),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
