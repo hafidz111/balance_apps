@@ -138,19 +138,22 @@ class BreadProvider extends ChangeNotifier {
   Future<String> buildWhatsAppMessage({
     required int totalSales,
     required int totalQty,
-    required String akmLastMonth,
     required List<String> shiftSales,
     required List<String> shiftQty,
   }) async {
     final today = DateTime.now();
     final tgl = formatDateV1(today);
     final blnIni = formatMonth(today);
-    final blnLalu = formatPrevMonth(today);
     final store = await _prefs.getBreadStore();
     final historyText = await buildMonthlyHistoryText();
     final history = await _prefs.getBread();
-    final akmQty = history.fold(0, (sum, e) => sum + e.qty);
-    final akmSales = history.fold(0, (sum, e) => sum + e.sales);
+    final thisMonth = today.year * 100 + today.month;
+    final currentMonthHistory = history.where((e) {
+      final ym = e.tgl ~/ 100;
+      return ym == thisMonth;
+    });
+    final akmQty = currentMonthHistory.fold(0, (sum, e) => sum + e.qty);
+    final akmSales = currentMonthHistory.fold(0, (sum, e) => sum + e.sales);
 
     final sbtitle = store?.title ?? 'LAPORAN BREAD';
     final sbnama = store?.nama ?? '-';
@@ -186,8 +189,6 @@ Tgl GO    = $sbtgl
 Area toko = $sbarea
 ```
 *TREND AKM & SPD*
-
-AKM $blnLalu = $akmLastMonth
 
 ```Sales berjalan : ```
 $blnIni

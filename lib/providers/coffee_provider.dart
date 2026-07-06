@@ -260,8 +260,16 @@ class CoffeeProvider extends ChangeNotifier {
 
   Future<String> buildMonthlyHistoryText() async {
     final history = await _prefs.getCoffee();
+    final now = DateTime.now();
+    final thisMonth = now.year * 100 + now.month;
+
+    final filtered = history.where((e) {
+      final ym = e.tgl ~/ 100;
+      return ym == thisMonth;
+    }).toList()..sort((a, b) => a.tgl.compareTo(b.tgl));
+
     final buffer = StringBuffer()..writeln('TGL_SPD_CUP_AKMCUP_CPD');
-    for (final e in history) {
+    for (final e in filtered) {
       buffer.writeln(
         '${formatDayFromYmd(e.tgl)}_${formatRupiahShort(e.spd)}_${e.cup}_${e.akmCup}_${e.cpd.toStringAsFixed(0)}',
       );

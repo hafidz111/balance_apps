@@ -144,7 +144,6 @@ class _BreadScreenState extends State<BreadScreen> {
     final text = await _bread.buildWhatsAppMessage(
       totalSales: totalSales,
       totalQty: totalQty,
-      akmLastMonth: akmLastMonth.text,
       shiftSales: salesControllers.map((e) => e.text).toList(),
       shiftQty: qtyControllers.map((e) => e.text).toList(),
     );
