@@ -8,11 +8,13 @@ import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/bread_provider.dart';
+import '../../providers/main_screen_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../utils/number_format.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/product_dashboard_widgets.dart';
+import '../widgets/product_insight_card.dart';
 
 class BreadScreen extends StatefulWidget {
   const BreadScreen({super.key});
@@ -205,6 +207,15 @@ class _BreadScreenState extends State<BreadScreen> {
                   ),
                 ],
               ),
+              if (bread.historyInsight != null) ...[
+                const SizedBox(height: 12),
+                ProductInsightCard(
+                  insight: bread.historyInsight!,
+                  onAskAi: () {
+                    context.read<MainScreenProvider>().setSelectedIndex(8);
+                  },
+                ),
+              ],
               const SizedBox(height: 8),
               ...List.generate(shiftCount, (index) {
                 final raw = index < bread.shiftLabels.length

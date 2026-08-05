@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../data/model/bread_history.dart';
 import '../service/shared_preferences_service.dart';
 import '../utils/date_format.dart';
+import '../utils/history_insight.dart';
 
 class BreadProvider extends ChangeNotifier {
   BreadProvider(this._prefs);
@@ -17,6 +18,7 @@ class BreadProvider extends ChangeNotifier {
 
   int accumSalesRupiah = 0;
   int accumQty = 0;
+  HistoryInsight? historyInsight;
 
   List<String> shiftLabels = List<String>.from(
     SharedPreferencesService.defaultShiftTimeLabels,
@@ -63,8 +65,11 @@ class BreadProvider extends ChangeNotifier {
     final list = await _prefs.getBread();
     accumSalesRupiah = list.fold<int>(0, (a, e) => a + e.sales);
     accumQty = list.fold<int>(0, (a, e) => a + e.qty);
+    historyInsight = breadHistoryInsight(list);
     notifyListeners();
   }
+
+  Future<void> reloadAfterSync() => refreshSummary();
 
   Future<Map<String, dynamic>?> loadDraftForToday() async {
     final now = DateTime.now();

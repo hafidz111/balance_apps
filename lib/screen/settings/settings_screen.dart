@@ -7,7 +7,10 @@ import 'package:starvy/screen/widgets/ads/rewarded_ads.dart';
 import 'package:starvy/screen/widgets/custom_text_field.dart';
 import 'package:starvy/service/barcode_firebase_service.dart';
 
+import '../../providers/bread_provider.dart';
+import '../../providers/coffee_provider.dart';
 import '../../providers/firebase_auth_provider.dart';
+import '../../providers/history_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../static/firebase_auth_status.dart';
@@ -249,6 +252,27 @@ class _SettingsScreenState extends State<SettingsScreen>
     } catch (e) {
       debugPrint("General error, pakai cache");
     }
+  }
+
+  Future<void> _runSync(String uid) async {
+    final barcodeService = BarcodeFirebaseService();
+    final result = await barcodeService.syncAll(uid);
+    if (!mounted) return;
+
+    await Future.wait([
+      context.read<HistoryProvider>().loadHistory(),
+      context.read<CoffeeProvider>().reloadAfterSync(),
+      context.read<BreadProvider>().reloadAfterSync(),
+      _loadLastSyncTime(),
+    ]);
+
+    if (!mounted) return;
+    FirebaseAnalytics.instance.logEvent(name: "sync_success");
+    CustomSnackBar.show(
+      context,
+      message: result.message,
+      type: SnackType.success,
+    );
   }
 
   @override
@@ -784,19 +808,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             }
 
                             try {
-                              await barcodeService.syncAll(user.uid!);
-                              await _loadLastSyncTime();
-
-                              FirebaseAnalytics.instance.logEvent(
-                                name: "sync_success",
-                              );
-
-                              if (!mounted) return;
-                              CustomSnackBar.show(
-                                context,
-                                message: "Sinkronisasi berhasil!",
-                                type: SnackType.success,
-                              );
+                              await _runSync(user.uid!);
                             } catch (e) {
                               FirebaseAnalytics.instance.logEvent(
                                 name: "sync_failed",
@@ -839,18 +851,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             settings.setSyncing(true);
 
                             try {
-                              await barcodeService.syncAll(user!.uid!);
-                              await _loadLastSyncTime();
-
-                              FirebaseAnalytics.instance.logEvent(
-                                name: "sync_success",
-                              );
-
-                              CustomSnackBar.show(
-                                context,
-                                message: "Sinkronisasi berhasil!",
-                                type: SnackType.success,
-                              );
+                              await _runSync(user!.uid!);
                             } catch (e) {
                               FirebaseAnalytics.instance.logEvent(
                                 name: "sync_failed",

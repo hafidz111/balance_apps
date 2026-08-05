@@ -5,6 +5,7 @@ import '../data/model/coffee_history.dart';
 import '../data/model/store_data.dart';
 import '../service/shared_preferences_service.dart';
 import '../utils/date_format.dart';
+import '../utils/history_insight.dart';
 
 class CoffeeProvider extends ChangeNotifier {
   CoffeeProvider(this._prefs);
@@ -30,6 +31,7 @@ class CoffeeProvider extends ChangeNotifier {
 
   String? cpdManual;
   String? salesPrevManual;
+  HistoryInsight? historyInsight;
 
   int get shiftCount => _shiftCount;
   int get formVersion => _formVersion;
@@ -173,7 +175,12 @@ class CoffeeProvider extends ChangeNotifier {
     achievTargetPercent = achievementPercent;
     hasPreviousMonthBaseline = hasBaseline;
     usingManualSalesPrev = usingManual;
+    historyInsight = coffeeHistoryInsight(list);
     notifyListeners();
+  }
+
+  Future<void> reloadAfterSync() async {
+    await refreshSummary(totalSales: 0);
   }
 
   Future<void> syncSalesPrevManual() async {

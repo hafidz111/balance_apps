@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+import 'package:starvy/providers/ai_chat_provider.dart';
 import 'package:starvy/providers/barcode_detail_provider.dart';
 import 'package:starvy/providers/barcode_provider.dart';
 import 'package:starvy/providers/firebase_auth_provider.dart';
@@ -67,6 +68,10 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) =>
               HistoryProvider(context.read<SharedPreferencesService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              AiChatProvider(context.read<SharedPreferencesService>()),
         ),
         ChangeNotifierProvider(create: (_) => MainScreenProvider()),
         ChangeNotifierProvider(

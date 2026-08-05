@@ -7,13 +7,38 @@ import '../data/model/bread_history.dart';
 import '../data/model/coffee_history.dart';
 import 'shared_preferences_service.dart';
 
-/// Dilempar dari [BarcodeFirebaseService.syncAll] bila barcode, coffee,
-/// dan bread **semuanya** tidak punya data di server.
 class SyncNoServerDataException implements Exception {
   const SyncNoServerDataException();
 
   @override
   String toString() => 'Tidak ada data di server.';
+}
+
+class SyncResult {
+  const SyncResult({
+    required this.barcode,
+    required this.coffee,
+    required this.bread,
+    this.coffeeAdded = 0,
+    this.breadAdded = 0,
+  });
+
+  final bool barcode;
+  final bool coffee;
+  final bool bread;
+  final int coffeeAdded;
+  final int breadAdded;
+
+  bool get any => barcode || coffee || bread;
+
+  String get message {
+    final parts = <String>[];
+    if (barcode) parts.add('Barcode');
+    if (coffee) parts.add('Coffee (+$coffeeAdded)');
+    if (bread) parts.add('Bread (+$breadAdded)');
+    if (parts.isEmpty) return 'Tidak ada data di server.';
+    return 'Sinkron: ${parts.join(', ')}';
+  }
 }
 
 class BarcodeFirebaseService {
@@ -35,6 +60,12 @@ class BarcodeFirebaseService {
     return "${now.year}-${now.month.toString().padLeft(2, '0')}";
   }
 
+  static String monthKeyFromTgl(int tgl) {
+    final y = tgl ~/ 10000;
+    final m = (tgl % 10000) ~/ 100;
+    return "$y-${m.toString().padLeft(2, '0')}";
+  }
+
   Future<void> saveUserInfo(String uid, String email) async {
     final ref = _db.child("users/$uid/email");
 
@@ -50,8 +81,6 @@ class BarcodeFirebaseService {
       await saveUserInfo(uid, email);
     }
 
-    final monthKey = getCurrentMonthKey();
-
     final coffee = await SharedPreferencesService().getCoffee();
     final bread = await SharedPreferencesService().getBread();
     final barcodes = await SharedPreferencesService().getBarcodes();
@@ -61,20 +90,45 @@ class BarcodeFirebaseService {
       "updatedAt": ServerValue.timestamp,
     });
 
-    await _db.child("users/$uid/$_coffeePath/$monthKey").set({
-      "data": coffee.map((e) => e.toJson()).toList(),
-      "updatedAt": ServerValue.timestamp,
-    });
-
-    await _db.child("users/$uid/$_breadPath/$monthKey").set({
-      "data": bread.map((e) => e.toJson()).toList(),
-      "updatedAt": ServerValue.timestamp,
-    });
+    await _writeHistoryByMonth(uid, _coffeePath, coffee.map((e) => e.toJson()));
+    await _writeHistoryByMonth(uid, _breadPath, bread.map((e) => e.toJson()));
 
     final now = DateTime.now();
     await SharedPreferencesService().saveLastBackupTime(now);
 
     FirebaseAnalytics.instance.logEvent(name: "backup_all_success");
+  }
+
+  Future<void> _writeHistoryByMonth(
+    String uid,
+    String path,
+    Iterable<Map<String, dynamic>> rows,
+  ) async {
+    final byMonth = <String, List<Map<String, dynamic>>>{};
+    for (final row in rows) {
+      final tgl = row['tgl'];
+      if (tgl is! int) continue;
+      byMonth.putIfAbsent(monthKeyFromTgl(tgl), () => []).add(row);
+    }
+
+    if (byMonth.isEmpty) return;
+
+    final existing = await _db.child("users/$uid/$path").get();
+    if (existing.exists && existing.value is Map) {
+      final keys = Map<String, dynamic>.from(existing.value as Map).keys;
+      for (final key in keys) {
+        if (!byMonth.containsKey(key)) {
+          await _db.child("users/$uid/$path/$key").remove();
+        }
+      }
+    }
+
+    for (final entry in byMonth.entries) {
+      await _db.child("users/$uid/$path/${entry.key}").set({
+        "data": entry.value,
+        "updatedAt": ServerValue.timestamp,
+      });
+    }
   }
 
   Future<void> _deleteOldMonthsForPath(String uid, String path) async {
@@ -92,7 +146,8 @@ class BarcodeFirebaseService {
   }
 
   Future<void> deleteOldMonths(String uid) async {
-    for (final path in [_coffeePath, _legacyCoffeePath, _breadPath, _legacyBreadPath]) {
+    // Legacy saja dibersihkan ke bulan berjalan; path baru dikelola backupAll.
+    for (final path in [_legacyCoffeePath, _legacyBreadPath]) {
       await _deleteOldMonthsForPath(uid, path);
     }
   }
@@ -109,7 +164,6 @@ class BarcodeFirebaseService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  /// `true` jika server punya data barcode (bukan kosong) dan berhasil di-merge.
   Future<bool> syncBarcodes(String uid) async {
     final snapshot = await _db
         .child("users/$uid/barcode_backup/latest/barcodes")
@@ -132,7 +186,7 @@ class BarcodeFirebaseService {
     }
 
     final firebaseBarcodes = data
-        .map((e) => BarcodeData.fromJson(Map<String, dynamic>.from(e)))
+        .map((e) => BarcodeData.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
 
     final localBarcodes = await SharedPreferencesService().getBarcodes();
@@ -169,129 +223,120 @@ class BarcodeFirebaseService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<DataSnapshot?> _readMonthData(
+  Future<List<Map<String, dynamic>>> _fetchAllMonthRows(
     String uid,
-    String monthKey,
-    String path,
+    List<String> paths,
   ) async {
-    final snapshot = await _db.child("users/$uid/$path/$monthKey/data").get();
-    return snapshot.exists ? snapshot : null;
+    final byTgl = <int, Map<String, dynamic>>{};
+
+    for (final path in paths) {
+      final root = await _db.child("users/$uid/$path").get();
+      if (!root.exists || root.value is! Map) continue;
+
+      final months = Map<String, dynamic>.from(root.value as Map);
+      for (final monthVal in months.values) {
+        if (monthVal is! Map) continue;
+        final monthMap = Map<String, dynamic>.from(monthVal);
+        final data = monthMap['data'];
+        if (data is! List) continue;
+        for (final raw in data) {
+          if (raw is! Map) continue;
+          final row = Map<String, dynamic>.from(raw);
+          final tgl = row['tgl'];
+          if (tgl is int) {
+            // Path baru menang vs legacy jika tgl sama.
+            byTgl.putIfAbsent(tgl, () => row);
+          }
+        }
+      }
+    }
+
+    return byTgl.values.toList();
   }
 
-  Future<List<Map<String, dynamic>>?> _fetchCoffeeServerData(
-    String uid,
-    String monthKey,
-  ) async {
-    final current = await _readMonthData(uid, monthKey, _coffeePath);
-    final legacy = await _readMonthData(uid, monthKey, _legacyCoffeePath);
-    final snapshot = current ?? legacy;
-    if (snapshot == null) return null;
+  Future<int> syncCoffee(String uid) async {
+    final serverRows = await _fetchAllMonthRows(uid, [
+      _coffeePath,
+      _legacyCoffeePath,
+    ]);
 
-    final data = snapshot.value as List?;
-    if (data == null || data.isEmpty) return null;
-
-    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-  }
-
-  Future<List<Map<String, dynamic>>?> _fetchBreadServerData(
-    String uid,
-    String monthKey,
-  ) async {
-    final current = await _readMonthData(uid, monthKey, _breadPath);
-    final legacy = await _readMonthData(uid, monthKey, _legacyBreadPath);
-    final snapshot = current ?? legacy;
-    if (snapshot == null) return null;
-
-    final data = snapshot.value as List?;
-    if (data == null || data.isEmpty) return null;
-
-    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-  }
-
-  /// `true` jika server punya data coffee bulan ini (bukan kosong).
-  Future<bool> syncCoffee(String uid) async {
-    final monthKey = getCurrentMonthKey();
-    final serverRows = await _fetchCoffeeServerData(uid, monthKey);
-
-    if (serverRows == null) {
+    if (serverRows.isEmpty) {
       FirebaseAnalytics.instance.logEvent(
         name: "sync_coffee_skipped_no_server",
       );
-      return false;
+      return -1;
     }
 
-    final firebaseData = serverRows
-        .map((e) => CoffeeHistory.fromJson(e))
-        .toList();
-
+    final firebaseData =
+        serverRows.map(CoffeeHistory.fromJson).toList();
     final localData = await SharedPreferencesService().getCoffee();
+    final localTgl = localData.map((e) => e.tgl).toSet();
 
     final merged = [...localData];
-
+    var added = 0;
     for (final fb in firebaseData) {
-      final exists = merged.any((e) => e.tgl == fb.tgl);
-
-      if (!exists) {
-        merged.add(fb);
-      }
+      if (localTgl.contains(fb.tgl)) continue;
+      merged.add(fb);
+      added++;
     }
 
-    await SharedPreferencesService().clearCoffee();
+    await SharedPreferencesService().replaceCoffeeAll(merged);
 
-    for (final item in merged) {
-      await SharedPreferencesService().saveCoffee(item);
-    }
-
-    FirebaseAnalytics.instance.logEvent(name: "sync_coffee_success");
-    return true;
+    FirebaseAnalytics.instance.logEvent(
+      name: "sync_coffee_success",
+      parameters: {"added": added, "server_rows": firebaseData.length},
+    );
+    return added;
   }
 
-  /// `true` jika server punya data bread bulan ini (bukan kosong).
-  Future<bool> syncBread(String uid) async {
-    final monthKey = getCurrentMonthKey();
-    final serverRows = await _fetchBreadServerData(uid, monthKey);
+  Future<int> syncBread(String uid) async {
+    final serverRows = await _fetchAllMonthRows(uid, [
+      _breadPath,
+      _legacyBreadPath,
+    ]);
 
-    if (serverRows == null) {
+    if (serverRows.isEmpty) {
       FirebaseAnalytics.instance.logEvent(
         name: "sync_bread_skipped_no_server",
       );
-      return false;
+      return -1;
     }
 
-    final firebaseData = serverRows
-        .map((e) => BreadHistory.fromJson(e))
-        .toList();
-
+    final firebaseData = serverRows.map(BreadHistory.fromJson).toList();
     final localData = await SharedPreferencesService().getBread();
+    final localTgl = localData.map((e) => e.tgl).toSet();
 
     final merged = [...localData];
-
+    var added = 0;
     for (final fb in firebaseData) {
-      final exists = merged.any((e) => e.tgl == fb.tgl);
-
-      if (!exists) {
-        merged.add(fb);
-      }
+      if (localTgl.contains(fb.tgl)) continue;
+      merged.add(fb);
+      added++;
     }
 
-    await SharedPreferencesService().clearBread();
+    await SharedPreferencesService().replaceBreadAll(merged);
 
-    for (final item in merged) {
-      await SharedPreferencesService().saveBread(item);
-    }
-
-    FirebaseAnalytics.instance.logEvent(name: "sync_bread_success");
-    return true;
+    FirebaseAnalytics.instance.logEvent(
+      name: "sync_bread_success",
+      parameters: {"added": added, "server_rows": firebaseData.length},
+    );
+    return added;
   }
 
-  /// Barcode + coffee + bread. Yang tidak ada di server **diskip**;
-  /// yang ada tetap di-sync. Hanya error jika **ketiganya** kosong.
-  Future<void> syncAll(String uid) async {
+  Future<SyncResult> syncAll(String uid) async {
     final hasBarcode = await syncBarcodes(uid);
-    final hasCoffee = await syncCoffee(uid);
-    final hasBread = await syncBread(uid);
+    final coffeeAdded = await syncCoffee(uid);
+    final breadAdded = await syncBread(uid);
 
-    if (!hasBarcode && !hasCoffee && !hasBread) {
+    final result = SyncResult(
+      barcode: hasBarcode,
+      coffee: coffeeAdded >= 0,
+      bread: breadAdded >= 0,
+      coffeeAdded: coffeeAdded < 0 ? 0 : coffeeAdded,
+      breadAdded: breadAdded < 0 ? 0 : breadAdded,
+    );
+
+    if (!result.any) {
       FirebaseAnalytics.instance.logEvent(name: "sync_all_no_server_data");
       throw const SyncNoServerDataException();
     }
@@ -300,5 +345,6 @@ class BarcodeFirebaseService {
     await SharedPreferencesService().saveLastSyncTime(now);
 
     FirebaseAnalytics.instance.logEvent(name: "sync_all_success");
+    return result;
   }
 }

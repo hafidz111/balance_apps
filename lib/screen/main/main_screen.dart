@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:starvy/screen/assistant/assistant_screen.dart';
 import 'package:starvy/screen/barcode/barcode_screen.dart';
 import 'package:starvy/screen/history/history_screen.dart';
 import 'package:starvy/screen/coffee/coffee_screen.dart';
@@ -51,10 +52,13 @@ class _MainScreenState extends State<MainScreen> {
     "Warehouse",
     "Space",
     "Schedule",
+    "Asisten AI",
     'Settings',
   ];
 
   static const int _barcodeIdx = 4;
+  static const int _assistantIdx = 8;
+  static const int _settingsIdx = 9;
 
   static const List<IconData> _icons = [
     Icons.store,
@@ -65,6 +69,7 @@ class _MainScreenState extends State<MainScreen> {
     Icons.warehouse_rounded,
     Icons.space_dashboard,
     Icons.calendar_month,
+    Icons.smart_toy_outlined,
     Icons.settings,
   ];
 
@@ -229,6 +234,7 @@ class _MainScreenState extends State<MainScreen> {
       const WarehouseScreen(),
       const GridPhotoScreen(),
       const ScheduleScreen(),
+      const AssistantScreen(),
       const SettingsScreen(),
     ];
 
@@ -333,7 +339,7 @@ class _MainScreenState extends State<MainScreen> {
                       Navigator.pop(context);
 
                       if (isLogin) {
-                        _onItemTapped(8);
+                        _onItemTapped(_settingsIdx);
                       } else {
                         context.pushAppRoute(AppRoutes.login);
                       }
@@ -405,6 +411,17 @@ class _MainScreenState extends State<MainScreen> {
                               : FontWeight.normal,
                         ),
                       ),
+                      trailing: i == _assistantIdx &&
+                              !PremiumService.cachedPremium
+                          ? Text(
+                              'Premium',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.amber.shade800,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          : null,
                       selected: selectedIndex == i,
                       onTap: () {
                         _onItemTapped(i);

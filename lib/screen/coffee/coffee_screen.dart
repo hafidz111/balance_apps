@@ -8,12 +8,14 @@ import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/coffee_provider.dart';
+import '../../providers/main_screen_provider.dart';
 import '../../providers/shared_preference_provider.dart';
 import '../../utils/number_format.dart';
 import '../../utils/stale_history_cleanup.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/product_dashboard_widgets.dart';
+import '../widgets/product_insight_card.dart';
 
 class CoffeeScreen extends StatefulWidget {
   const CoffeeScreen({super.key});
@@ -353,6 +355,15 @@ class _CoffeeScreenState extends State<CoffeeScreen> {
                   ),
                 ],
               ),
+              if (coffee.historyInsight != null) ...[
+                const SizedBox(height: 12),
+                ProductInsightCard(
+                  insight: coffee.historyInsight!,
+                  onAskAi: () {
+                    context.read<MainScreenProvider>().setSelectedIndex(8);
+                  },
+                ),
+              ],
               const SizedBox(height: 8),
               ...List.generate(shiftCount, (index) {
                 final raw = index < coffee.shiftLabels.length

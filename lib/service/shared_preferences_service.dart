@@ -446,6 +446,33 @@ class SharedPreferencesService {
     await prefs.remove(coffeeKey);
   }
 
+  Future<void> replaceCoffeeAll(List<CoffeeHistory> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final histories = [...items]..sort((a, b) => a.tgl.compareTo(b.tgl));
+
+    int runningAkm = 0;
+    final fixed = <CoffeeHistory>[];
+    for (final item in histories) {
+      runningAkm += item.cup;
+      final day = item.tgl % 100;
+      fixed.add(
+        CoffeeHistory(
+          tgl: item.tgl,
+          spd: item.spd,
+          cup: item.cup,
+          akmCup: runningAkm,
+          cpd: day == 0 ? 0 : runningAkm / day,
+          apc: item.apc,
+        ),
+      );
+    }
+
+    await prefs.setStringList(
+      coffeeKey,
+      fixed.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
   Future<void> saveBread(BreadHistory data) async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(breadKey) ?? [];
@@ -569,6 +596,35 @@ class SharedPreferencesService {
   Future<void> clearBread() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(breadKey);
+  }
+
+  Future<void> replaceBreadAll(List<BreadHistory> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final histories = [...items]..sort((a, b) => a.tgl.compareTo(b.tgl));
+
+    int runningQty = 0;
+    int runningSales = 0;
+    final fixed = <BreadHistory>[];
+    for (final item in histories) {
+      runningQty += item.qty;
+      runningSales += item.sales;
+      final day = item.tgl % 100;
+      fixed.add(
+        BreadHistory(
+          tgl: item.tgl,
+          sales: item.sales,
+          qty: item.qty,
+          akmQty: runningQty,
+          akmSales: runningSales,
+          average: day == 0 ? 0 : runningQty / day,
+        ),
+      );
+    }
+
+    await prefs.setStringList(
+      breadKey,
+      fixed.map((e) => jsonEncode(e.toJson())).toList(),
+    );
   }
 
   Future<void> saveBarcode(BarcodeData data) async {
@@ -788,8 +844,6 @@ class SharedPreferencesService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}';
   }
 
-  /// Input manual total sales **bulan lalu** untuk Achiev Target **bulan saat ini**.
-  /// Saat masuk bulan berikutnya, nilai lama dihapus otomatis.
   Future<void> saveCoffeeSalesPrevManual(String sales) async {
     final forMonth = _monthKey(DateTime.now());
 
@@ -805,7 +859,6 @@ class SharedPreferencesService {
     return prefs.getString(coffeeSalesPrevManualKey);
   }
 
-  /// Hapus sales bulan lalu manual jika sudah tidak relevan (bukan bulan saat ini).
   Future<void> expireCoffeeSalesPrevManualIfNeeded() async {
     final activeMonth = _monthKey(DateTime.now());
     final savedForMonth = prefs.getString(coffeeSalesPrevMonthKey);

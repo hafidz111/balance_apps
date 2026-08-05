@@ -21,6 +21,7 @@ dependencies:
   firebase_database: ^12.1.4
   flutter:
     sdk: flutter
+  flutter_markdown_plus: ^1.0.12
   google_mobile_ads: ^7.0.0
   image_picker: ^1.2.1
   in_app_purchase: ^3.2.3
