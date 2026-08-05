@@ -3,7 +3,7 @@ description: 'A new Flutter project.'
 
 publish_to: 'none'
 
-version: 1.1.10+18
+version: 1.1.11+19
 
 environment:
   sdk: ^3.10.7
@@ -24,7 +24,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   google_mobile_ads: ^7.0.0
   image_picker: ^1.2.1
-  in_app_purchase: ^3.2.3
+  in_app_purchase: ^3.3.0
   mobile_scanner: ^7.1.4
   package_info_plus: ^9.0.0
   path_provider: ^2.1.5
