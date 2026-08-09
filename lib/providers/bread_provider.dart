@@ -113,7 +113,6 @@ class BreadProvider extends ChangeNotifier {
         average: akmQty / now.day,
       ),
     );
-    await _prefs.clearBreadDraft(tgl);
 
     FirebaseAnalytics.instance.logEvent(
       name: 'bread_saved',

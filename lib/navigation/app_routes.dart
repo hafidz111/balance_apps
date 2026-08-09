@@ -10,6 +10,7 @@ import 'package:starvy/screen/grid_photo/grid_choose_photo_screen.dart';
 import 'package:starvy/screen/login/login_screen.dart';
 import 'package:starvy/screen/main/main_screen.dart';
 import 'package:starvy/screen/scanner/scanner_screen.dart';
+import 'package:starvy/screen/settings/notification_screen.dart';
 
 abstract final class AppRoutes {
   static const main = '/';
@@ -20,12 +21,14 @@ abstract final class AppRoutes {
   static const scanner = '/scanner';
   static const gridChoose = '/grid/choose';
   static const gridBackground = '/grid/background';
+  static const notifications = '/notifications';
 
   static Map<String, WidgetBuilder> get routes => {
     main: (_) => const MainScreen(),
     login: (_) => const LoginScreen(),
     barcodeChoose: (_) => const ChooseBarcodeScreen(),
     scanner: (_) => const ScannerScreen(),
+    notifications: (_) => const NotificationScreen(),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {

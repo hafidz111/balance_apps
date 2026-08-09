@@ -19,8 +19,10 @@ dependencies:
   firebase_auth: ^6.1.4
   firebase_core: ^4.4.0
   firebase_database: ^12.1.4
+  firebase_messaging: ^16.5.0
   flutter:
     sdk: flutter
+  flutter_local_notifications: ^22.3.0
   flutter_markdown_plus: ^1.0.12
   google_mobile_ads: ^7.0.0
   image_picker: ^1.2.1

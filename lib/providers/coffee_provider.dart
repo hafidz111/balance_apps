@@ -257,7 +257,6 @@ class CoffeeProvider extends ChangeNotifier {
         apc: apcValue(totalSales, totalStd),
       ),
     );
-    await _prefs.clearCoffeeDraft(tgl);
 
     FirebaseAnalytics.instance.logEvent(
       name: 'coffee_saved',

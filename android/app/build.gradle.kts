@@ -25,6 +25,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -65,4 +66,5 @@ flutter {
 dependencies {
     // WindowCompat (edge-to-edge Android 15); selaras dengan embedding Flutter.
     implementation("androidx.core:core-ktx:1.15.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

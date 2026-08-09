@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:starvy/providers/notification_provider.dart';
 import 'package:starvy/screen/assistant/assistant_screen.dart';
 import 'package:starvy/screen/barcode/barcode_screen.dart';
 import 'package:starvy/screen/history/history_screen.dart';
@@ -36,7 +37,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   DateTime? _screenStartTime;
   VoidCallback? deleteSelectedBarcodes;
@@ -76,7 +77,21 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkStoreData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<NotificationProvider>().loadNotifications();
+    }
   }
 
   void _checkStoreData() async {
@@ -274,45 +289,45 @@ class _MainScreenState extends State<MainScreen> {
                   onPressed: selectAllBarcodes,
                 ),
               ]
-            : (selectedIndex == _barcodeIdx
-                  ? [
-                      PremiumService.cachedPremium
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.upload_file,
-                                color: Colors.white,
-                              ),
-                              onPressed: _exportBarcodes,
-                            )
-                          : RewardedAds(
-                              featureName: "export",
-                              adUnitId: AdsHelper.rewardedExportAdUnitId,
-                              interstitialAdUnitId:
-                                  AdsHelper.rewardedExportBarcodeAdUnitId,
-                              onRewarded: _exportBarcodes,
-                              icon: Icons.upload_file,
-                              color: Colors.white,
-                            ),
-
-                      PremiumService.cachedPremium
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.download,
-                                color: Colors.white,
-                              ),
-                              onPressed: _importBarcodes,
-                            )
-                          : RewardedAds(
-                              featureName: "import",
-                              adUnitId: AdsHelper.rewardedImportAdUnitId,
-                              interstitialAdUnitId:
-                                  AdsHelper.rewardedImportBarcodeAdUnitId,
-                              onRewarded: _importBarcodes,
-                              icon: Icons.download,
-                              color: Colors.white,
-                            ),
-                    ]
-                  : []),
+            : [
+                if (selectedIndex == _barcodeIdx) ...[
+                  PremiumService.cachedPremium
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.upload_file,
+                            color: Colors.white,
+                          ),
+                          onPressed: _exportBarcodes,
+                        )
+                      : RewardedAds(
+                          featureName: "export",
+                          adUnitId: AdsHelper.rewardedExportAdUnitId,
+                          interstitialAdUnitId:
+                              AdsHelper.rewardedExportBarcodeAdUnitId,
+                          onRewarded: _exportBarcodes,
+                          icon: Icons.upload_file,
+                          color: Colors.white,
+                        ),
+                  PremiumService.cachedPremium
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.download,
+                            color: Colors.white,
+                          ),
+                          onPressed: _importBarcodes,
+                        )
+                      : RewardedAds(
+                          featureName: "import",
+                          adUnitId: AdsHelper.rewardedImportAdUnitId,
+                          interstitialAdUnitId:
+                              AdsHelper.rewardedImportBarcodeAdUnitId,
+                          onRewarded: _importBarcodes,
+                          icon: Icons.download,
+                          color: Colors.white,
+                        ),
+                ],
+                _buildNotificationIcon(context),
+              ],
       ),
       body: widgetOptions[selectedIndex],
       drawer: Drawer(
@@ -434,6 +449,47 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNotificationIcon(BuildContext context) {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications, color: Colors.white),
+          onPressed: () {
+            context.pushAppRoute(AppRoutes.notifications);
+          },
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 16,
+                minHeight: 16,
+              ),
+              child: Text(
+                '$unreadCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

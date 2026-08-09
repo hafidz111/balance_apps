@@ -8,6 +8,7 @@ import '../data/model/barcode_data.dart';
 import '../data/model/coffee_history.dart';
 import '../data/model/bread_history.dart';
 import '../data/model/store_data.dart';
+import '../data/model/app_notification.dart';
 import '../data/model/warehouse_transaction.dart';
 import '../data/shift_time_phase.dart';
 
@@ -31,6 +32,7 @@ class SharedPreferencesService {
   static const shiftKey = "shift_count";
   static const shiftTimeLabelsKey = 'shift_time_labels';
   static const warehouseKey = 'warehouse_transactions';
+  static const notificationsKey = 'app_notifications';
 
   static const List<String> defaultShiftTimeLabels = [
     '07:30 – 14:30',
@@ -947,5 +949,27 @@ class SharedPreferencesService {
   Future<void> clearWarehouseTransactions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(warehouseKey);
+  }
+
+  Future<List<AppNotification>> getNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(notificationsKey) ?? [];
+    return list
+        .map((e) => AppNotification.fromJson(jsonDecode(e)))
+        .toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  Future<void> saveNotifications(List<AppNotification> list) async {
+    final prefs = await SharedPreferences.getInstance();
+    final stringList = list.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList(notificationsKey, stringList);
+  }
+
+  Future<void> addNotification(AppNotification n) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(notificationsKey) ?? [];
+    list.add(jsonEncode(n.toJson()));
+    await prefs.setStringList(notificationsKey, list);
   }
 }

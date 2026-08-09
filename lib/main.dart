@@ -25,9 +25,11 @@ import 'package:starvy/providers/settings_provider.dart';
 import 'package:starvy/providers/shared_preference_provider.dart';
 import 'package:starvy/providers/store_provider.dart';
 import 'package:starvy/providers/grid_photo_provider.dart';
+import 'package:starvy/providers/notification_provider.dart';
 import 'package:starvy/providers/warehouse_provider.dart';
 import 'package:starvy/navigation/app_routes.dart';
 import 'package:starvy/service/firebase_auth_service.dart';
+import 'package:starvy/service/notification_service.dart';
 import 'package:starvy/service/shared_preferences_service.dart';
 import 'package:starvy/theme/app_colors.dart';
 import 'package:starvy/utils/track_app_start.dart';
@@ -52,6 +54,8 @@ void main() async {
   await SharedPreferencesService.init();
   await SharedPreferencesService().initDb();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.instance.initialize();
+  unawaited(NotificationService.instance.requestPermission());
 
   final firebaseAuth = FirebaseAuth.instance;
   await trackAppStart();
@@ -98,6 +102,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => BarcodeDetailProvider()),
         ChangeNotifierProvider(create: (_) => BannerAdsProvider()),
         ChangeNotifierProvider(create: (_) => WarehouseProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         Provider(create: (context) => FirebaseAuthService(firebaseAuth)),
         ChangeNotifierProvider(
           create: (context) =>
